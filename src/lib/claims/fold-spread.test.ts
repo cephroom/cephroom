@@ -37,13 +37,23 @@ describe("fold-spread grammar", () => {
   });
 
   it("treats a fold value as a bare ratio, dropping any fold notation", () => {
-    // "5x", "5-fold" and "5" are the same assertion — the notation must not
-    // survive as a unit, or it would read as a mismatch against the
-    // dimensionless observed value.
-    for (const written of ["5.07x", "5.07-fold", "5.07×", "5.07"]) {
+    // "5x", "5-fold", "×5" and "5" are the same assertion — the notation must
+    // not survive as a unit, or it would read as a mismatch against the
+    // dimensionless observed value. Both trailing and leading notation work.
+    for (const written of ["5.07x", "5.07-fold", "5.07×", "5.07", "×5.07", "x5.07"]) {
       const [c] = parseBody(claim("fold_spread_iqr", written)).claims;
       expect(c.expectedValue).toBeCloseTo(5.07);
       expect(c.expectedUnit).toBeNull();
+    }
+  });
+
+  it("rejects a nonsensical non-positive fold ratio", () => {
+    // A fold spread is loosest/tightest and is always ≥ 1; a negative or zero
+    // ratio is not a real assertion, so it records no authored value (which
+    // the judge then treats as broken) rather than a silent -5.
+    for (const written of ["-5", "0"]) {
+      const [c] = parseBody(claim("fold_spread", written)).claims;
+      expect(c.expectedValue).toBeNull();
     }
   });
 

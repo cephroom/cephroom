@@ -44,9 +44,9 @@ export type ClaimSelect =
  * range (`fold_spread_iqr`). A claim on one of these asserts *agreement
  * between labs* rather than a point estimate — often the real scientific
  * point, since a cell can have a tight median and a 100x full spread. The
- * value is a bare ratio, so "5x", "5-fold" and "5" all mean the same thing;
- * we drop any fold notation the author writes so it never reads as a unit
- * mismatch.
+ * value is a bare ratio, so "5x", "5-fold", "×5" and "5" all mean the same
+ * thing; we drop the fold notation, wherever it sits, so it never reads as a
+ * unit mismatch, and reject a non-positive ratio as not a real assertion.
  */
 export const FOLD_SELECTS: ClaimSelect[] = ["fold_spread", "fold_spread_iqr"];
 
@@ -211,12 +211,23 @@ export function parseBody(rawBody: string): ParsedBody {
         });
       }
 
-      const { value, unit } = parseMeasurement(fields.value);
-      // A fold spread is a bare ratio. "5x", "5-fold" and "5" are the same
-      // assertion, so the fold notation is not treated as a unit — otherwise
-      // an author writing "5x" against a dimensionless observed value would
-      // read as a unit mismatch and the claim would go broken.
-      const expectedUnit = isFoldSelect(select) ? null : unit;
+      const parsed = parseMeasurement(fields.value);
+      // A fold spread is a bare ratio. "5x", "5-fold", "×5" and "5" are the
+      // same assertion, so the fold notation is not treated as a unit —
+      // otherwise it would read as a unit mismatch against the dimensionless
+      // observed value and the claim would go broken. parseMeasurement only
+      // strips a *trailing* notation, so for a fold select pull the first
+      // number out wherever it sits, and never let a nonsensical negative
+      // ratio through.
+      let value = parsed.value;
+      if (isFoldSelect(select)) {
+        if (value === null) {
+          const match = fields.value?.match(/-?[\d.]+(?:[eE][-+]?\d+)?/);
+          value = match ? Number.parseFloat(match[0]) : null;
+        }
+        if (value !== null && value <= 0) value = null;
+      }
+      const expectedUnit = isFoldSelect(select) ? null : parsed.unit;
 
       claims.push({
         key,
