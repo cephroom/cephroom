@@ -12,7 +12,10 @@ import {
   relatedColumns,
   splitPreview,
 } from "@/lib/columns";
+import { BookmarkButton } from "@/components/bookmark-button";
 import { openProposalCount } from "@/lib/collab/queries";
+import { toggleBookmark } from "@/lib/library/actions";
+import { isBookmarked } from "@/lib/library/queries";
 import { canRead, getViewer } from "@/lib/entitlements";
 
 export async function generateMetadata({
@@ -46,9 +49,10 @@ export default async function ColumnPage({
   const entitled = canRead(viewer, column.access);
   const { preview, hiddenBlocks } = splitPreview(detail!.prose);
   const body = entitled ? detail!.prose : preview;
-  const [related, openProposals] = await Promise.all([
+  const [related, openProposals, saved] = await Promise.all([
     relatedColumns(column.id),
     openProposalCount(column.id),
+    isBookmarked(viewer.id, column.id),
   ]);
 
   return (
@@ -213,6 +217,12 @@ export default async function ColumnPage({
               >
                 Fork this column
               </Link>
+              <BookmarkButton
+                columnId={column.id}
+                saved={saved}
+                returnTo={`/columns/${column.slug}`}
+                action={toggleBookmark}
+              />
               <Link
                 href={`/columns/${column.slug}/proposals`}
                 className="rounded-md px-4 py-2 text-[0.86rem] font-medium text-ink-muted transition-colors hover:text-ink"

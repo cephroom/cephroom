@@ -10,20 +10,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import bcrypt from "bcryptjs";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
-import {
-  checkRuns,
-  claimResults,
-  claims as claimsTable,
-  columns,
-  datasets,
-  facts,
-  revisions,
-  users,
-} from "../src/lib/db/schema";
+import { columns, revisions, users } from "../src/lib/db/schema";
 import { parseBody } from "../src/lib/claims/syntax";
-import { judge, concludeRun } from "../src/lib/claims/verdict";
+import { runChecks, syncClaims } from "../src/lib/claims/engine";
 import { db } from "./db";
 import { importReceptorome } from "./import-receptorome";
 
@@ -140,93 +131,6 @@ async function upsertUser(input: {
   return created.id;
 }
 
-/**
- * Runs every claim in a column against the dataset and records the result.
- * Mirrors src/lib/claims/runner.ts, reimplemented here because that module is
- * server-only and this script runs under tsx.
- */
-async function runChecks(columnId: string, revisionId: string) {
-  const started = Date.now();
-  const stored = await db.query.claims.findMany({
-    where: eq(claimsTable.columnId, columnId),
-  });
-
-  const outcomes = [];
-  for (const claim of stored) {
-    const query = claim.query!;
-    const dataset = await db.query.datasets.findFirst({
-      where: eq(datasets.slug, claim.datasetSlug),
-    });
-    const cell = dataset
-      ? await db.query.facts.findFirst({
-          where: and(
-            eq(facts.datasetId, dataset.id),
-            eq(facts.metric, query.metric),
-            eq(facts.subject, query.subject),
-            eq(facts.object, query.object),
-            eq(facts.scope, query.scope ?? "all"),
-          ),
-        })
-      : undefined;
-
-    const select = query.select ?? "value";
-    const observed = !cell
-      ? { value: null, unit: null }
-      : select === "n_points"
-        ? { value: cell.nPoints, unit: null }
-        : select === "n_docs"
-          ? { value: cell.nDocs, unit: null }
-          : { value: cell.value, unit: cell.unit };
-
-    const judgement = judge(
-      { value: claim.expectedValue, unit: claim.expectedUnit },
-      observed,
-      { kind: "percent", amount: claim.tolerancePct },
-    );
-
-    outcomes.push({
-      checkRunId: "",
-      claimId: claim.id,
-      verdict: judgement.verdict,
-      observedValue: observed.value ?? null,
-      observedUnit: observed.unit ?? null,
-      deltaPct: judgement.deltaPct,
-      datasetRelease: dataset?.release ?? null,
-      datasetVersion: dataset?.version ?? null,
-      note:
-        judgement.note ??
-        (cell
-          ? null
-          : `No cell for ${query.subject} x ${query.object} in ${claim.datasetSlug}.`),
-      evidence: cell
-        ? { nPoints: cell.nPoints, nDocs: cell.nDocs, scope: cell.scope }
-        : null,
-    });
-  }
-
-  const [run] = await db
-    .insert(checkRuns)
-    .values({
-      columnId,
-      revisionId,
-      trigger: "publish",
-      conclusion: concludeRun(outcomes.map((o) => o.verdict)),
-      nVerified: outcomes.filter((o) => o.verdict === "verified").length,
-      nDrifted: outcomes.filter((o) => o.verdict === "drifted").length,
-      nBroken: outcomes.filter((o) => o.verdict === "broken").length,
-      durationMs: Date.now() - started,
-    })
-    .returning();
-
-  if (outcomes.length > 0) {
-    await db
-      .insert(claimResults)
-      .values(outcomes.map((o) => ({ ...o, checkRunId: run.id })));
-  }
-
-  return run;
-}
-
 async function main() {
   console.log("Importing receptorome snapshot...");
   const imported = await importReceptorome(db);
@@ -315,30 +219,12 @@ async function main() {
       })
       .returning();
 
-    if (parsed.claims.length > 0) {
-      await db.insert(claimsTable).values(
-        parsed.claims.map((claim) => ({
-          columnId: column.id,
-          key: claim.key,
-          datasetSlug: claim.datasetSlug,
-          query: {
-            metric: claim.metric,
-            subject: claim.subject,
-            object: claim.object,
-            scope: claim.scope,
-            select: claim.select,
-          },
-          source: claim.source,
-          expectedValue: claim.expectedValue,
-          expectedUnit: claim.expectedUnit,
-          tolerancePct:
-            claim.tolerance.kind === "percent" ? claim.tolerance.amount : 0,
-          createdAt: publishedAt,
-        })),
-      );
-    }
+    await syncClaims(db, column.id, doc.body);
 
-    const run = await runChecks(column.id, revision.id);
+    const { run } = await runChecks(db, column.id, {
+      trigger: "publish",
+      revisionId: revision.id,
+    });
     console.log(
       `  ${doc.slug.padEnd(44)} ${parsed.claims.length} claims -> ${run.conclusion}`,
     );
