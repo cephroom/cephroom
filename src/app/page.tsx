@@ -1,18 +1,12 @@
 import Link from "next/link";
 
-import { CheckBadge } from "@/components/check-badge";
-import { ColumnCard } from "@/components/column-card";
-import { publishedFeed } from "@/lib/columns";
-import { db } from "@/lib/db";
-import { facts } from "@/lib/db/schema";
+import { registry } from "@/lib/signaling/registry";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [feed, dataset] = await Promise.all([
-    publishedFeed(4),
-    db.query.datasets.findFirst(),
-  ]);
-
-  const factCount = dataset ? await db.$count(facts) : 0;
+  const online = registry().list();
+  const items = online.flatMap((presence) => presence.items);
 
   return (
     <main>
@@ -21,12 +15,12 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-5 py-16 sm:py-24">
           <div className="max-w-3xl">
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-rule bg-paper-raised px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-ink-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-verified" />
-              {/* The full list does not fit on one line at 375px, and a
-                  two-line pill reads as a mistake. */}
-              Pharmacology
-              <span className="hidden sm:inline"> · neuroscience</span> ·
-              evidence quality
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${online.length > 0 ? "bg-verified" : "bg-stale"}`}
+              />
+              {online.length > 0
+                ? `${online.length} contributor${online.length === 1 ? "" : "s"} serving right now`
+                : "Nobody is serving right now"}
             </p>
 
             <h1 className="font-serif text-[2.6rem] font-semibold leading-[1.08] tracking-[-0.025em] sm:text-[3.6rem]">
@@ -36,28 +30,28 @@ export default async function HomePage() {
             <p className="mt-6 max-w-[56ch] text-[1.1rem] leading-relaxed text-ink-muted">
               A review article is frozen the day it is written. The databases
               underneath it are not. Bindery columns state their numbers as
-              queries against a versioned dataset, and re-run every one of them
-              on every release — so a sentence that has quietly become wrong
-              says so on the page.
+              queries against a dataset, and every reader&rsquo;s browser
+              re-runs them on the way in — so a sentence that has quietly
+              become wrong says so on the page.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href="/pricing"
+                href="/read"
                 className="rounded-md bg-accent px-5 py-2.5 text-[0.92rem] font-medium text-white transition-colors hover:bg-accent-hover"
               >
-                Become a member
+                {online.length > 0 ? "Read what is online" : "See what is online"}
               </Link>
               <Link
-                href="/columns"
+                href="/how-it-works"
                 className="rounded-md border border-rule-strong px-5 py-2.5 text-[0.92rem] font-medium text-ink transition-colors hover:border-ink-faint"
               >
-                Read the columns
+                How it works
               </Link>
             </div>
           </div>
 
-          {/* A live example of the mechanism, not a picture of one. */}
+          {/* The mechanism, shown rather than described. */}
           <figure className="mt-14 max-w-3xl rounded-xl border border-rule bg-paper-raised p-5 sm:p-7">
             <figcaption className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-ink-faint">
               What an author writes
@@ -90,175 +84,163 @@ tolerance: 10%
               .
             </p>
             <p className="mt-3 text-[0.8rem] text-ink-muted">
-              Rendered from the dataset at read time, not typed. The dot is the
-              verdict of the last check run: 104 measurements across 93 papers,
-              within tolerance of the value the author asserted.
+              Fetched from the author&rsquo;s machine and checked against the
+              dataset in your own browser, a few hundred milliseconds ago. Not
+              a badge from a build that ran three weeks back.
             </p>
           </figure>
         </div>
       </section>
 
-      {/* ------------------------------------------------- The three parts */}
+      {/* --------------------------------------------------- The two ideas */}
       <section className="border-b border-rule bg-paper-sunken">
         <div className="mx-auto max-w-6xl px-5 py-16">
           <h2 className="font-serif text-[1.7rem] font-semibold tracking-[-0.02em]">
-            What GitHub did for code, for the numbers in a paper
+            Two constraints, and what follows from them
           </h2>
           <p className="mt-3 max-w-[62ch] text-[0.98rem] leading-relaxed text-ink-muted">
-            Version control was never the interesting part. What changed
-            software was that every change got diffed, reviewed, and re-tested
-            automatically. Scientific writing has none of those three.
+            Most of what this platform does not do is not an omission. It is
+            what is left after taking two rules seriously.
           </p>
 
-          <div className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-            <Feature
-              n="01"
-              title="Claims, not literals"
-              body="A number in the prose is a query against a named dataset at a named release. The author records what they observed and how much drift they will tolerate. The reader gets the current value and its provenance."
-            />
-            <Feature
-              n="02"
-              title="CI for prose"
-              body="Every claim runs on publish, on demand, and on every dataset release. A column carries a build status the way a repository does: passing, drifted, or broken."
-            />
-            <Feature
-              n="03"
-              title="Forks and proposals"
-              body="Disagree with a column? Fork it and publish your version with lineage intact, or open a proposal against the original and let the author review the diff."
-            />
-            <Feature
-              n="04"
-              title="Evidence counts, always"
-              body="Every claim carries the number of measurements and the number of distinct papers behind it. A value with an n of one and a value with an n of one hundred stop looking identical."
-            />
-            <Feature
-              n="05"
-              title="No imputation, anywhere"
-              body="Empty cells stay empty and are listed by name. Censored measurements are counted as the true negatives they are, never folded into missing data."
-            />
-            <Feature
-              n="06"
-              title="Pinned to a repository"
-              body="A column links the GitHub repo and commit that produced its analysis. The prose, the data snapshot, and the code all name each other."
-            />
+          <div className="mt-10 grid gap-10 md:grid-cols-2">
+            <div>
+              <p className="font-mono text-[0.72rem] text-accent">01</p>
+              <h3 className="mt-2 font-serif text-[1.25rem] font-semibold">
+                Nothing about you is kept
+              </h3>
+              <p className="mt-2 max-w-[52ch] text-[0.92rem] leading-relaxed text-ink-muted">
+                No user table, no profile, no session store, and no copy of
+                your subscription. You sign in with Google to prove who you
+                are, and walk away with a signed key that says what you may
+                read. Every check after that is a signature, not a lookup.
+              </p>
+              <ul className="mt-4 space-y-2 text-[0.88rem] text-ink-muted">
+                <Consequence>
+                  Your tier is read from Stripe when the key is issued, because
+                  Stripe is the only party allowed to remember anything.
+                </Consequence>
+                <Consequence>
+                  Keys cannot be revoked, only outlived. They last fifteen
+                  minutes and renew quietly.
+                </Consequence>
+                <Consequence>
+                  There is no password, because a password is something we
+                  would have to store.
+                </Consequence>
+              </ul>
+            </div>
+
+            <div>
+              <p className="font-mono text-[0.72rem] text-accent">02</p>
+              <h3 className="mt-2 font-serif text-[1.25rem] font-semibold">
+                Nothing anyone writes is kept either
+              </h3>
+              <p className="mt-2 max-w-[52ch] text-[0.92rem] leading-relaxed text-ink-muted">
+                A contributor&rsquo;s work lives on their own machine and is
+                served from there. Bindery brokers the connection and holds no
+                copy — your browser fetches the bytes from theirs. Stop the
+                process and the work leaves the site immediately.
+              </p>
+              <ul className="mt-4 space-y-2 text-[0.88rem] text-ink-muted">
+                <Consequence>
+                  There is no archive. You can only read what someone is
+                  standing behind right now.
+                </Consequence>
+                <Consequence>
+                  Discovery is presence. Search reaches what is online, because
+                  an index of everything would be a copy of everything.
+                </Consequence>
+                <Consequence>
+                  Claims are checked in your browser at read time, so a green
+                  badge is never stale.
+                </Consequence>
+              </ul>
+            </div>
           </div>
+
+          <Link
+            href="/how-it-works#contracts"
+            className="mt-9 inline-block text-[0.9rem] font-medium text-accent hover:underline"
+          >
+            Read the contracts, including where they bend →
+          </Link>
         </div>
       </section>
 
-      {/* ----------------------------------------------------- The dataset */}
-      {dataset && (
-        <section className="border-b border-rule">
-          <div className="mx-auto max-w-6xl px-5 py-16">
-            <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
-              <div>
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-ink-faint">
-                  The evidence layer
-                </p>
-                <h2 className="mt-3 font-serif text-[1.7rem] font-semibold tracking-[-0.02em]">
-                  {dataset.name}
-                </h2>
-                <p className="mt-3 max-w-[54ch] text-[0.98rem] leading-relaxed text-ink-muted">
-                  {dataset.description}
-                </p>
-                <Link
-                  href={`/datasets/${dataset.slug}`}
-                  className="mt-5 inline-block text-[0.9rem] font-medium text-accent hover:underline"
-                >
-                  Explore the matrix →
-                </Link>
-              </div>
-
-              <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule">
-                <Stat label="Release" value={dataset.release} />
-                <Stat label="Cells" value={String(factCount)} />
-                <Stat
-                  label="Point coverage"
-                  value={`${dataset.provenance?.coverage?.point_coverage ?? "—"}/80`}
-                />
-                <Stat
-                  label="Empty, by name"
-                  value={String(dataset.provenance?.coverage?.n_empty_cells ?? "—")}
-                />
-              </dl>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ------------------------------------------------------ The columns */}
+      {/* ------------------------------------------------------ Live state */}
       <section>
         <div className="mx-auto max-w-6xl px-5 py-16">
-          <div className="mb-8 flex items-end justify-between gap-4">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <h2 className="font-serif text-[1.7rem] font-semibold tracking-[-0.02em]">
-              Latest columns
+              {online.length > 0 ? "Online now" : "Nothing is online"}
             </h2>
-            <Link
-              href="/columns"
-              className="shrink-0 text-[0.88rem] font-medium text-accent hover:underline"
-            >
-              All columns →
-            </Link>
+            {online.length > 0 && (
+              <Link
+                href="/read"
+                className="shrink-0 text-[0.88rem] font-medium text-accent hover:underline"
+              >
+                All of it →
+              </Link>
+            )}
           </div>
 
-          {feed.length === 0 ? (
-            <p className="rounded-xl border border-rule bg-paper-raised p-8 text-center text-ink-muted">
-              Nothing published yet. Run <code className="font-mono">npm run db:seed</code>{" "}
-              to load the demo columns.
-            </p>
+          {online.length === 0 ? (
+            <div className="rounded-xl border border-rule bg-paper-raised p-8">
+              <p className="max-w-[58ch] text-[0.95rem] leading-relaxed text-ink-muted">
+                This is not an error state. Bindery holds nothing, so when no
+                contributor is running a node there is genuinely nothing here
+                to show — and no cached copy to fall back on.
+              </p>
+              <Link
+                href="/contribute"
+                className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover"
+              >
+                Run a node
+              </Link>
+            </div>
           ) : (
             <ul className="grid gap-x-8 gap-y-px sm:grid-cols-2">
-              {feed.map((item) => (
-                <ColumnCard key={item.id} item={item} />
+              {items.slice(0, 6).map((item) => (
+                <li key={item.id} className="border-b border-rule">
+                  <Link
+                    href={
+                      item.kind === "dataset"
+                        ? `/read/dataset/${encodeURIComponent(item.id)}`
+                        : `/read/${encodeURIComponent(item.id)}`
+                    }
+                    className="group block py-6"
+                  >
+                    <p className="mb-1.5 text-[0.72rem] uppercase tracking-[0.06em] text-ink-faint">
+                      {item.kind}
+                    </p>
+                    <h3 className="font-serif text-[1.2rem] font-semibold leading-snug group-hover:underline">
+                      {item.title}
+                    </h3>
+                    {item.summary && (
+                      <p className="mt-2 max-w-[56ch] text-[0.9rem] leading-relaxed text-ink-muted">
+                        {item.summary}
+                      </p>
+                    )}
+                  </Link>
+                </li>
               ))}
             </ul>
           )}
-        </div>
-      </section>
-
-      {/* --------------------------------------------------------- CTA band */}
-      <section className="border-t border-rule bg-paper-sunken">
-        <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-5 py-14 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-serif text-[1.45rem] font-semibold tracking-[-0.02em]">
-              Two columns a week. Every number checked.
-            </h2>
-            <p className="mt-2 max-w-[50ch] text-[0.92rem] text-ink-muted">
-              Members get the full archive, the claim inspector, and the
-              dataset explorer. Free readers get the open columns in full.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <CheckBadge conclusion="passing" size="md" />
-            <Link
-              href="/pricing"
-              className="shrink-0 rounded-md bg-accent px-5 py-2.5 text-[0.92rem] font-medium text-white transition-colors hover:bg-accent-hover"
-            >
-              See plans
-            </Link>
-          </div>
         </div>
       </section>
     </main>
   );
 }
 
-function Feature({ n, title, body }: { n: string; title: string; body: string }) {
+function Consequence({ children }: { children: React.ReactNode }) {
   return (
-    <div>
-      <p className="font-mono text-[0.72rem] text-accent">{n}</p>
-      <h3 className="mt-2 font-serif text-[1.08rem] font-semibold">{title}</h3>
-      <p className="mt-2 text-[0.9rem] leading-relaxed text-ink-muted">{body}</p>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-paper-raised p-4">
-      <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-        {label}
-      </dt>
-      <dd className="mt-1 font-mono text-[1.05rem] tnum">{value}</dd>
-    </div>
+    <li className="flex items-start gap-2.5">
+      <span
+        aria-hidden
+        className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-accent"
+      />
+      <span>{children}</span>
+    </li>
   );
 }

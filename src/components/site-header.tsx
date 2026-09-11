@@ -1,21 +1,22 @@
 import Link from "next/link";
 
-import { AccountMenu } from "@/components/account-menu";
 import { Wordmark } from "@/components/brand";
+import { KeyMenu } from "@/components/key-menu";
 import { MobileNav } from "@/components/mobile-nav";
-import { signOutAction } from "@/lib/auth/sign-out";
-import { getViewer, PLAN_LABEL } from "@/lib/entitlements";
+import { TIER_LABEL } from "@/lib/access";
+import { getViewer } from "@/lib/auth/session";
 
 const NAV = [
-  { href: "/columns", label: "Columns" },
-  { href: "/datasets", label: "Datasets" },
+  { href: "/read", label: "Reading now" },
+  { href: "/contribute", label: "Contribute" },
   { href: "/how-it-works", label: "How it works" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/pricing", label: "Plans" },
 ];
 
 export async function SiteHeader() {
+  // Reading a cookie and verifying a signature. No lookup, because there is
+  // nothing to look anything up in.
   const viewer = await getViewer();
-  const signedIn = Boolean(viewer.id);
 
   return (
     <header className="sticky top-0 z-40 border-b border-rule bg-paper/85 backdrop-blur-md">
@@ -35,15 +36,13 @@ export async function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          {signedIn ? (
-            <AccountMenu
-              name={viewer.name ?? viewer.email ?? "Reader"}
-              email={viewer.email}
-              handle={viewer.handle}
-              plan={viewer.plan}
-              planLabel={PLAN_LABEL[viewer.plan]}
-              canWrite={viewer.role === "author" || viewer.role === "editor"}
-              signOutAction={signOutAction}
+          {viewer.sub ? (
+            <KeyMenu
+              name={viewer.name ?? "Reader"}
+              subject={viewer.sub}
+              tier={viewer.tier}
+              tierLabel={TIER_LABEL[viewer.tier]}
+              expiresIn={viewer.expiresIn}
             />
           ) : (
             <>
@@ -54,14 +53,14 @@ export async function SiteHeader() {
                 Sign in
               </Link>
               <Link
-                href="/signup"
+                href="/pricing"
                 className="rounded-md bg-accent px-3.5 py-1.5 text-[0.855rem] font-medium text-white transition-colors hover:bg-accent-hover"
               >
                 Subscribe
               </Link>
             </>
           )}
-          <MobileNav items={NAV} signedIn={signedIn} />
+          <MobileNav items={NAV} signedIn={Boolean(viewer.sub)} />
         </div>
       </div>
     </header>

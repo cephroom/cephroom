@@ -2,21 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { SimulatedBillingControls } from "@/components/simulated-billing-controls";
 import { SubmitButton } from "@/components/submit-button";
-import { formatDate } from "@/lib/columns";
-import { getViewer, PLAN_LABEL } from "@/lib/entitlements";
+import { TIER_LABEL } from "@/lib/access";
+import { getViewer } from "@/lib/auth/session";
 import {
   cancelSubscription,
   openBillingPortal,
   resumeSubscription,
-  resyncSubscription,
 } from "@/lib/stripe/actions";
 import { gateway, usingRealStripe } from "@/lib/stripe/gateway";
 import { formatPrice, PLANS } from "@/lib/stripe/plans";
-import type { InvoiceSummary } from "@/lib/stripe/types";
-import { LocalBillingControls } from "@/components/local-billing-controls";
+import type { SubscriptionView } from "@/lib/stripe/types";
 
-export const metadata: Metadata = { title: "Account" };
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Your key" };
 
 const STATUS_COPY: Record<
   string,
@@ -33,23 +33,13 @@ const STATUS_COPY: Record<
   unpaid: {
     label: "Unpaid",
     tone: "bad",
-    detail:
-      "The retries were exhausted. Access has ended; updating your payment method will restore it.",
+    detail: "The retries were exhausted. Updating your payment method restores access.",
   },
-  canceled: {
-    label: "Cancelled",
-    tone: "bad",
-    detail: "This subscription has ended.",
-  },
+  canceled: { label: "Cancelled", tone: "bad", detail: "This subscription has ended." },
   incomplete: {
     label: "Incomplete",
     tone: "warn",
     detail: "Checkout started but the first payment has not settled.",
-  },
-  incomplete_expired: {
-    label: "Expired",
-    tone: "bad",
-    detail: "The first payment never settled and the subscription expired.",
   },
   paused: {
     label: "Paused",
@@ -67,80 +57,59 @@ const TONE_CLASS = {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string; outcome?: string }>;
+  searchParams: Promise<{ checkout?: string }>;
 }) {
   const params = await searchParams;
   const viewer = await getViewer();
-  if (!viewer.id) redirect("/signin?callbackUrl=/account");
+  if (!viewer.sub) redirect("/signin?next=/account");
 
-  const subscription = viewer.subscription;
-  const status = subscription ? STATUS_COPY[subscription.status] : null;
+  // The key arrives already re-stamped: checkout redirects through
+  // /api/auth/restamp, because a page cannot set a cookie while rendering.
+  const fresh = viewer;
 
-  let invoices: InvoiceSummary[] = [];
-  if (subscription) {
+  let subscriptions: SubscriptionView[] = [];
+  if (fresh.cus) {
     try {
-      invoices = await gateway().listInvoices(subscription.stripeCustomerId);
-    } catch (error) {
-      console.error("[stripe] invoice listing failed", error);
+      subscriptions = await (await gateway()).listSubscriptions(fresh.cus);
+    } catch {
+      subscriptions = [];
     }
   }
 
-  // The subscription row outlives the entitlement it granted, so the price
-  // and the renewal notice are tied to the *current* plan rather than to the
-  // row - otherwise a cancelled account still advertises "$9 per month".
-  const entitled = viewer.plan !== "free";
-  const price =
-    subscription && entitled
-      ? PLANS[subscription.plan].prices[subscription.interval]
-      : null;
-  const ended = subscription?.status === "canceled" || subscription?.status === "incomplete_expired";
+  const governing =
+    subscriptions.find((subscription) => subscription.tier === fresh.tier) ??
+    subscriptions[0] ??
+    null;
+  const status = governing ? STATUS_COPY[governing.status] : null;
+  const price = governing
+    ? PLANS[governing.tier].prices[governing.interval]
+    : null;
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-12 sm:py-16">
       <h1 className="font-serif text-[2rem] font-semibold tracking-[-0.025em]">
-        Account
+        Your key
       </h1>
       <p className="mt-2 text-[0.95rem] text-ink-muted">
-        {viewer.name} · {viewer.email}
+        {fresh.name ?? "Reader"}
       </p>
 
-      {params.checkout === "success" && subscription?.status === "active" && (
-        <p
-          role="status"
-          className="mt-6 rounded-lg border border-verified/30 bg-verified-wash px-4 py-3 text-[0.88rem] text-verified"
-        >
-          Subscription active. Everything is unlocked.
-        </p>
-      )}
-      {/* The query param survives a refresh; the banner should not outlive
-          the condition it describes. */}
-      {params.outcome === "declined" && subscription?.status !== "active" && (
-        <p
-          role="status"
-          className="mt-6 rounded-lg border border-broken/30 bg-broken-wash px-4 py-3 text-[0.88rem] text-broken"
-        >
-          That card was declined. The subscription exists but is unpaid —
-          update the payment method to activate it.
-        </p>
-      )}
-
-      {/* ------------------------------------------------------ Plan card */}
+      {/* --------------------------------------------------- What you hold */}
       <section className="mt-8 rounded-xl border border-rule bg-paper-raised p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-ink-faint">
-              Current plan
+              Current tier
             </p>
             <h2 className="mt-1.5 font-serif text-[1.5rem] font-semibold">
-              {PLAN_LABEL[viewer.plan]}
+              {TIER_LABEL[fresh.tier]}
             </h2>
-            {price && (
+            {price && fresh.tier !== "reader" && (
               <p className="mt-1 text-[0.88rem] text-ink-muted">
-                {formatPrice(price.unitAmount)} per {subscription!.interval}
+                {formatPrice(price.unitAmount)} per {governing!.interval}
               </p>
             )}
           </div>
-
           {status && (
             <span
               className={`rounded-full border px-2.5 py-1 text-[0.75rem] font-medium ${TONE_CLASS[status.tone]}`}
@@ -156,155 +125,115 @@ export default async function AccountPage({
           </p>
         )}
 
-        {subscription && (
-          <dl className="mt-5 grid gap-x-8 gap-y-3 border-t border-rule pt-5 text-[0.85rem] sm:grid-cols-2">
+        <dl className="mt-5 grid gap-x-8 gap-y-3 border-t border-rule pt-5 text-[0.85rem] sm:grid-cols-2">
+          <Row label="Subject" value={fresh.sub!} mono />
+          <Row
+            label="Key expires in"
+            value={`${Math.max(0, Math.round(fresh.expiresIn / 60))} min`}
+          />
+          {governing?.currentPeriodEnd && (
             <Row
-              label={
-                ended
-                  ? "Ended"
-                  : subscription.cancelAtPeriodEnd
-                    ? "Access ends"
-                    : "Renews on"
-              }
-              value={formatDate(
-                ended
-                  ? (subscription.canceledAt ?? subscription.currentPeriodEnd)
-                  : subscription.currentPeriodEnd,
-              )}
+              label={governing.cancelAtPeriodEnd ? "Access ends" : "Renews on"}
+              value={new Date(
+                governing.currentPeriodEnd * 1000,
+              ).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
             />
-            <Row label="Started" value={formatDate(subscription.createdAt)} />
-            <Row
-              label="Subscription"
-              value={subscription.stripeSubscriptionId}
-              mono
-            />
-            <Row label="Customer" value={subscription.stripeCustomerId} mono />
-          </dl>
-        )}
+          )}
+          {fresh.cus && <Row label="Stripe customer" value={fresh.cus} mono />}
+        </dl>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          {!subscription || viewer.plan === "free" ? (
+          {fresh.tier === "reader" || !governing ? (
             <Link
               href="/pricing"
               className="rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-white transition-colors hover:bg-accent-hover"
             >
-              {subscription ? "Restart a subscription" : "Choose a plan"}
+              Choose a plan
             </Link>
           ) : (
             <>
               <form action={openBillingPortal}>
                 <SubmitButton
                   label="Update payment method"
-                  pendingLabel="Opening portal…"
+                  pendingLabel="Opening…"
                   variant="outline"
                 />
               </form>
-
-              {subscription.cancelAtPeriodEnd ? (
-                <form action={resumeSubscription}>
-                  <SubmitButton
-                    label="Resume subscription"
-                    pendingLabel="Resuming…"
-                    variant="primary"
-                  />
-                </form>
-              ) : (
-                <form action={cancelSubscription}>
-                  <SubmitButton
-                    label="Cancel subscription"
-                    pendingLabel="Cancelling…"
-                    variant="quiet"
-                  />
-                </form>
-              )}
-
-              {viewer.plan === "member" && (
-                <Link
-                  href="/pricing"
-                  className="rounded-md border border-rule-strong px-4 py-2.5 text-[0.88rem] font-medium transition-colors hover:border-ink-faint"
-                >
-                  Upgrade to Lab
-                </Link>
-              )}
+              <form
+                action={
+                  governing.cancelAtPeriodEnd
+                    ? resumeSubscription
+                    : cancelSubscription
+                }
+              >
+                <input
+                  type="hidden"
+                  name="subscriptionId"
+                  value={governing.id}
+                />
+                <SubmitButton
+                  label={
+                    governing.cancelAtPeriodEnd
+                      ? "Resume subscription"
+                      : "Cancel subscription"
+                  }
+                  pendingLabel="Working…"
+                  variant={governing.cancelAtPeriodEnd ? "primary" : "quiet"}
+                />
+              </form>
             </>
           )}
         </div>
 
-        {subscription?.cancelAtPeriodEnd && entitled && (
+        {governing?.cancelAtPeriodEnd && fresh.tier !== "reader" && (
           <p className="mt-4 rounded-lg border border-drifted/30 bg-drifted-wash px-3.5 py-2.5 text-[0.84rem] leading-relaxed text-drifted">
-            Cancellation scheduled. You keep full access until{" "}
-            {formatDate(subscription.currentPeriodEnd)} — the period you have
-            already paid for. Nothing else will be charged.
+            Cancellation scheduled. You keep full access until the end of the
+            period you have already paid for. Nothing else will be charged.
           </p>
         )}
       </section>
 
-      {/* --------------------------------------------------------- Invoices */}
-      {invoices.length > 0 && (
-        <section className="mt-8">
-          <h2 className="font-serif text-[1.25rem] font-semibold">Invoices</h2>
-          <div className="mt-3 overflow-x-auto rounded-xl border border-rule">
-            <table className="w-full text-[0.85rem]">
-              <thead>
-                <tr className="border-b border-rule bg-paper-sunken text-left">
-                  <Th>Invoice</Th>
-                  <Th>Date</Th>
-                  <Th>Amount</Th>
-                  <Th>Status</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((invoice) => (
-                  <tr key={invoice.id} className="border-b border-rule last:border-0">
-                    <Td mono>{invoice.number ?? invoice.id}</Td>
-                    <Td>{formatDate(new Date(invoice.created * 1000))}</Td>
-                    <Td mono>
-                      {formatPrice(
-                        invoice.status === "paid"
-                          ? invoice.amountPaid
-                          : invoice.amountDue,
-                      )}
-                    </Td>
-                    <Td>
-                      <span
-                        className={
-                          invoice.status === "paid"
-                            ? "text-verified"
-                            : "text-drifted"
-                        }
-                      >
-                        {invoice.status}
-                      </span>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* ---------------------------------------------------------- Repair */}
+      {/* ------------------------------------------ What we know about you */}
       <section className="mt-8 rounded-xl border border-rule p-5">
-        <h2 className="text-[0.95rem] font-semibold">Out of sync?</h2>
-        <p className="mt-1.5 max-w-[58ch] text-[0.85rem] leading-relaxed text-ink-muted">
-          Stripe is the source of truth and this page reads a local copy kept
-          current by webhooks. If a webhook was missed, re-reading Stripe
-          directly will repair it.
+        <h2 className="text-[0.95rem] font-semibold">
+          What Bindery knows about you
+        </h2>
+        <p className="mt-2 max-w-[60ch] text-[0.87rem] leading-relaxed text-ink-muted">
+          Nothing. There is no account row, no profile, no session record and
+          no copy of your subscription. Everything above was either read out of
+          the signed key in your browser or asked of Stripe a moment ago.
         </p>
-        <form action={resyncSubscription} className="mt-4">
-          <SubmitButton
-            label="Re-read from Stripe"
-            pendingLabel="Reading…"
-            variant="outline"
-          />
-        </form>
+        <ul className="mt-3 space-y-1.5 text-[0.85rem] text-ink-muted">
+          <li>
+            <span className="text-ink-faint">Your subject</span> is an HMAC of
+            your provider account id. It cannot be turned back into an email.
+          </li>
+          <li>
+            <span className="text-ink-faint">Your email and card</span> are held
+            by Stripe, which has to hold them. We never copy them back.
+          </li>
+          <li>
+            <span className="text-ink-faint">Signing out</span> clears the key
+            from your browser. It does not revoke it — a copy taken beforehand
+            stays valid until it expires.
+          </li>
+        </ul>
+        <Link
+          href="/how-it-works#contracts"
+          className="mt-3 inline-block text-[0.85rem] font-medium text-accent hover:underline"
+        >
+          The constraints this follows from →
+        </Link>
       </section>
 
-      {!usingRealStripe() && subscription && (
-        <LocalBillingControls
-          subscriptionId={subscription.stripeSubscriptionId}
-          status={subscription.status}
+      {!usingRealStripe() && governing && (
+        <SimulatedBillingControls
+          subscriptionId={governing.id}
+          status={governing.status}
         />
       )}
     </main>
@@ -327,21 +256,5 @@ function Row({
         {value}
       </dd>
     </div>
-  );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th className="px-4 py-2.5 text-[0.72rem] font-semibold uppercase tracking-[0.06em] text-ink-faint">
-      {children}
-    </th>
-  );
-}
-
-function Td({ children, mono }: { children: React.ReactNode; mono?: boolean }) {
-  return (
-    <td className={`px-4 py-2.5 ${mono ? "font-mono text-[0.78rem] tnum" : ""}`}>
-      {children}
-    </td>
   );
 }

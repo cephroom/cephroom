@@ -6,25 +6,23 @@ const GROUPS: { title: string; links: { href: string; label: string }[] }[] = [
   {
     title: "Read",
     links: [
-      { href: "/columns", label: "All columns" },
-      { href: "/datasets", label: "Datasets" },
-      { href: "/checks", label: "Check activity" },
+      { href: "/read", label: "Reading now" },
+      { href: "/how-it-works", label: "Claim syntax" },
     ],
   },
   {
-    title: "Write",
+    title: "Contribute",
     links: [
-      { href: "/studio", label: "Studio" },
-      { href: "/how-it-works", label: "Claim syntax" },
+      { href: "/contribute", label: "Run a node" },
+      { href: "/how-it-works#contracts", label: "The contracts" },
       { href: "/pricing", label: "Plans" },
     ],
   },
   {
-    title: "Account",
+    title: "Your key",
     links: [
       { href: "/signin", label: "Sign in" },
-      { href: "/signup", label: "Create account" },
-      { href: "/account", label: "Billing" },
+      { href: "/account", label: "Key and billing" },
     ],
   },
 ];
@@ -42,8 +40,8 @@ export function SiteFooter() {
               </span>
             </div>
             <p className="mt-3 max-w-[26ch] text-[0.82rem] leading-relaxed text-ink-muted">
-              Science writing with a build step. Every number is a query, and
-              the queries are re-run.
+              Science writing with a build step. Nothing about you is stored
+              here, and neither is anything anyone writes.
             </p>
           </div>
 

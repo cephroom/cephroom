@@ -48,3 +48,6 @@ bindery.db-*
 
 # local Stripe stand-in store
 .stripe-local.json
+
+# simulated counterparty store (development only)
+.stripe-simulated.json

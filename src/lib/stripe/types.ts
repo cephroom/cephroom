@@ -1,75 +1,56 @@
 import type { BillingInterval, PlanId } from "./plans";
 
 /**
- * The subset of a Stripe subscription the application actually depends on.
- * Both the live adapter and the local stand-in produce this shape, so nothing
- * above the gateway needs to know which one is in play.
+ * The narrow port the platform talks to Stripe through.
+ *
+ * Deliberately read-mostly and deliberately small. Under Contract 1 the
+ * platform holds no subscription records, so everything it needs from Stripe
+ * it asks for at the moment it needs it — which keeps this surface to a
+ * lookup, a list, and the three actions a reader can take on their own
+ * billing.
  */
-export interface SubscriptionSnapshot {
+
+export interface SubscriptionView {
   id: string;
-  customerId: string;
-  priceId: string;
-  status:
-    | "incomplete"
-    | "incomplete_expired"
-    | "trialing"
-    | "active"
-    | "past_due"
-    | "canceled"
-    | "unpaid"
-    | "paused";
-  currentPeriodStart: number | null;
+  tier: "member" | "lab";
+  interval: BillingInterval;
+  status: string;
   currentPeriodEnd: number | null;
   cancelAtPeriodEnd: boolean;
-  canceledAt: number | null;
-  trialEnd: number | null;
-  latestInvoiceId: string | null;
-}
-
-export interface InvoiceSummary {
-  id: string;
-  number: string | null;
-  created: number;
-  amountPaid: number;
-  amountDue: number;
-  currency: string;
-  status: string | null;
-  hostedInvoiceUrl: string | null;
+  priceId: string;
 }
 
 export interface CheckoutRequest {
-  customerId: string;
+  /** Pseudonymous subject, written to customer metadata so Stripe holds the map. */
+  sub: string;
+  customerId: string | null;
   priceId: string;
   plan: PlanId;
   interval: BillingInterval;
-  userId: string;
   successUrl: string;
   cancelUrl: string;
 }
 
-export interface CheckoutSession {
-  id: string;
-  url: string;
-}
-
 export interface StripeGateway {
-  /** "live" and "test" both mean a real Stripe account; "local" is the stand-in. */
-  mode: "live" | "test" | "local";
-  createCustomer(input: {
-    email: string | null;
-    name: string | null;
-    userId: string;
-  }): Promise<string>;
-  createCheckoutSession(input: CheckoutRequest): Promise<CheckoutSession>;
-  retrieveSubscription(id: string): Promise<SubscriptionSnapshot>;
+  /** "live" and "test" mean a real Stripe account; "simulated" is the stand-in. */
+  mode: "live" | "test" | "simulated";
+
+  /** Asks Stripe which customer carries this subject in its metadata. */
+  findCustomerBySubject(sub: string): Promise<string | null>;
+
+  listSubscriptions(customerId: string): Promise<SubscriptionView[]>;
+
+  createCheckoutSession(
+    input: CheckoutRequest,
+  ): Promise<{ id: string; url: string }>;
+
   setCancelAtPeriodEnd(
-    id: string,
+    subscriptionId: string,
     cancelAtPeriodEnd: boolean,
-  ): Promise<SubscriptionSnapshot>;
-  cancelImmediately(id: string): Promise<SubscriptionSnapshot>;
+  ): Promise<void>;
+
   createBillingPortalSession(input: {
     customerId: string;
     returnUrl: string;
   }): Promise<{ url: string }>;
-  listInvoices(customerId: string): Promise<InvoiceSummary[]>;
 }

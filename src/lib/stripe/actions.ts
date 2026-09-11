@@ -1,38 +1,18 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { refresh } from "next/cache";
 
-import { db } from "@/lib/db";
-import { subscriptions, users } from "@/lib/db/schema";
-import { currentSubscription, getViewer } from "@/lib/entitlements";
+import { getViewer } from "@/lib/auth/session";
+import { accessCookie } from "@/lib/auth/session";
+import { mintAccessKey } from "@/lib/keys/tokens";
+import { entitlementFor } from "@/lib/stripe/entitlement";
 
 import { gateway } from "./gateway";
 import { PLANS, type BillingInterval, type PlanId } from "./plans";
-import { attachCustomer, syncSubscription } from "./sync";
 
 function baseUrl(): string {
   return process.env.AUTH_URL ?? "http://localhost:3000";
-}
-
-/**
- * Ensures the signed-in reader has a Stripe customer, creating one on first
- * checkout. Stored on the user so a second subscription reuses it and the
- * billing portal has something to open.
- */
-async function ensureCustomer(userId: string): Promise<string> {
-  const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-  if (!user) throw new Error("No such user.");
-  if (user.stripeCustomerId) return user.stripeCustomerId;
-
-  const customerId = await gateway().createCustomer({
-    email: user.email,
-    name: user.name,
-    userId: user.id,
-  });
-  await attachCustomer(user.id, customerId);
-  return customerId;
 }
 
 export async function startCheckout(formData: FormData) {
@@ -43,20 +23,21 @@ export async function startCheckout(formData: FormData) {
   if (!PLANS[plan]) throw new Error(`Unknown plan "${plan}".`);
 
   const viewer = await getViewer();
-  if (!viewer.id) {
-    redirect(`/signin?callbackUrl=${encodeURIComponent(`/pricing?plan=${plan}&interval=${interval}`)}`);
+  if (!viewer.sub) {
+    redirect(
+      `/signin?next=${encodeURIComponent(`/pricing?plan=${plan}&interval=${interval}`)}`,
+    );
   }
 
-  const customerId = await ensureCustomer(viewer.id);
-  const price = PLANS[plan].prices[interval];
-
-  const session = await gateway().createCheckoutSession({
-    customerId,
-    priceId: price.priceId,
+  const session = await (await gateway()).createCheckoutSession({
+    sub: viewer.sub,
+    customerId: viewer.cus,
+    priceId: PLANS[plan].prices[interval].priceId,
     plan,
     interval,
-    userId: viewer.id,
-    successUrl: `${baseUrl()}/account?checkout=success`,
+    // Through the re-stamp handler, because the key still says what it
+    // said before the payment and a page cannot set a cookie while rendering.
+    successUrl: `${baseUrl()}/api/auth/restamp?next=${encodeURIComponent("/account?checkout=success")}`,
     cancelUrl: `${baseUrl()}${from.startsWith("/") ? from : "/pricing"}?checkout=cancelled`,
   });
 
@@ -65,70 +46,62 @@ export async function startCheckout(formData: FormData) {
 
 export async function openBillingPortal() {
   const viewer = await getViewer();
-  if (!viewer.id) redirect("/signin?callbackUrl=/account");
+  if (!viewer.sub) redirect("/signin?next=/account");
+  if (!viewer.cus) redirect("/pricing");
 
-  const customerId = await ensureCustomer(viewer.id);
-  const session = await gateway().createBillingPortalSession({
-    customerId,
+  const session = await (await gateway()).createBillingPortalSession({
+    customerId: viewer.cus,
     returnUrl: `${baseUrl()}/account`,
   });
-
   redirect(session.url);
 }
 
 /**
  * Cancellation is always at period end, never immediate. Someone who has paid
- * for the month keeps the month; taking it away would be taking something
- * they bought.
+ * for the month keeps the month.
  */
-export async function cancelSubscription() {
-  const viewer = await getViewer();
-  if (!viewer.id) redirect("/signin?callbackUrl=/account");
-
-  const subscription = await currentSubscription(viewer.id);
-  if (!subscription) return;
-
-  const snapshot = await gateway().setCancelAtPeriodEnd(
-    subscription.stripeSubscriptionId,
-    true,
-  );
-  await syncSubscription(snapshot, { userId: viewer.id });
-  refresh();
+export async function cancelSubscription(formData: FormData) {
+  await setCancellation(String(formData.get("subscriptionId") ?? ""), true);
 }
 
-export async function resumeSubscription() {
-  const viewer = await getViewer();
-  if (!viewer.id) redirect("/signin?callbackUrl=/account");
-
-  const subscription = await currentSubscription(viewer.id);
-  if (!subscription) return;
-
-  const snapshot = await gateway().setCancelAtPeriodEnd(
-    subscription.stripeSubscriptionId,
-    false,
-  );
-  await syncSubscription(snapshot, { userId: viewer.id });
-  refresh();
+export async function resumeSubscription(formData: FormData) {
+  await setCancellation(String(formData.get("subscriptionId") ?? ""), false);
 }
 
-/** Re-reads Stripe and rewrites the local projection. The repair button. */
-export async function resyncSubscription() {
+async function setCancellation(subscriptionId: string, cancel: boolean) {
   const viewer = await getViewer();
-  if (!viewer.id) redirect("/signin?callbackUrl=/account");
+  if (!viewer.sub || !viewer.cus) redirect("/signin?next=/account");
 
-  const rows = await db.query.subscriptions.findMany({
-    where: eq(subscriptions.userId, viewer.id),
+  // A server action is a public endpoint. Confirm the subscription really
+  // belongs to this customer before touching it, by asking Stripe rather than
+  // trusting the form.
+  const mine = await (await gateway()).listSubscriptions(viewer.cus);
+  if (!mine.some((subscription) => subscription.id === subscriptionId)) {
+    throw new Error("That subscription is not yours.");
+  }
+
+  await (await gateway()).setCancelAtPeriodEnd(subscriptionId, cancel);
+  await restampKey();
+}
+
+/**
+ * Re-mints the access key after a billing change.
+ *
+ * Without this the reader would carry a key stating the old tier for up to
+ * fifteen minutes. There is no session to update instead — the key *is* the
+ * session, so changing what someone is entitled to means issuing a new one.
+ */
+export async function restampKey() {
+  const viewer = await getViewer();
+  if (!viewer.sub) return;
+
+  const entitlement = await entitlementFor(viewer.sub);
+  const token = await mintAccessKey({
+    sub: viewer.sub,
+    tier: entitlement.tier,
+    cus: entitlement.customerId ?? undefined,
+    name: viewer.name ?? undefined,
   });
 
-  for (const row of rows) {
-    try {
-      const snapshot = await gateway().retrieveSubscription(
-        row.stripeSubscriptionId,
-      );
-      await syncSubscription(snapshot, { userId: viewer.id });
-    } catch (error) {
-      console.error(`[stripe] resync of ${row.stripeSubscriptionId} failed`, error);
-    }
-  }
-  refresh();
+  (await cookies()).set(accessCookie(token));
 }

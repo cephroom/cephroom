@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    // The contract tests read package.json as a module.
+    deps: { interopDefault: true },
   },
   resolve: {
     alias: {

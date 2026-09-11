@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import type { Access, Plan } from "@/lib/entitlements";
+import type { Access, Tier } from "@/lib/access";
 
 const REQUIRED_LABEL: Record<Exclude<Access, "public">, string> = {
   member: "Member",
@@ -13,20 +13,20 @@ const REQUIRED_LABEL: Record<Exclude<Access, "public">, string> = {
  */
 export function Paywall({
   access,
-  plan,
+  tier,
   signedIn,
   hiddenBlocks,
   claimCount,
   returnTo,
 }: {
   access: Exclude<Access, "public">;
-  plan: Plan;
+  tier: Tier;
   signedIn: boolean;
   hiddenBlocks: number;
   claimCount: number;
   returnTo: string;
 }) {
-  const needsUpgrade = signedIn && plan !== "free";
+  const needsUpgrade = signedIn && tier !== "reader";
 
   return (
     <div className="relative mt-2">
@@ -48,15 +48,15 @@ export function Paywall({
         </h2>
 
         <p className="mt-2.5 max-w-[52ch] text-[0.92rem] leading-relaxed text-ink-muted">
-          {hiddenBlocks} more sections, {claimCount} checked claims with their
-          full provenance, and the archive of every column published so far.
+          {hiddenBlocks} more sections and {claimCount} checked claims with
+          their full provenance, for as long as the author is serving it.
         </p>
 
         <ul className="mt-5 space-y-2 text-[0.88rem] text-ink-muted">
-          <Perk>Every column in full, including the archive</Perk>
+          <Perk>Member columns in full, from whoever is serving them</Perk>
           <Perk>The claim inspector: query, evidence count, and drift</Perk>
-          <Perk>The dataset explorer and its provenance trail</Perk>
-          <Perk>Propose edits to any published column</Perk>
+          <Perk>Your key verified by the node, not by us</Perk>
+          <Perk>No account created, here or anywhere</Perk>
         </ul>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -70,7 +70,7 @@ export function Paywall({
           </Link>
           {!signedIn && (
             <Link
-              href={`/signin?callbackUrl=${encodeURIComponent(returnTo)}`}
+              href={`/signin?next=${encodeURIComponent(returnTo)}`}
               className="text-[0.9rem] font-medium text-ink-muted transition-colors hover:text-ink"
             >
               Already a member? Sign in

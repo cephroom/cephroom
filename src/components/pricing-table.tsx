@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import type { Plan } from "@/lib/entitlements";
+import type { Tier } from "@/lib/access";
 import {
   annualSavingMonths,
   formatPrice,
@@ -14,15 +14,15 @@ import {
   type BillingInterval,
 } from "@/lib/stripe/plans";
 
-const RANK: Record<Plan, number> = { free: 0, member: 1, lab: 2 };
+const RANK: Record<Tier, number> = { reader: 0, member: 1, lab: 2 };
 
 export function PricingTable({
-  currentPlan,
+  currentTier,
   signedIn,
   checkoutAction,
   from,
 }: {
-  currentPlan: Plan;
+  currentTier: Tier;
   signedIn: boolean;
   checkoutAction: (formData: FormData) => Promise<void>;
   from: string;
@@ -65,7 +65,7 @@ export function PricingTable({
           </ul>
 
           <div className="mt-6">
-            {currentPlan === "free" ? (
+            {currentTier === "reader" ? (
               <span className="block rounded-md border border-rule px-4 py-2.5 text-center text-[0.86rem] text-ink-faint">
                 {signedIn ? "Your current plan" : "No account needed"}
               </span>
@@ -80,8 +80,8 @@ export function PricingTable({
         {PLAN_ORDER.map((planId) => {
           const plan = PLANS[planId];
           const price = plan.prices[interval];
-          const isCurrent = currentPlan === planId;
-          const isDowngrade = RANK[currentPlan] > RANK[planId];
+          const isCurrent = currentTier === planId;
+          const isDowngrade = RANK[currentTier] > RANK[planId];
           const featured = planId === "member";
 
           return (
@@ -144,7 +144,7 @@ export function PricingTable({
                     <input type="hidden" name="from" value={from} />
                     <CheckoutButton
                       label={
-                        currentPlan === "free"
+                        currentTier === "reader"
                           ? `Subscribe to ${plan.name}`
                           : `Upgrade to ${plan.name}`
                       }

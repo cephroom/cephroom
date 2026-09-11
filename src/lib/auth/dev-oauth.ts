@@ -1,5 +1,3 @@
-import type { OAuthConfig } from "next-auth/providers";
-
 /**
  * A local OAuth 2.0 identity provider, for development only.
  *
@@ -90,32 +88,4 @@ export function issueToken(persona: DevPersona): string {
   const token = `devtok_${crypto.randomUUID()}`;
   issuedTokens.set(token, persona);
   return token;
-}
-
-export function devOAuthProvider(): OAuthConfig<DevPersona> {
-  const base = process.env.AUTH_URL ?? "http://localhost:3000";
-
-  return {
-    id: "dev-oauth",
-    name: "Local dev SSO",
-    type: "oauth",
-    clientId: DEV_OAUTH_CLIENT_ID,
-    clientSecret: DEV_OAUTH_CLIENT_SECRET,
-    checks: ["state"],
-    authorization: {
-      url: `${base}/api/dev-oauth/authorize`,
-      params: { scope: "openid email profile" },
-    },
-    token: `${base}/api/dev-oauth/token`,
-    userinfo: `${base}/api/dev-oauth/userinfo`,
-    profile(profile) {
-      return {
-        id: profile.sub,
-        name: profile.name,
-        email: profile.email,
-        image: profile.picture,
-      };
-    },
-    style: { text: "#fff", bg: "#0f5c4a" },
-  };
 }

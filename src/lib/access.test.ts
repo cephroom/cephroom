@@ -1,20 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  isEntitling,
-  planAllows,
-  planFromSubscription,
-  strongestPlan,
-  type SubscriptionStatus,
-} from "./access";
+import { isEntitling, tierAllows, tierFromSubscriptions } from "./access";
 
-const sub = (status: SubscriptionStatus, plan: "member" | "lab" = "member") => ({
+const sub = (status: string, tier: "member" | "lab" = "member") => ({
   status,
-  plan,
+  tier,
 });
 
 describe("isEntitling", () => {
-  it.each<[SubscriptionStatus, boolean]>([
+  it.each<[string, boolean]>([
     ["active", true],
     ["trialing", true],
     // Stripe is still retrying a declined card. Keeping access here is the
@@ -30,57 +24,50 @@ describe("isEntitling", () => {
   });
 });
 
-describe("planFromSubscription", () => {
-  it("is free with no subscription", () => {
-    expect(planFromSubscription(null)).toBe("free");
-    expect(planFromSubscription(undefined)).toBe("free");
+describe("tierFromSubscriptions", () => {
+  it("is reader with nothing", () => {
+    expect(tierFromSubscriptions([])).toBe("reader");
   });
 
-  it("grants the plan while the subscription is entitling", () => {
-    expect(planFromSubscription(sub("active", "lab"))).toBe("lab");
-    expect(planFromSubscription(sub("past_due"))).toBe("member");
+  it("grants the tier while the subscription is entitling", () => {
+    expect(tierFromSubscriptions([sub("active", "lab")])).toBe("lab");
+    expect(tierFromSubscriptions([sub("past_due")])).toBe("member");
   });
 
-  it("drops to free once it is not", () => {
-    expect(planFromSubscription(sub("canceled", "lab"))).toBe("free");
-    expect(planFromSubscription(sub("unpaid"))).toBe("free");
-  });
-});
-
-describe("planAllows", () => {
-  it("lets anyone read a public column", () => {
-    expect(planAllows("free", "public")).toBe(true);
-    expect(planAllows("member", "public")).toBe(true);
+  it("drops to reader once it is not", () => {
+    expect(tierFromSubscriptions([sub("canceled", "lab")])).toBe("reader");
+    expect(tierFromSubscriptions([sub("unpaid")])).toBe("reader");
   });
 
-  it("gates member columns", () => {
-    expect(planAllows("free", "member")).toBe(false);
-    expect(planAllows("member", "member")).toBe(true);
-    expect(planAllows("lab", "member")).toBe(true);
-  });
-
-  it("gates lab columns above member", () => {
-    expect(planAllows("member", "lab")).toBe(false);
-    expect(planAllows("lab", "lab")).toBe(true);
-  });
-});
-
-describe("strongestPlan", () => {
-  it("is free with nothing", () => {
-    expect(strongestPlan([])).toBe("free");
-  });
-
-  it("picks the highest tier among live subscriptions", () => {
-    expect(strongestPlan([sub("active", "member"), sub("active", "lab")])).toBe(
-      "lab",
-    );
+  it("picks the highest live tier", () => {
+    expect(
+      tierFromSubscriptions([sub("active", "member"), sub("active", "lab")]),
+    ).toBe("lab");
   });
 
   it("ignores a lapsed higher tier", () => {
-    // An upgrade creates a second Stripe subscription; the cancelled Lab row
-    // must not keep granting Lab after the Member one takes over.
+    // Stripe keeps the cancelled row. An upgrade that left one behind must
+    // not keep granting the old tier.
     expect(
-      strongestPlan([sub("canceled", "lab"), sub("active", "member")]),
+      tierFromSubscriptions([sub("canceled", "lab"), sub("active", "member")]),
     ).toBe("member");
+  });
+});
+
+describe("tierAllows", () => {
+  it("lets anyone read a public column", () => {
+    expect(tierAllows("reader", "public")).toBe(true);
+    expect(tierAllows("member", "public")).toBe(true);
+  });
+
+  it("gates member columns", () => {
+    expect(tierAllows("reader", "member")).toBe(false);
+    expect(tierAllows("member", "member")).toBe(true);
+    expect(tierAllows("lab", "member")).toBe(true);
+  });
+
+  it("gates lab columns above member", () => {
+    expect(tierAllows("member", "lab")).toBe(false);
+    expect(tierAllows("lab", "lab")).toBe(true);
   });
 });
