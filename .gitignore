@@ -44,3 +44,6 @@ bindery.db
 # local database
 bindery.db
 bindery.db-*
+
+# local Stripe stand-in store
+.stripe-local.json
