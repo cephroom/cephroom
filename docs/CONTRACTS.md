@@ -142,8 +142,18 @@ longest-lived credential, at 30 days, because a node runs unattended and a
 model, so its lifetime is its exposure — but the blast radius is narrow: a
 leaked serve key lets someone announce under that subject (list content in
 the namespace), and nothing else. It grants no read access to any reader's
-data and cannot touch billing. It is issued on demand from the account page,
-never stored, and a contributor reveals a fresh one if the old one leaks.
+data and cannot touch billing. This is enforced, not asserted: the serve key
+carries its own audience (`receptorome:serve`) that the reader-session
+verifier (`verifyAccessKey`, used by the platform and, through the platform's
+public key, by every node) refuses, so no path can accept it as a read
+credential — see `tests/contracts/key-forgery.test.ts`. It is issued on demand
+from the account page, never stored, and a contributor reveals a fresh one if
+the old one leaks.
+
+(An earlier build minted the serve key on the *access* audience with full tier
+scopes, which quietly made it a 30-day read credential — a direct violation of
+this paragraph, caught by a self-audit and closed by giving it its own
+audience.)
 
 ### Everything else is also "at rest"
 

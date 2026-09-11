@@ -147,13 +147,22 @@ describe("the node key is an access-audience key, and nothing more", () => {
     expect(key?.scp).toContain("serve:node");
   });
 
-  it("issues a serve key the same verifier accepts", async () => {
-    // The long-lived key a contributor pastes into NODE_KEY. Same audience
-    // and verifier as any other access key, just a longer expiry.
+  it("issues a serve key that announces but grants NO read access", async () => {
+    // The long-lived key a contributor pastes into NODE_KEY. It must not be a
+    // reader session: a leaked 30-day serve key that could read every paid
+    // column is a far larger blast radius than "announce under this subject".
     const serve = await tokens.mintServeKey({ sub: "s_pub", tier: "member" });
-    const key = await tokens.verifyAccessKey(serve);
-    expect(key?.sub).toBe("s_pub");
-    // Well beyond the 15-minute access window, but bounded.
-    expect(key!.exp - key!.iat).toBe(tokens.SERVE_KEY_TTL_SECONDS);
+
+    // Rejected by the reader-session verifier — this is what closes the hole.
+    expect(await tokens.verifyAccessKey(serve)).toBeNull();
+
+    // Accepted only by the announce-only verifier, yielding just a subject.
+    const announced = await tokens.verifyServeKey(serve);
+    expect(announced?.sub).toBe("s_pub");
+    expect(announced).not.toHaveProperty("tier");
+
+    // And an access key is not a serve key — the audiences do not cross.
+    const access = await tokens.mintAccessKey({ sub: "s_pub", tier: "member" });
+    expect(await tokens.verifyServeKey(access)).toBeNull();
   });
 });

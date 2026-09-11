@@ -33,6 +33,12 @@ export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 export const ISSUER = "receptorome";
 export const ACCESS_AUDIENCE = "receptorome:access";
 export const REFRESH_AUDIENCE = "receptorome:refresh";
+// The serve key announces a node's presence and does nothing else. It gets
+// its own audience so that verifyAccessKey — the reader-session verifier used
+// by the platform and, via the platform's public key, by every node — refuses
+// it. A leaked 30-day NODE_KEY can therefore announce, and grant no read
+// access to any paid content.
+export const SERVE_AUDIENCE = "receptorome:serve";
 
 export type Scope =
   | "read:public"
@@ -197,12 +203,16 @@ export async function mintServeKey(input: {
 }): Promise<string> {
   return new SignJWT({
     tier: input.tier,
-    scp: scopesForTier(input.tier),
+    // No read scopes. The only capability a serve key carries is announcing a
+    // node under its subject; it is not a reader session and must never be
+    // usable as one. The tier rides along only so the account page can show
+    // whose key it is.
+    scp: ["serve:node"] satisfies Scope[],
     ...(input.name ? { name: input.name } : {}),
   })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
-    .setAudience(ACCESS_AUDIENCE)
+    .setAudience(SERVE_AUDIENCE)
     .setSubject(input.sub)
     .setIssuedAt()
     .setExpirationTime(`${SERVE_KEY_TTL_SECONDS}s`)
@@ -243,6 +253,20 @@ export async function verifyAccessKey(token: string): Promise<AccessKey | null> 
     iat: payload.iat!,
     exp: payload.exp!,
   };
+}
+
+/**
+ * Verifies a serve key — the announce-only NODE_KEY. Distinct from
+ * verifyAccessKey on purpose: this accepts the serve audience and returns only
+ * a subject to announce under. It grants no tier and no read scope, so nothing
+ * downstream can mistake a serve key for a reader session.
+ */
+export async function verifyServeKey(
+  token: string,
+): Promise<{ sub: string; name?: string } | null> {
+  const payload = await verify(token, SERVE_AUDIENCE);
+  if (!payload?.sub) return null;
+  return { sub: payload.sub, name: payload.name as string | undefined };
 }
 
 export async function verifyRefreshKey(

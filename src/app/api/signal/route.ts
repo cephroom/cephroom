@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyAccessKey } from "@/lib/keys/tokens";
+import { verifyAccessKey, verifyServeKey } from "@/lib/keys/tokens";
 import { LEASE_SECONDS, registry } from "@/lib/signaling/registry";
 
 export const dynamic = "force-dynamic";
@@ -44,12 +44,23 @@ const announcement = z.object({
   items: z.array(item).max(500),
 });
 
-/** The authenticated subject, or null. Never trusts a body field for this. */
+/**
+ * The authenticated subject, or null. Never trusts a body field for this.
+ *
+ * Either a full access key (a signed-in reader announcing from the browser)
+ * or a serve key (the announce-only NODE_KEY a contributor runs unattended)
+ * is accepted — both prove a subject, and announcing is all this route does.
+ * The serve key is deliberately *not* an access key, so accepting it here is
+ * the only place it is honoured.
+ */
 async function subject(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
   if (!header.toLowerCase().startsWith("bearer ")) return null;
-  const key = await verifyAccessKey(header.slice(7).trim());
-  return key?.sub ?? null;
+  const token = header.slice(7).trim();
+  const access = await verifyAccessKey(token);
+  if (access?.sub) return access.sub;
+  const serve = await verifyServeKey(token);
+  return serve?.sub ?? null;
 }
 
 export async function POST(request: Request) {

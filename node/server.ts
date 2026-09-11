@@ -494,8 +494,10 @@ async function serveKey(): Promise<string> {
       "No NODE_KEY set and no local signing key to mint one. Sign in on the platform and set NODE_KEY.",
     );
   }
-  const { mintAccessKey } = await import("../src/lib/keys/tokens");
-  return mintAccessKey({ sub: SUB, tier: "reader", name: DISPLAY_NAME });
+  const { mintServeKey } = await import("../src/lib/keys/tokens");
+  // A serve key, not an access key: the node only ever announces to the
+  // platform, so this matches what a contributor's pasted NODE_KEY is.
+  return mintServeKey({ sub: SUB, tier: "reader", name: DISPLAY_NAME });
 }
 
 async function announce() {
