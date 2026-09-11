@@ -1,0 +1,11 @@
+gene_symbol,clozapine,olanzapine,risperidone,haloperidol,aripiprazole,quetiapine,chlorpromazine,ziprasidone
+DRD2,80,30,20,104,39,9,10,14
+DRD3,37,12,12,53,23,6,11,5
+HTR1A,15,7,9,4,20,7,2,5
+HTR2A,41,25,21,19,31,12,5,9
+HTR2B,3,3,3,1,5,3,3,1
+HTR2C,26,12,19,10,11,5,5,7
+HRH1,10,10,10,6,6,7,2,5
+CHRM1,6,4,1,2,0,5,2,1
+CHRM3,2,2,0,0,0,0,1,0
+ADRA1A,3,3,4,2,3,2,0,1
