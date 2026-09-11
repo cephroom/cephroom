@@ -28,6 +28,22 @@ export interface ClaimView {
   nDocs: number | null;
 }
 
+/** A plain-language gloss of what the claim's `select` actually asserts. */
+function describeSelect(select: string): string {
+  switch (select) {
+    case "n_points":
+      return "This claim asserts the number of measurements behind the cell, not a value.";
+    case "n_docs":
+      return "This claim asserts how many independent papers report the cell.";
+    case "fold_spread":
+      return "This claim asserts the full fold spread — the loosest measurement over the tightest. It is a claim about how far the labs disagree, not about the median.";
+    case "fold_spread_iqr":
+      return "This claim asserts the interquartile fold spread — disagreement across the middle half of measurements, ignoring outliers. It is a claim about how well the labs agree.";
+    default:
+      return "This claim asserts the cell's value against the author's recorded number.";
+  }
+}
+
 const TONE = {
   verified: {
     dot: "bg-verified",
@@ -146,6 +162,10 @@ export function ClaimChip({
               {claim.query.object})
               <br />
               scope: {claim.query.scope} · select: {claim.query.select}
+            </span>
+
+            <span className="mb-2.5 block text-[0.75rem] text-ink-muted">
+              {describeSelect(claim.query.select)}
             </span>
 
             <span className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">

@@ -31,7 +31,28 @@
  * the editor preview and the CI runner parse with.
  */
 
-export type ClaimSelect = "value" | "n_points" | "n_docs";
+export type ClaimSelect =
+  | "value"
+  | "n_points"
+  | "n_docs"
+  | "fold_spread"
+  | "fold_spread_iqr";
+
+/**
+ * The dimensionless selects. Fold spread is a ratio of the loosest to the
+ * tightest measurement in a cell (`fold_spread`) or across its interquartile
+ * range (`fold_spread_iqr`). A claim on one of these asserts *agreement
+ * between labs* rather than a point estimate — often the real scientific
+ * point, since a cell can have a tight median and a 100x full spread. The
+ * value is a bare ratio, so "5x", "5-fold" and "5" all mean the same thing;
+ * we drop any fold notation the author writes so it never reads as a unit
+ * mismatch.
+ */
+export const FOLD_SELECTS: ClaimSelect[] = ["fold_spread", "fold_spread_iqr"];
+
+export function isFoldSelect(select: ClaimSelect): boolean {
+  return FOLD_SELECTS.includes(select);
+}
 
 export interface ClaimTolerance {
   /** "percent" compares relative drift, "absolute" compares raw difference. */
@@ -80,7 +101,13 @@ export function normaliseNewlines(text: string): string {
   return text.split("\r\n").join("\n").split("\r").join("\n");
 }
 
-const SELECTS: ClaimSelect[] = ["value", "n_points", "n_docs"];
+const SELECTS: ClaimSelect[] = [
+  "value",
+  "n_points",
+  "n_docs",
+  "fold_spread",
+  "fold_spread_iqr",
+];
 
 /** Pulls `{{claim:key}}` keys out of prose, in document order, deduplicated. */
 export function referencedKeys(prose: string): string[] {
@@ -185,6 +212,11 @@ export function parseBody(rawBody: string): ParsedBody {
       }
 
       const { value, unit } = parseMeasurement(fields.value);
+      // A fold spread is a bare ratio. "5x", "5-fold" and "5" are the same
+      // assertion, so the fold notation is not treated as a unit — otherwise
+      // an author writing "5x" against a dimensionless observed value would
+      // read as a unit mismatch and the claim would go broken.
+      const expectedUnit = isFoldSelect(select) ? null : unit;
 
       claims.push({
         key,
@@ -195,7 +227,7 @@ export function parseBody(rawBody: string): ParsedBody {
         scope: (fields.scope ?? "all").toLowerCase(),
         select,
         expectedValue: value,
-        expectedUnit: unit,
+        expectedUnit,
         tolerance: parseTolerance(fields.tolerance),
         label: fields.label ?? null,
         source,

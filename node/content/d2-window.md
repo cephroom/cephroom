@@ -92,17 +92,40 @@ the class it was derived from.
 
 ## What the number is actually made of
 
-The median above is not a measurement. It is a summary of 104 measurements
-taken in different laboratories, with different radioligands, in different
+The median above is not a measurement. It is a summary of measurements taken
+in different laboratories, with different radioligands, in different
 preparations, across four decades. The spread within that cell is wide: the
-extreme values differ by more than four orders of magnitude, while the
-interquartile range spans about four-fold.
+loosest and tightest values differ by {{claim:cloz-d2-fold}}, while across the
+middle half of the measurements the disagreement is only {{claim:cloz-d2-iqr}}.
+
+```claim cloz-d2-fold
+dataset: receptorome-ki
+metric: median_ki_nm
+subject: DRD2
+object: clozapine
+scope: all
+select: fold_spread
+value: 140.6x
+tolerance: 15%
+```
+
+```claim cloz-d2-iqr
+dataset: receptorome-ki
+metric: median_ki_nm
+subject: DRD2
+object: clozapine
+scope: all
+select: fold_spread_iqr
+value: 5.07x
+tolerance: 15%
+```
 
 That distinction matters more than the median does. A cell with a huge total
 spread but a tight interquartile range is a well-determined value with an
 outlier in it. A cell where both are wide is genuinely unresolved. Reporting
-only the median hides which situation you are in, which is why every claim on
-this page carries its evidence count alongside its value.
+only the median hides which situation you are in — which is why these two
+numbers are themselves checkable claims, and not a sentence I asked you to
+take on faith.
 
 ## The honest version of the sentence
 

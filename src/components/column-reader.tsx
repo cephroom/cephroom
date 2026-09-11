@@ -9,7 +9,7 @@ import { CheckBadge } from "@/components/check-badge";
 import { ClaimChip, type ClaimView } from "@/components/claim-chip";
 import { Paywall } from "@/components/paywall";
 import type { Access, Tier } from "@/lib/access";
-import { formatValue, type ParsedClaim } from "@/lib/claims/syntax";
+import { formatValue, isFoldSelect, type ParsedClaim } from "@/lib/claims/syntax";
 import { concludeRun, judge, type Conclusion } from "@/lib/claims/verdict";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
@@ -52,6 +52,8 @@ interface Fact {
   unit: string | null;
   nPoints: number | null;
   nDocs: number | null;
+  foldSpread: number | null;
+  foldSpreadIqr: number | null;
 }
 
 interface Dataset {
@@ -336,13 +338,25 @@ function resolveClaims(claims: ParsedClaim[], datasets: Map<string, Dataset>) {
         candidate.scope === claim.scope,
     );
 
-    const observed = !fact
+    const observed: { value: number | null; unit: string | null } = !fact
       ? { value: null, unit: null }
       : claim.select === "n_points"
         ? { value: fact.nPoints, unit: null }
         : claim.select === "n_docs"
           ? { value: fact.nDocs, unit: null }
-          : { value: fact.value, unit: fact.unit };
+          : claim.select === "fold_spread"
+            ? { value: fact.foldSpread, unit: null }
+            : claim.select === "fold_spread_iqr"
+              ? { value: fact.foldSpreadIqr, unit: null }
+              : { value: fact.value, unit: fact.unit };
+
+    // Fold spread reads as a ratio, e.g. "5.07×", not a bare number.
+    const show = (value: number | null, unit: string | null) =>
+      value === null
+        ? "—"
+        : isFoldSelect(claim.select)
+          ? `${formatValue(value)}×`
+          : formatValue(value, unit);
 
     const judgement = !dataset
       ? {
@@ -362,12 +376,11 @@ function resolveClaims(claims: ParsedClaim[], datasets: Map<string, Dataset>) {
       key: claim.key,
       display:
         observed.value !== null
-          ? formatValue(observed.value, observed.unit)
-          : formatValue(claim.expectedValue, claim.expectedUnit),
+          ? show(observed.value, observed.unit)
+          : show(claim.expectedValue, claim.expectedUnit),
       verdict: judgement.verdict,
-      authored: formatValue(claim.expectedValue, claim.expectedUnit),
-      observed:
-        observed.value !== null ? formatValue(observed.value, observed.unit) : "—",
+      authored: show(claim.expectedValue, claim.expectedUnit),
+      observed: show(observed.value, observed.unit),
       deltaPct: judgement.deltaPct,
       tolerance:
         claim.tolerance.kind === "percent"

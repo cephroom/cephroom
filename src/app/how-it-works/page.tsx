@@ -70,6 +70,42 @@ export default function HowItWorksPage() {
           your machine, against a dataset fetched from whoever is serving it,
           a few hundred milliseconds before you read the sentence.
         </p>
+
+        <h3>What a claim can assert</h3>
+        <p>
+          A claim does not have to be a median. The <code>select:</code> line
+          chooses what the cell is asked for:
+        </p>
+        <ul>
+          <li>
+            <code>value</code> (the default) — the median the query resolves
+            to, in the metric&rsquo;s own unit.
+          </li>
+          <li>
+            <code>n_points</code> / <code>n_docs</code> — how many measurements,
+            or how many independent papers, stand behind the cell.
+          </li>
+          <li>
+            <code>fold_spread</code> — the full fold spread, the loosest
+            measurement over the tightest. A claim about how far the labs
+            disagree.
+          </li>
+          <li>
+            <code>fold_spread_iqr</code> — the same, but across the middle half
+            of the measurements, ignoring outliers. This is a claim about how
+            well the labs <em>agree</em>, which a median hides completely: a
+            cell can carry a tidy median on top of a hundred-fold total spread.
+          </li>
+        </ul>
+        <p>
+          A fold value is a bare ratio — <code>5.07x</code>,{" "}
+          <code>5.07-fold</code> and <code>5.07</code> are the same assertion —
+          and renders as <code>5.07×</code>. Where a cell has too few
+          measurements to have an interquartile range at all, an{" "}
+          <code>fold_spread_iqr</code> claim on it resolves to{" "}
+          <em>broken</em> rather than borrowing a looser number: you cannot
+          honestly assert agreement you do not have the data to measure.
+        </p>
       </div>
 
       <div className="mt-6 space-y-3">

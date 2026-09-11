@@ -133,7 +133,22 @@ function readDataset() {
     generated_at_utc: string;
     coverage: Record<string, number>;
     measurement_counts: { n_measurements_total: number };
+    cells: {
+      gene_symbol: string;
+      compound: string;
+      fold_spread: number | null;
+      fold_spread_iqr: number | null;
+      fold_spread_human: number | null;
+    }[];
   };
+
+  // The fold spread of a cell — how far its loosest and tightest measurements
+  // disagree — is not in the matrices; it lives per cell in the report. Index
+  // it so a fact can carry the agreement signal, not just the median.
+  const cellByPair = new Map<string, (typeof report.cells)[number]>();
+  for (const cell of report.cells ?? []) {
+    cellByPair.set(`${cell.gene_symbol}|${cell.compound}`, cell);
+  }
 
   const kiNm = matrix("matrix_median_ki_nm.csv");
   const pKi = matrix("matrix_median_pki.csv");
@@ -153,12 +168,18 @@ function readDataset() {
     unit: string | null;
     nPoints: number | null;
     nDocs: number | null;
+    foldSpread: number | null;
+    foldSpreadIqr: number | null;
   }[] = [];
 
   for (const [subject, cells] of kiNm.rows) {
     kiNm.columns.forEach((object, index) => {
       const points = nPoint.rows.get(subject)?.[index] ?? null;
       const docs = nDocs.rows.get(subject)?.[index] ?? null;
+      const cell = cellByPair.get(`${subject}|${object}`);
+      const foldAll = round4(cell?.fold_spread ?? null);
+      const foldIqrAll = round4(cell?.fold_spread_iqr ?? null);
+      const foldHuman = round4(cell?.fold_spread_human ?? null);
       const shared = {
         subject,
         object,
@@ -175,7 +196,14 @@ function readDataset() {
         // An empty cell is not a fact. Dropping it means a claim against one
         // fails loudly rather than resolving to "no data".
         if (value === null) return;
-        facts.push({ ...shared, metric, scope, value, unit });
+        // Fold spread describes the cell's point cloud, so it rides on every
+        // metric of that cell. The interquartile fold spread only exists for
+        // the whole-cell distribution; there is no human-only IQR in the
+        // report, so a human-scope fold-IQR claim resolves to broken rather
+        // than borrowing the all-scope number.
+        const foldSpread = scope === "human" ? foldHuman : foldAll;
+        const foldSpreadIqr = scope === "human" ? null : foldIqrAll;
+        facts.push({ ...shared, metric, scope, value, unit, foldSpread, foldSpreadIqr });
       };
 
       add("median_ki_nm", "all", round4(cells[index]), "nM");
