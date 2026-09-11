@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SimulatedBillingControls } from "@/components/simulated-billing-controls";
+import { ServeKey } from "@/components/serve-key";
 import { SubmitButton } from "@/components/submit-button";
 import { TIER_LABEL } from "@/lib/access";
 import { getViewer } from "@/lib/auth/session";
@@ -227,6 +228,23 @@ export default async function AccountPage({
           className="mt-3 inline-block text-[0.85rem] font-medium text-accent hover:underline"
         >
           The constraints this follows from →
+        </Link>
+      </section>
+
+      {/* ------------------------------------------- Run a node as yourself */}
+      <section className="mt-8 rounded-xl border border-rule p-5">
+        <h2 className="text-[0.95rem] font-semibold">Run a node as yourself</h2>
+        <p className="mt-1.5 max-w-[60ch] text-[0.87rem] leading-relaxed text-ink-muted">
+          Serving is free and needs no account — but to publish under your own
+          identity, so your work is namespaced to you and nobody else can
+          announce as you, your node needs a key.
+        </p>
+        <ServeKey sub={fresh.sub!} />
+        <Link
+          href="/contribute"
+          className="mt-3 inline-block text-[0.85rem] font-medium text-accent hover:underline"
+        >
+          How to run a node →
         </Link>
       </section>
 

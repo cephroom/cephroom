@@ -95,6 +95,15 @@ Refresh tokens are **not rotated with reuse detection**, because detection
 requires remembering which tokens have been seen, which is state. A shorter
 refresh lifetime is the only lever available and 7 days is where it is set.
 
+The **serve key** a contributor pastes into their node (`NODE_KEY`) is the
+longest-lived credential, at 30 days, because a node runs unattended and a
+7-day key would take it offline weekly. It shares the same no-revocation
+model, so its lifetime is its exposure — but the blast radius is narrow: a
+leaked serve key lets someone announce under that subject (list content in
+the namespace), and nothing else. It grants no read access to any reader's
+data and cannot touch billing. It is issued on demand from the account page,
+never stored, and a contributor reveals a fresh one if the old one leaks.
+
 ### Everything else is also "at rest"
 
 Logs, analytics, error reports and caches all count. The audit:

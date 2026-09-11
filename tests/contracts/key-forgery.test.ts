@@ -146,4 +146,14 @@ describe("the node key is an access-audience key, and nothing more", () => {
     expect(key?.sub).toBe("s_lab");
     expect(key?.scp).toContain("serve:node");
   });
+
+  it("issues a serve key the same verifier accepts", async () => {
+    // The long-lived key a contributor pastes into NODE_KEY. Same audience
+    // and verifier as any other access key, just a longer expiry.
+    const serve = await tokens.mintServeKey({ sub: "s_pub", tier: "member" });
+    const key = await tokens.verifyAccessKey(serve);
+    expect(key?.sub).toBe("s_pub");
+    // Well beyond the 15-minute access window, but bounded.
+    expect(key!.exp - key!.iat).toBe(tokens.SERVE_KEY_TTL_SECONDS);
+  });
 });

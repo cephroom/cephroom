@@ -176,6 +176,39 @@ export async function mintNodeKey(input: {
     .sign(await signingKey());
 }
 
+/**
+ * A long-lived key a contributor pastes into their node as NODE_KEY, so it
+ * can announce under their own subject.
+ *
+ * Longer than the browser keys because a node runs unattended for days. It
+ * shares their revocation model — outlived, not revoked — so the lifetime is
+ * the exposure: a leaked serve key lets someone announce under this subject
+ * (list content in the namespace, nothing more — it grants no read access to
+ * anyone's data and cannot touch billing) until it expires. Thirty days
+ * balances "a node should stay up" against that. See docs/CONTRACTS.md.
+ */
+export const SERVE_KEY_TTL_SECONDS = 30 * 24 * 60 * 60;
+export const SERVE_KEY_TTL_DAYS = 30;
+
+export async function mintServeKey(input: {
+  sub: string;
+  tier: Tier;
+  name?: string;
+}): Promise<string> {
+  return new SignJWT({
+    tier: input.tier,
+    scp: scopesForTier(input.tier),
+    ...(input.name ? { name: input.name } : {}),
+  })
+    .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
+    .setIssuer(ISSUER)
+    .setAudience(ACCESS_AUDIENCE)
+    .setSubject(input.sub)
+    .setIssuedAt()
+    .setExpirationTime(`${SERVE_KEY_TTL_SECONDS}s`)
+    .sign(await signingKey());
+}
+
 export async function mintRefreshKey(input: {
   sub: string;
   cus?: string;
