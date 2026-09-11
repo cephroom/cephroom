@@ -36,7 +36,8 @@ export type ClaimSelect =
   | "n_points"
   | "n_docs"
   | "fold_spread"
-  | "fold_spread_iqr";
+  | "fold_spread_iqr"
+  | "censored_fraction";
 
 /**
  * The dimensionless selects. Fold spread is a ratio of the loosest to the
@@ -107,6 +108,7 @@ const SELECTS: ClaimSelect[] = [
   "n_docs",
   "fold_spread",
   "fold_spread_iqr",
+  "censored_fraction",
 ];
 
 /** Pulls `{{claim:key}}` keys out of prose, in document order, deduplicated. */
@@ -226,8 +228,16 @@ export function parseBody(rawBody: string): ParsedBody {
           value = match ? Number.parseFloat(match[0]) : null;
         }
         if (value !== null && value <= 0) value = null;
+      } else if (select === "censored_fraction") {
+        // A fraction in [0, 1]. Accept "7%" as 0.07 and "0.07" as itself;
+        // anything outside [0, 1] is not a fraction, so record no value.
+        if (value !== null && parsed.unit === "%") value = value / 100;
+        if (value !== null && (value < 0 || value > 1)) value = null;
       }
-      const expectedUnit = isFoldSelect(select) ? null : parsed.unit;
+      const expectedUnit =
+        isFoldSelect(select) || select === "censored_fraction"
+          ? null
+          : parsed.unit;
 
       claims.push({
         key,

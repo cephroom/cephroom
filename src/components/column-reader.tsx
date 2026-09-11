@@ -54,6 +54,8 @@ interface Fact {
   nDocs: number | null;
   foldSpread: number | null;
   foldSpreadIqr: number | null;
+  nMeasurements: number | null;
+  nCensored: number | null;
 }
 
 interface Dataset {
@@ -348,6 +350,8 @@ function describeStat(select: ParsedClaim["select"]): string {
       return "measurement count";
     case "n_docs":
       return "document count";
+    case "censored_fraction":
+      return "censored fraction";
     default:
       return "value";
   }
@@ -381,15 +385,28 @@ function resolveClaims(
             ? { value: fact.foldSpread, unit: null }
             : claim.select === "fold_spread_iqr"
               ? { value: fact.foldSpreadIqr, unit: null }
-              : { value: fact.value, unit: fact.unit };
+              : claim.select === "censored_fraction"
+                ? {
+                    value:
+                      fact.nCensored !== null &&
+                      fact.nMeasurements !== null &&
+                      fact.nMeasurements > 0
+                        ? fact.nCensored / fact.nMeasurements
+                        : null,
+                    unit: null,
+                  }
+                : { value: fact.value, unit: fact.unit };
 
-    // Fold spread reads as a ratio, e.g. "5.07×", not a bare number.
+    // Fold spread reads as a ratio ("5.07×"); a censored fraction reads as a
+    // percentage ("7%"); everything else in its own unit.
     const show = (value: number | null, unit: string | null) =>
       value === null
         ? "—"
         : isFoldSelect(claim.select)
           ? `${formatValue(value)}×`
-          : formatValue(value, unit);
+          : claim.select === "censored_fraction"
+            ? `${formatValue(value * 100)}%`
+            : formatValue(value, unit);
 
     const judgement = !dataset
       ? {

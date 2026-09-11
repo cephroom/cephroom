@@ -97,6 +97,20 @@ in different laboratories, with different radioligands, in different
 preparations, across four decades. The spread within that cell is wide: the
 loosest and tightest values differ by {{claim:cloz-d2-fold}}, while across the
 middle half of the measurements the disagreement is only {{claim:cloz-d2-iqr}}.
+That spread is real disagreement between labs, not the artefact of a detection
+limit: only {{claim:cloz-d2-censored}} of the measurements is a censored
+ceiling rather than a true value.
+
+```claim cloz-d2-censored
+dataset: receptorome-ki
+metric: median_ki_nm
+subject: DRD2
+object: clozapine
+scope: all
+select: censored_fraction
+value: 1.2%
+tolerance: 25%
+```
 
 ```claim cloz-d2-fold
 dataset: receptorome-ki

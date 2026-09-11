@@ -41,6 +41,8 @@ function describeSelect(select: string): string {
       return "This claim asserts the full fold spread — the loosest measurement over the tightest. It is a claim about how far the labs disagree, not about the median.";
     case "fold_spread_iqr":
       return "This claim asserts the interquartile fold spread — disagreement across the middle half of measurements, ignoring outliers. It is a claim about how well the labs agree.";
+    case "censored_fraction":
+      return "This claim asserts what fraction of the cell's measurements are censored ceilings (a “>” bound), rather than real point estimates. High means the median rests on few true values.";
     default:
       return "This claim asserts the cell's value against the author's recorded number.";
   }

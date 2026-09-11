@@ -27,6 +27,8 @@ interface Fact {
   nDocs: number | null;
   foldSpread: number | null;
   foldSpreadIqr: number | null;
+  nMeasurements: number | null;
+  nCensored: number | null;
 }
 
 interface Dataset {

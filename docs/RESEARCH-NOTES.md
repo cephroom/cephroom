@@ -153,3 +153,23 @@ so `spread.cross_document_disagreements[].fold_difference` equals the cell's
 `fold_spread` for all 40 disagreeing cells (checked). The only genuinely new
 piece there is the min/max document CHEMBL IDs, which is provenance, not a
 number. Not worth a select.
+
+### Shipped: censored_fraction; the censored-only limitation (cycle 2026-09-12)
+
+Built the top-ranked gap from the entry above. A claim can now `select:
+censored_fraction` and assert what share of a cell's measurements are censored
+ceilings (a `>` bound) rather than true values — e.g. the D2 window column now
+states, checkably, that only 1.23% of the DRD2 × clozapine measurements is a
+ceiling, so its wide fold spread is real disagreement and not a detection-limit
+artefact. Written as `0.07` or `7%`; the node serves `nCensored`/`nMeasurements`
+per cell and the fraction is computed in the reader's browser.
+
+Known limitation, deferred honestly: a **censored-only** cell (no point estimate
+at all — CHRM1 × aripiprazole, `n_point=0`) produces *no fact*, because the node
+drops empty cells so a claim against one fails loudly rather than resolving to
+"no data" (AGENTS.md). So the most dramatic case — positively asserting a cell
+is entirely a ceiling (fraction 1.0) — currently resolves broken, not 1.0. To
+support it the node would have to emit a fact for censored-only cells carrying
+the counts without a median, which is a fact-model change (every fact has a
+numeric value today). Worth doing, but it is a real change, not a tweak, so it
+waits rather than shipping half-done.

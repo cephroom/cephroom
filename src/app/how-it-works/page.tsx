@@ -96,6 +96,13 @@ export default function HowItWorksPage() {
             well the labs <em>agree</em>, which a median hides completely: a
             cell can carry a tidy median on top of a hundred-fold total spread.
           </li>
+          <li>
+            <code>censored_fraction</code> — what share of the cell&rsquo;s
+            measurements are censored ceilings (a <code>&gt;</code> bound)
+            rather than real values. Written as <code>0.07</code> or{" "}
+            <code>7%</code>. A claim about how much of the median rests on true
+            data.
+          </li>
         </ul>
         <p>
           A fold value is a bare ratio — <code>5.07x</code>,{" "}

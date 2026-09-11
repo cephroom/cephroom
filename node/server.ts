@@ -140,6 +140,8 @@ function readDataset() {
       fold_spread: number | null;
       fold_spread_iqr: number | null;
       fold_spread_human: number | null;
+      n_measurements: number | null;
+      n_censored: number | null;
     }[];
   };
 
@@ -171,6 +173,8 @@ function readDataset() {
     nDocs: number | null;
     foldSpread: number | null;
     foldSpreadIqr: number | null;
+    nMeasurements: number | null;
+    nCensored: number | null;
   }[] = [];
 
   for (const [subject, cells] of kiNm.rows) {
@@ -186,6 +190,11 @@ function readDataset() {
         object,
         nPoints: points === null ? null : Math.round(points),
         nDocs: docs === null ? null : Math.round(docs),
+        // The censored count and the total behind it — the raw material for a
+        // "this cell is a ceiling" claim. A cell property, so it rides every
+        // metric like the fold spread does.
+        nMeasurements: cell?.n_measurements ?? null,
+        nCensored: cell?.n_censored ?? null,
       };
 
       const add = (
