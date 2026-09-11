@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { restampKey } from "@/lib/stripe/actions";
 import { usingRealStripe } from "@/lib/stripe/gateway";
 import { formatPrice } from "@/lib/stripe/plans";
 
@@ -28,6 +29,13 @@ export default async function SimulatedCheckoutPage({
     "use server";
     const inner = await import("@simulated/stripe/store");
     inner.completeCheckout(sessionId!);
+    // Real Stripe returns the browser to successUrl (the restamp route) as a
+    // genuine top-level navigation, so its Set-Cookie lands. This page is a
+    // server action instead, and the redirect it throws is followed as an
+    // RSC navigation that drops the intermediate route's cookie — so the
+    // reader would land on /account still stamped Reader. Re-stamp here, in
+    // the action, where cookies().set() actually sticks.
+    await restampKey();
     redirect(session.request.successUrl);
   }
 
@@ -35,6 +43,7 @@ export default async function SimulatedCheckoutPage({
     "use server";
     const inner = await import("@simulated/stripe/store");
     inner.declineCheckout(sessionId!);
+    await restampKey();
     redirect(session.request.successUrl);
   }
 
