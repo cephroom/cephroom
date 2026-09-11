@@ -51,6 +51,16 @@ billing change has to happen in a route handler or a server action, which is
 why checkout returns through `/api/auth/restamp` rather than straight to
 `/account`.
 
+**A `Set-Cookie` on a route the browser reaches by a server-action `redirect()`
+does not stick.** Real Stripe returns the browser to `/api/auth/restamp` as a
+genuine top-level navigation, so that route's re-stamped key lands. The
+*simulated* checkout completes inside a server action, and the redirect it
+throws is followed as an RSC navigation that drops the intermediate route's
+`Set-Cookie` — so a reader who just paid stayed stamped Reader until the key
+next renewed. The fix is to re-stamp *inside* the action (`restampKey()`,
+which uses `cookies().set()`) before redirecting, never to rely on a later
+route hop to set the cookie. `tests/checkout-restamp.test.ts` guards it.
+
 ## Where the invariants live
 
 Business rules are in pure modules with tests beside them, deliberately
