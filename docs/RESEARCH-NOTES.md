@@ -88,3 +88,25 @@ measured against whether it strengthens *that* loop.
   per cell). A claim can currently assert a median or an evidence count;
   asserting "the IQR is within 2x" would let an author stake a claim about
   *agreement between labs*, which is often the real scientific point.
+
+### The paywall preview has to carry verifiable claims (cycle 2026-09-12)
+
+Working the paywall boundary this cycle surfaced a design point that is
+specific to *scientific* writing and would not come up for a generic blog.
+A normal paywall teaser shows the first few paragraphs and cuts off; the
+numbers in it are decoration, and nobody checks them. Here the preview
+paragraphs contain claims — `1.55 nM`, `93 papers` — and the whole promise
+of the product is that a reader can verify those against the dataset in
+their own browser.
+
+So the gate cannot simply truncate. It withholds the prose past the preview
+and the Markdown source (which carries every claim *definition*, and is what
+a proposal edits), but the parsed claim *results* for the preview still
+travel and still resolve against the node's dataset. A free reader sees a
+short excerpt whose numbers are genuinely checkable — which is a more
+honest teaser than most paywalls manage, and it is only possible because
+verification is client-side and does not require the source.
+
+The inverse is the real risk: shipping a preview whose numbers a reader
+*cannot* check is worse than no preview, because it invites trust in an
+unverifiable figure. `gateColumnBody` and its tests now hold that line.
