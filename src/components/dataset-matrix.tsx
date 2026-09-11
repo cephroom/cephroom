@@ -1,3 +1,5 @@
+import { formatValue } from "@/lib/claims/syntax";
+
 export interface MatrixCell {
   display: string;
   nPoints: number | null;
@@ -113,7 +115,7 @@ export function DatasetMatrix({
                                 className={`mt-0.5 block text-[0.68rem] tnum ${agree.tone}`}
                                 title="Interquartile fold spread: how far the middle half of the measurements disagree. Lower is tighter agreement between labs."
                               >
-                                IQR {cell.foldSpreadIqr}× {agree.word}
+                                IQR {formatValue(cell.foldSpreadIqr)}× {agree.word}
                               </span>
                             );
                           })()}

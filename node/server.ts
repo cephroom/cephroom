@@ -23,6 +23,7 @@ import { config } from "dotenv";
 import { parseBody } from "../src/lib/claims/syntax";
 import { tierAllows, type Access } from "../src/lib/access";
 import { gateColumnBody } from "./column-gate";
+import { foldForScope } from "./fold-facts";
 import { ProposalStore } from "./proposals";
 import { verifyKeyWithPlatform } from "./verify";
 
@@ -196,13 +197,10 @@ function readDataset() {
         // An empty cell is not a fact. Dropping it means a claim against one
         // fails loudly rather than resolving to "no data".
         if (value === null) return;
-        // Fold spread describes the cell's point cloud, so it rides on every
-        // metric of that cell. The interquartile fold spread only exists for
-        // the whole-cell distribution; there is no human-only IQR in the
-        // report, so a human-scope fold-IQR claim resolves to broken rather
-        // than borrowing the all-scope number.
-        const foldSpread = scope === "human" ? foldHuman : foldAll;
-        const foldSpreadIqr = scope === "human" ? null : foldIqrAll;
+        const { foldSpread, foldSpreadIqr } = foldForScope(
+          { all: foldAll, iqrAll: foldIqrAll, human: foldHuman },
+          scope,
+        );
         facts.push({ ...shared, metric, scope, value, unit, foldSpread, foldSpreadIqr });
       };
 

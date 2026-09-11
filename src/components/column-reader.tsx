@@ -337,6 +337,22 @@ export function ColumnReader({
  * Runs every claim against the datasets currently being served. The pure
  * judge from lib/claims/verdict is the same code the author's editor uses.
  */
+/** Human phrase for a claim's select, for the "statistic not available" note. */
+function describeStat(select: ParsedClaim["select"]): string {
+  switch (select) {
+    case "fold_spread_iqr":
+      return "interquartile fold spread";
+    case "fold_spread":
+      return "fold spread";
+    case "n_points":
+      return "measurement count";
+    case "n_docs":
+      return "document count";
+    default:
+      return "value";
+  }
+}
+
 function resolveClaims(
   claims: ParsedClaim[],
   datasets: Map<string, Dataset>,
@@ -389,6 +405,17 @@ function resolveClaims(
 
     verdicts.push(judgement.verdict);
 
+    // When the cell exists but the selected statistic does not — a human-scope
+    // interquartile fold spread, say, which the pipeline does not compute — the
+    // judge sees a null observed value and reports "no cell matches this query".
+    // The cell is there; only the statistic is absent. Say what is actually
+    // missing rather than implying the query found nothing.
+    const statMissing = Boolean(dataset) && Boolean(fact) && observed.value === null;
+    const note = statMissing
+      ? `This cell reports no ${describeStat(claim.select)} to check — the statistic is not available for this query.`
+      : (judgement.note ??
+        (fact ? null : `No cell for ${claim.subject} × ${claim.object}.`));
+
     views.set(claim.key, {
       key: claim.key,
       display:
@@ -403,9 +430,7 @@ function resolveClaims(
         claim.tolerance.kind === "percent"
           ? `${claim.tolerance.amount}%`
           : `±${claim.tolerance.amount}`,
-      note:
-        judgement.note ??
-        (fact ? null : `No cell for ${claim.subject} × ${claim.object}.`),
+      note,
       query: {
         dataset: dataset?.name ?? claim.datasetSlug,
         datasetSlug: claim.datasetSlug,
