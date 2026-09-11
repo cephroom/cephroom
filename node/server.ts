@@ -22,6 +22,7 @@ import { config } from "dotenv";
 
 import { parseBody } from "../src/lib/claims/syntax";
 import { tierAllows, type Access } from "../src/lib/access";
+import { gateColumnBody } from "./column-gate";
 import { ProposalStore } from "./proposals";
 import { verifyKeyWithPlatform } from "./verify";
 
@@ -339,9 +340,9 @@ const server = createServer(async (request, response) => {
     const tier = await tierFromRequest(request.headers.authorization);
     const entitled = tierAllows(tier, column.access);
 
-    const parsed = parseBody(column.body);
-    const blocks = parsed.prose.split(/\n{2,}/);
-    const take = Math.min(Math.max(3, Math.ceil(blocks.length * 0.28)), 7);
+    // The node enforces the paywall in one pure function so a test can hold
+    // the line: a non-entitled reader gets a preview and never the source.
+    const gated = gateColumnBody(column.body, entitled);
 
     return send(200, {
       id: column.id,
@@ -351,16 +352,7 @@ const server = createServer(async (request, response) => {
       repo: column.repo ?? null,
       commit: column.commit ?? null,
       author: DISPLAY_NAME,
-      entitled,
-      prose: entitled ? parsed.prose : blocks.slice(0, take).join("\n\n"),
-      // The Markdown source, claim blocks and all, for anyone entitled to the
-      // whole thing. A proposal is an edit to the source the way a pull
-      // request is a diff of the file — handing over the rendered prose
-      // instead strips the claim definitions and makes the round trip lossy.
-      source: entitled ? column.body : null,
-      hiddenBlocks: entitled ? 0 : Math.max(0, blocks.length - take),
-      claims: parsed.claims,
-      errors: parsed.errors,
+      ...gated,
       servedAt: new Date().toISOString(),
     });
   }
