@@ -110,3 +110,46 @@ verification is client-side and does not require the source.
 The inverse is the real risk: shipping a preview whose numbers a reader
 *cannot* check is worse than no preview, because it invites trust in an
 unverifiable figure. `gateColumnBody` and its tests now hold that line.
+
+### Claim-expressiveness gaps the data already supports (cycle 2026-09-12)
+
+The node reads the whole of `gap_report.json` on startup and then throws most
+of it away — it flattens only `value, nPoints, nDocs, foldSpread,
+foldSpreadIqr` into the facts it serves. Several scientifically sharper
+assertions are sitting in that file, per cell, unclaimable. Each is
+contract-clean by the same argument the fold selects were: the datum is on the
+contributor's disk, served with the dataset, checked in the reader's browser —
+no platform state. Verified against ChEMBL_37 (80 cells).
+
+Ranked by value-to-effort:
+
+1. **Censored fraction** (`n_censored / n_measurements`). Lets an author
+   positively assert "the only evidence here is a `>` ceiling." A
+   `censored_only` cell (e.g. CHRM1 × aripiprazole, `n_point=0`) has no median
+   — a `value` claim on it is already `broken` — but a `censored_fraction`
+   claim resolves to `1.0` and states the ceiling *as a fact*. Trivial: both
+   numbers are already on the indexed cell; reuse `judge()` unchanged.
+
+2. **Organism provenance** (`organism_verdict`: human_present / non_human_only
+   / unknown_organism_only / no_data). Answers the one question the rat-brain
+   provenance note is about — "is this a human number?" HTR2B × haloperidol is
+   `non_human_only`; a sentence citing it as human renders green today. Best as
+   a *categorical* select: exact match → verified, mismatch or missing → broken
+   (no `drifted` state — provenance either matches or it does not), which needs
+   one small judge branch.
+
+3. **PDSP cross-source agreement** (`pdsp_cross_check.comparison[].fold_difference`).
+   The strongest "GitHub for science" primitive in the file: an *independent*
+   database (PDSP Ki DB) re-checking the number, client-side, at read time.
+   HTR2B × ziprasidone is the one flagged conflict — ChEMBL 1.58 nM vs PDSP
+   27.23 nM, 17.2× apart. Add `pdsp_fold` to `FOLD_SELECTS` so it inherits the
+   dimensionless-ratio handling; index `comparison[]` by `gene|compound` the
+   way `cellByPair` already indexes cells. Must map `chembl_n=0`/NaN rows to a
+   *missing* fact so they resolve `broken`, never `0×`.
+
+Recorded-and-rejected: a **cross-document-disagreement** select would duplicate
+`fold_spread` — in this dataset every extreme measurement is its own document,
+so `spread.cross_document_disagreements[].fold_difference` equals the cell's
+`fold_spread` for all 40 disagreeing cells (checked). The only genuinely new
+piece there is the min/max document CHEMBL IDs, which is provenance, not a
+number. Not worth a select.
