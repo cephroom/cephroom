@@ -1,20 +1,61 @@
 # Architectural contracts
 
-Two constraints govern this platform. They are not goals or preferences. When
-a feature and a contract conflict, the contract wins and the feature is cut,
-and the cut is recorded at the bottom of this document.
+Three constraints govern this platform. They are not goals or preferences.
+When a feature and a contract conflict, the contract wins and the feature is
+cut, and the cut is recorded at the bottom of this document.
 
-Both are enforced by tests in `tests/contracts/`, not by discipline. If you
-can make those tests pass while violating the spirit of a contract, the test
-is wrong — fix the test.
+All three are enforced by tests in `tests/contracts/`, not by discipline. If
+you can make those tests pass while violating the spirit of a contract, the
+test is wrong — fix the test. A suite that would still pass after a user
+table appeared is not enforcing anything.
+
+---
+
+## Contract 0 — This is a GitHub for science
+
+The product is a GitHub for science, and that is the boundary of what it may
+become. Not a blog platform, not a paywalled magazine, not a social network
+that hosts papers.
+
+GitHub's value was never storage. It was that every change is attributable,
+diffable, reviewable, and re-tested, and that provenance — who changed what,
+against which base — is inescapable. The scientific translation is the spine
+of this product:
+
+- a number in prose is a **query against a versioned dataset**, not a literal;
+- a **reader re-runs** every query on the way in, so a stale value says so;
+- a **proposal is a diff** the author reviews, delivered to their own machine;
+- everything carries its **provenance** — dataset release, evidence count,
+  the query itself.
+
+The test for any feature: does it strengthen that loop? A change that would be
+equally at home on any generic content site, or that would make this
+indistinguishable from a publishing SaaS, is the wrong change no matter what
+metric it improves. Patterns that assume a persistent social graph — profiles,
+followers, stars, contribution calendars, view counts, trending — are doubly
+forbidden: they dilute the thesis *and* they require the storage Contracts 1
+and 2 prohibit. See docs/COMPETITIVE-NOTES.md for the GitHub/Zenodo analysis
+that grounds this.
+
+This contract is enforced structurally rather than by a single assertion: the
+storage tests below make the social-graph features unbuildable (they all need
+a user table), and `tests/contracts/thesis.test.ts` guards the specific
+temptations by name.
 
 ---
 
 ## Contract 1 — No user data at rest
 
 **The platform persists nothing about users.** No user table, no profile rows,
-no email addresses, no session store, no local mirror of anyone's
-subscription.
+no email addresses, no display names, no avatars, no preferences, no activity
+record, no session store, no local mirror of anyone's subscription.
+
+Identity is proven at sign-in and immediately forgotten. A signed key carries
+everything the platform is allowed to know about who you are, and
+authorization is signature verification, never a lookup. A display name is
+not an exception: the key may carry the name you chose at your provider so a
+page can greet you, and a node may announce a self-declared name while it is
+live, but neither is ever written down by the platform.
 
 ### The auth flow
 

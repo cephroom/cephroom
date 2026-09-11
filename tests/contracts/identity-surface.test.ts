@@ -25,6 +25,13 @@ const IDENTITY_TOKENS = [
   "receptoromeSub",
   "passwordHash",
   "accountId",
+  // Contract 2's fuller list. These should not appear anywhere in the
+  // platform as code — we never handle an avatar or a preference, so either
+  // is a tripwire for a profile feature being smuggled in. (displayName is
+  // deliberately not here: the key and the live registry legitimately carry a
+  // self-declared name, and it is never persisted.)
+  "avatar",
+  "preferences",
 ];
 
 /**
