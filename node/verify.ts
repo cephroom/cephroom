@@ -25,7 +25,7 @@ export interface VerifiedKey {
 async function platformKey(platform: string) {
   if (cached) return cached;
 
-  const response = await fetch(`${platform}/.well-known/bindery-key`);
+  const response = await fetch(`${platform}/.well-known/receptorome-key`);
   if (!response.ok) throw new Error("could not fetch the platform public key");
 
   const json = (await response.json()) as {

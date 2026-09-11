@@ -1,5 +1,5 @@
 /**
- * A Bindery node.
+ * A Receptorome node.
  *
  * This is the thing Contract 2 is about. A contributor runs it on their own
  * machine; it reads their columns and datasets off their own disk, announces

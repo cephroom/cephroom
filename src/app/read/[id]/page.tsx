@@ -79,7 +79,7 @@ function Offline({ id }: { id: string }) {
       </h1>
 
       <p className="mt-4 text-[1rem] leading-relaxed text-ink-muted">
-        Bindery stores nothing. Whatever was at this address lived on its
+        Receptorome stores nothing. Whatever was at this address lived on its
         author&rsquo;s machine and was served from there; their node is not
         running, so there is nothing to show and nothing cached to fall back
         on.

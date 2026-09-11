@@ -8,7 +8,7 @@ let client: Stripe | null = null;
 function stripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set.");
-  client ??= new Stripe(key, { appInfo: { name: "Bindery" } });
+  client ??= new Stripe(key, { appInfo: { name: "Receptorome" } });
   return client;
 }
 
@@ -55,7 +55,7 @@ export function liveGateway(): StripeGateway {
       // Stripe holds the subject-to-customer mapping in customer metadata,
       // so the platform does not have to.
       const found = await stripe().customers.search({
-        query: `metadata['binderySub']:'${sub}'`,
+        query: `metadata['receptoromeSub']:'${sub}'`,
         limit: 1,
       });
       return found.data[0]?.id ?? null;
@@ -77,7 +77,7 @@ export function liveGateway(): StripeGateway {
         input.customerId ??
         (
           await stripe().customers.create({
-            metadata: { binderySub: input.sub },
+            metadata: { receptoromeSub: input.sub },
           })
         ).id;
 
@@ -90,7 +90,7 @@ export function liveGateway(): StripeGateway {
         allow_promotion_codes: true,
         // Carried so that a customer created by Checkout still answers the
         // metadata lookup above.
-        subscription_data: { metadata: { binderySub: input.sub } },
+        subscription_data: { metadata: { receptoromeSub: input.sub } },
       });
 
       if (!session.url) throw new Error("Stripe returned no checkout URL.");

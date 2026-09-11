@@ -54,7 +54,7 @@ export default async function SimulatedCheckoutPage({
 
         <div className="rounded-xl border border-rule bg-paper-raised p-6">
           <p className="text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-ink-faint">
-            Subscribe to Bindery
+            Subscribe to Receptorome
           </p>
           <h1 className="mt-2 font-serif text-[1.5rem] font-semibold tracking-[-0.02em]">
             {plan.name}

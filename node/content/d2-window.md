@@ -4,7 +4,7 @@ title: The D2 window is a fact about patients, not about molecules
 subtitle: Affinity and occupancy get used interchangeably. They are not the same measurement, and the gap between them is where most antipsychotic folklore lives.
 access: public
 author: elena
-repo: https://github.com/bindery-science/d2-occupancy-window
+repo: https://github.com/juitindev/d2-occupancy-window
 commit: 9f2c1ab
 ---
 

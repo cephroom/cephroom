@@ -29,7 +29,7 @@ const YEAR = 365 * 86_400;
 
 interface Customer {
   id: string;
-  metadata: { binderySub: string };
+  metadata: { receptoromeSub: string };
 }
 
 interface Subscription {
@@ -175,7 +175,7 @@ export function advancePeriod(subscriptionId: string): void {
 export function subscriptionsForSubject(sub: string): Subscription[] {
   const store = load();
   const customer = Object.values(store.customers).find(
-    (candidate) => candidate.metadata.binderySub === sub,
+    (candidate) => candidate.metadata.receptoromeSub === sub,
   );
   if (!customer) return [];
   return Object.values(store.subscriptions).filter(
@@ -205,7 +205,7 @@ export function simulatedGateway(): StripeGateway {
     async findCustomerBySubject(sub) {
       const store = load();
       const customer = Object.values(store.customers).find(
-        (candidate) => candidate.metadata.binderySub === sub,
+        (candidate) => candidate.metadata.receptoromeSub === sub,
       );
       return customer?.id ?? null;
     },
@@ -224,7 +224,7 @@ export function simulatedGateway(): StripeGateway {
       let customerId = request.customerId;
       if (!customerId) {
         const existing = Object.values(store.customers).find(
-          (candidate) => candidate.metadata.binderySub === request.sub,
+          (candidate) => candidate.metadata.receptoromeSub === request.sub,
         );
         if (existing) customerId = existing.id;
       }
@@ -232,7 +232,7 @@ export function simulatedGateway(): StripeGateway {
         customerId = id("cus");
         store.customers[customerId] = {
           id: customerId,
-          metadata: { binderySub: request.sub },
+          metadata: { receptoromeSub: request.sub },
         };
       }
 

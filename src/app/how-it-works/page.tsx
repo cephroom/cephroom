@@ -29,7 +29,7 @@ export default function HowItWorksPage() {
           How it works
         </h1>
         <p className="mt-3 text-[1.05rem] leading-relaxed text-ink-muted">
-          A Bindery column is Markdown with one extra idea in it: an author
+          A Receptorome column is Markdown with one extra idea in it: an author
           never types a measured number. They write the query that produces it,
           and record what that query returned when they wrote the sentence.
         </p>
@@ -47,7 +47,7 @@ export default function HowItWorksPage() {
         </p>
         <p>
           Software solved this, not with better writing, but with continuous
-          integration. Bindery applies the same mechanism to the numbers in
+          integration. Receptorome applies the same mechanism to the numbers in
           prose — except that here the check runs in your browser, on the way
           in, every time.
         </p>
@@ -177,7 +177,7 @@ export default function HowItWorksPage() {
         <p>
           Each is bounded and written down in{" "}
           <a
-            href="https://github.com/bindery-science/bindery/blob/main/docs/CONTRACTS.md"
+            href="https://github.com/juitindev/receptorome/blob/main/docs/CONTRACTS.md"
             target="_blank"
             rel="noopener noreferrer"
           >

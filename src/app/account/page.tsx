@@ -200,7 +200,7 @@ export default async function AccountPage({
       {/* ------------------------------------------ What we know about you */}
       <section className="mt-8 rounded-xl border border-rule p-5">
         <h2 className="text-[0.95rem] font-semibold">
-          What Bindery knows about you
+          What Receptorome knows about you
         </h2>
         <p className="mt-2 max-w-[60ch] text-[0.87rem] leading-relaxed text-ink-muted">
           Nothing. There is no account row, no profile, no session record and

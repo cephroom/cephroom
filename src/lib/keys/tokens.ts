@@ -30,9 +30,9 @@ import type { Tier } from "@/lib/access";
 export const ACCESS_TTL_SECONDS = 15 * 60;
 export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-export const ISSUER = "bindery";
-export const ACCESS_AUDIENCE = "bindery:access";
-export const REFRESH_AUDIENCE = "bindery:refresh";
+export const ISSUER = "receptorome";
+export const ACCESS_AUDIENCE = "receptorome:access";
+export const REFRESH_AUDIENCE = "receptorome:refresh";
 
 export type Scope =
   | "read:public"
@@ -107,7 +107,7 @@ let publicKey: CryptoKey | null = null;
 
 async function signingKey(): Promise<CryptoKey> {
   privateKey ??= (await importPKCS8(
-    decodePem(requireEnv("BINDERY_SIGNING_KEY")),
+    decodePem(requireEnv("RECEPTOROME_SIGNING_KEY")),
     "EdDSA",
   )) as CryptoKey;
   return privateKey;
@@ -115,7 +115,7 @@ async function signingKey(): Promise<CryptoKey> {
 
 export async function verificationKey(): Promise<CryptoKey> {
   publicKey ??= (await importSPKI(
-    decodePem(requireEnv("BINDERY_PUBLIC_KEY")),
+    decodePem(requireEnv("RECEPTOROME_PUBLIC_KEY")),
     "EdDSA",
   )) as CryptoKey;
   return publicKey;
@@ -123,7 +123,7 @@ export async function verificationKey(): Promise<CryptoKey> {
 
 /** The public key, in the form a node fetches from /.well-known. */
 export function publicKeyPem(): string {
-  return decodePem(requireEnv("BINDERY_PUBLIC_KEY"));
+  return decodePem(requireEnv("RECEPTOROME_PUBLIC_KEY"));
 }
 
 export async function mintAccessKey(input: {

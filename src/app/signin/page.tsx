@@ -36,7 +36,7 @@ export default async function SignInPage({
         </h1>
         <p className="mt-2 text-[0.9rem] leading-relaxed text-ink-muted">
           Signing in proves who you are and nothing is written down. You get a
-          signed key that says what you may read; Bindery keeps no account for
+          signed key that says what you may read; Receptorome keeps no account for
           you, because it keeps no accounts at all.
         </p>
 

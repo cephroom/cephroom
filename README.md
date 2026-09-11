@@ -1,4 +1,4 @@
-# Bindery
+# Receptorome
 
 **Science writing with a build step.**
 
@@ -24,7 +24,7 @@ against the current data, so the literature slowly accumulates sentences that
 were true once.
 
 Software had the same problem and did not solve it by writing more carefully.
-It solved it with continuous integration. Bindery does the same for numbers in
+It solved it with continuous integration. Receptorome does the same for numbers in
 prose — an author never types a measured value, they write the query that
 produces it:
 

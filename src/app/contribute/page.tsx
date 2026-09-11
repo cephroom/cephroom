@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Run a node",
   description:
-    "Your work stays on your machine. Bindery brokers the connection and holds no copy.",
+    "Your work stays on your machine. Receptorome brokers the connection and holds no copy.",
 };
 
 export default async function ContributePage() {
@@ -21,7 +21,7 @@ export default async function ContributePage() {
           Publishing here means running something
         </h1>
         <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
-          There is no upload. A Bindery node reads your columns off your own
+          There is no upload. A Receptorome node reads your columns off your own
           disk and serves them to readers directly; the platform is told an id,
           a title and an address, in memory, for as long as you keep serving.
           Close the process and your work leaves the site.

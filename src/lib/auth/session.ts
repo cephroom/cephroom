@@ -17,8 +17,8 @@ import {
  * anonymous — there is nothing else to consult.
  */
 
-export const ACCESS_COOKIE = "bindery_key";
-export const REFRESH_COOKIE = "bindery_renew";
+export const ACCESS_COOKIE = "receptorome_key";
+export const REFRESH_COOKIE = "receptorome_renew";
 
 export interface Viewer {
   sub: string | null;

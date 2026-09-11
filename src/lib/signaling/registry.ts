@@ -179,10 +179,10 @@ export function createRegistry(now: () => number = Date.now): Registry {
  * durable thing the contracts forbid.
  */
 const globalForRegistry = globalThis as unknown as {
-  __binderyRegistry?: Registry;
+  __receptoromeRegistry?: Registry;
 };
 
 export function registry(): Registry {
-  globalForRegistry.__binderyRegistry ??= createRegistry();
-  return globalForRegistry.__binderyRegistry;
+  globalForRegistry.__receptoromeRegistry ??= createRegistry();
+  return globalForRegistry.__receptoromeRegistry;
 }

@@ -267,7 +267,7 @@ export function ColumnReader({
             </h2>
             <p className="mt-1.5 max-w-[54ch] text-[0.88rem] leading-relaxed text-ink-muted">
               Send {servedBy} an edit. It goes straight to their machine and is
-              stored there next to the column — Bindery neither holds it nor
+              stored there next to the column — Receptorome neither holds it nor
               sees it.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">

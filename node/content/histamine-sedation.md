@@ -4,7 +4,7 @@ title: H1 affinity predicts sedation better than any of us would like
 subtitle: A crude single-receptor story explains more of the observed sedation ranking than the multi-receptor models that replaced it.
 access: lab
 author: elena
-repo: https://github.com/bindery-science/h1-sedation
+repo: https://github.com/juitindev/h1-sedation
 commit: 1a9de50
 ---
 

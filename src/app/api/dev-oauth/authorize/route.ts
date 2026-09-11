@@ -112,7 +112,7 @@ export async function GET(request: Request) {
 </style></head>
 <body><div class="card">
   <h1>Choose a test account</h1>
-  <p class="sub">Local OAuth provider — development only. Bindery is requesting your name and email address.</p>
+  <p class="sub">Local OAuth provider — development only. Receptorome is requesting your name and email address.</p>
   ${rows}
   <p class="note">This endpoint exists so the OAuth code path can be exercised without Google or GitHub credentials. It is disabled unless AUTH_DEV_OAUTH=1.</p>
 </div></body></html>`;

@@ -22,7 +22,7 @@ const IDENTITY_TOKENS = [
   "email",
   "customerId",
   "stripeCustomer",
-  "binderySub",
+  "receptoromeSub",
   "passwordHash",
   "accountId",
 ];

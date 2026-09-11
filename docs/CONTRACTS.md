@@ -101,7 +101,8 @@ Logs, analytics, error reports and caches all count. The audit:
 
 | Surface | Decision |
 | --- | --- |
-| HTTP access logs | Disabled. No request logging that retains identity — no IP, no user agent, no `sub`. |
+| HTTP access logs | Disabled in `next.config.ts` (`logging.incomingRequests: false`). No request logging that retains identity — no IP, no user agent, no `sub`. |
+| Server Function logs | Disabled (`logging.serverFunctions: false`). Next logs each call *with its arguments*; nothing passes a subject into a server action today, but a claim that depends on nobody ever doing so is not much of a claim. |
 | Application logs | Permitted, but must not include `sub`, `cus`, email, IP, or token material. Enforced by test. |
 | Error reporting | No third-party error reporter is configured. If one is added it must have PII scrubbing on and IP capture off. |
 | Analytics | None. No page-view collection, first- or third-party. |
@@ -186,9 +187,9 @@ being served right now, by a node currently connected. Search is a scan over
 live announcements. A column that nobody is serving is not findable, and that
 is the correct behaviour rather than a gap.
 
-The consequence for the product is severe and worth stating plainly: **Bindery
+The consequence for the product is severe and worth stating plainly: **Receptorome
 has no archive.** A reader cannot cite a column and expect it to be there next
-year. The honest framing is that Bindery is a live reading surface over work
+year. The honest framing is that Receptorome is a live reading surface over work
 its authors are actively standing behind — if nobody will serve it, nobody is
 standing behind it.
 

@@ -4,7 +4,7 @@ title: Three empty cells
 subtitle: A coverage number is a claim about what you know. Most published affinity matrices report one number and quietly imputes the rest.
 access: public
 author: marcus
-repo: https://github.com/bindery-science/coverage-ladder
+repo: https://github.com/juitindev/coverage-ladder
 commit: c07f1d3
 ---
 
@@ -90,5 +90,5 @@ from a single paper. Both appear in the matrix as one number each. Only one
 of them should be load-bearing in an argument, and you cannot tell which
 from the number alone.
 
-That is why every claim on Bindery carries its evidence count. A value
+That is why every claim on Receptorome carries its evidence count. A value
 without an *n* is a rumour with a decimal point.

@@ -1,50 +1,91 @@
-# Contributing to Cephroom
+# Contributing to Receptorome
 
-Thanks for your interest in making Cephroom better. This guide covers how to contribute code and articles.
+Two things are worth reading before anything else:
 
-## Code contributions
+- **[docs/CONTRACTS.md](docs/CONTRACTS.md)** — the two constraints that govern
+  this platform. They are not preferences, and a change that violates one will
+  fail the test suite rather than reach review.
+- **[AGENTS.md](AGENTS.md)** — the bugs this repository has already had, and
+  where the invariants live.
 
-1. **Fork** the repository on GitHub.
-2. **Clone** your fork and create a feature branch off `main`:
-   ```bash
-   git checkout -b feat/your-feature-name
-   ```
-3. **Install dependencies** and start the dev server:
-   ```bash
-   npm install
-   npm run dev
-   ```
-4. **Make your changes.** Keep commits focused and write clear commit messages.
-5. **Run the linter** before pushing — every PR is checked:
-   ```bash
-   npm run lint
-   ```
-6. **Open a pull request** against `main`. Describe what changed and why, and link any related issues.
+## Running it
 
-### Code style
+Two processes.
 
-- ESLint (with `eslint-config-next`) runs on every PR. Fix warnings before requesting review.
-- TypeScript strict mode is on. Prefer explicit types at module boundaries.
-- Follow the existing Tailwind conventions in `src/app/page.tsx` (dark slate theme, rounded buttons, generous spacing).
-- Default to Server Components in the App Router. Add `"use client"` only when needed.
+```bash
+npm install
+cp .env.example .env.local
+npm run keys:generate        # paste the three lines into .env.local
+npm run dev                  # the platform, on :3000
 
-## Article contributions
+# in another terminal
+npm run node:serve           # a contributor's node, on :4600
+```
 
-The article submission flow is still being built out. For now:
+Open <http://localhost:3000/read>. If nothing is listed, the node is not
+running — there is no fallback content, by design.
 
-- Articles are stored in the Supabase `articles` table with Row Level Security.
-- Once authentication is wired up, you'll be able to draft and publish articles directly through the app.
-- In the meantime, open an issue describing the article you'd like to contribute and we'll coordinate.
+## Before you open a pull request
 
-## Reporting bugs
+```bash
+npm test          # 95 tests, including the contract suite
+npm run build     # type errors surface here that tsc alone may not
+```
 
-Open a GitHub issue with:
+Then open it in a browser, with a node running, and look at it. Four of the
+bugs in this repository's history passed both commands above and were visible
+only on the rendered page.
 
-- What you expected to happen.
-- What actually happened.
-- Steps to reproduce.
-- Your environment (OS, Node version, browser).
+## What will get a change rejected
 
-## Code of conduct
+- **Adding a database, an ORM, or any durable store.** There is none, on
+  purpose. If something appears to need durable state, it belongs on the
+  contributor's node or at Stripe.
+- **Storing anything about a person.** No user rows, no profiles, no sessions,
+  no mirror of a subscription. `tests/contracts/identity-surface.test.ts`
+  keeps the list of modules allowed to touch identity short and explicit.
+- **Holding content on the platform.** Column bytes go from the author's
+  machine to the reader's. The platform learns an id, a title and an address,
+  in memory, for the length of a lease.
+- **Reading a client IP**, adding analytics, or adding an error reporter that
+  captures identity.
 
-Be kind. Cephroom is a community for sharing knowledge — treat contributors and readers with respect.
+If you genuinely need to bend a contract, add it to the "Where the contracts
+bend" section with a reason. Widening an allowlist is a visible diff on a
+test, which is the point.
+
+## Writing a column
+
+You do not need permission or an account here — run a node and serve it. The
+claim syntax is documented at `/how-it-works`, and the short version is that
+you never type a measured number:
+
+````markdown
+Haloperidol binds D2 at {{claim:hal-d2}}.
+
+```claim hal-d2
+dataset: receptorome-ki
+metric:  median_ki_nm
+subject: DRD2
+object:  haloperidol
+value:   1.549 nM
+tolerance: 10%
+```
+````
+
+The editorial standard is the same one the data layer holds itself to: no
+imputation, no conversion between activity types, and every value carries the
+evidence count behind it. A number without an *n* is a rumour with a decimal
+point.
+
+## Style
+
+Match the surrounding code. Comments explain *why*, particularly where a
+decision looks arbitrary — the tolerance model, `past_due` keeping access, a
+unit mismatch counting as broken rather than drifted. Those are judgement
+calls, and a reader six months from now deserves the reasoning rather than a
+restatement of the code.
+
+## Licence
+
+MIT. By contributing you agree your contributions are licensed under it.

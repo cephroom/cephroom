@@ -76,7 +76,7 @@ describe("Contract 2: exercising the platform leaves nothing behind", () => {
   it("writes no files while registering, announcing, and disconnecting", async () => {
     // A scratch working directory, so a stray relative-path write lands
     // somewhere observable rather than in the repo.
-    const scratch = mkdtempSync(join(tmpdir(), "bindery-contract-"));
+    const scratch = mkdtempSync(join(tmpdir(), "receptorome-contract-"));
     const before = snapshot(scratch);
 
     const previousCwd = process.cwd();
