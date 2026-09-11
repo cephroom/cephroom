@@ -125,16 +125,24 @@ serve it.
 
 - A contributor runs a **node**: a small local process that reads their
   columns and datasets from their own filesystem and serves them over HTTP.
-- The node opens a WebSocket to the platform and **announces** what it serves:
-  ids, titles, tags, and the address readers should fetch from.
-- The platform holds that announcement **in memory, keyed by the live
-  connection**. It is never written to disk.
+- The node **announces** what it serves over plain HTTP: ids, titles, tags,
+  and the address readers should fetch from. It then heartbeats to keep a
+  short lease alive.
+- The platform holds that announcement **in memory, keyed by the lease**. It
+  is never written to disk.
 - A reader's browser fetches column bytes **directly from the node**. The
   platform supplies an address and nothing else. Bytes never transit the
   platform, so there is nothing for it to cache or proxy-persist.
-- When the contributor stops their node, the socket closes and the
-  announcement is gone. The content vanishes from the site **because the
-  registry entry was the connection**, not because a cleanup job ran.
+- Stopping the node withdraws it. On a clean shutdown that is immediate; on a
+  hard kill the lease simply lapses. Either way the content vanishes **because
+  the lease was what made it visible**, not because a cleanup job ran —
+  expiry is lazy, filtered on read, with no sweeper anywhere.
+
+**The honest bound.** A lease lasts 15 seconds. A node killed without warning
+stays listed for up to that long, and a reader who clicks through in that
+window gets an error from the unreachable node rather than a cached copy —
+which is the correct failure, since there is no cached copy to serve. Measured
+it: still listed immediately after `kill -9`, gone 17 seconds later.
 
 ### When a contributor is offline
 
@@ -272,10 +280,37 @@ the contracts. They are recorded so nobody rebuilds them by accident.
 | Stripe webhook receiver and `stripe_event` idempotency table | 1 | Both existed to keep the local mirror current. With tier derived live from Stripe at renewal, there is nothing for a webhook to update, and idempotency needs a table of events already seen. |
 | Saved columns / bookmarks | 1 | A per-user list is a per-user row. |
 | Author profiles with bio and handle | 1 | Profile rows. Attribution now carries the pseudonymous `sub` and whatever display name the node chooses to announce while it is online. |
-| Server-stored column bodies, revisions and proposals | 2 | Shared content. All three now live in the contributor's node. |
+| Server-stored column bodies and revisions | 2 | Shared content. Both now live in the contributor's node. |
 | Persisted check runs and check history | 2 | A check result is a derived record of content the platform is not allowed to hold. Replaced by verification in the reader's browser at read time, which is strictly better: every read is a fresh check, and a stale green badge becomes impossible. |
 | The archive, and search over it | 2 | Discovery is presence. There is no index of what has ever existed. |
 | Server-side drafts in the studio | 2 | Authoring moved into the node. |
+
+## What came back, rebuilt to fit
+
+Proposals were cut and then reinstated in a form the contracts allow. A
+reader's browser posts a proposed edit **straight to the author's node**,
+which verifies the reader's key carries `write:propose`, re-parses the
+submission, refuses anything whose claims do not resolve, and writes it to the
+author's own disk next to the column. The platform is not a party to any of
+it - it never holds the draft, never sees the diff, and could not moderate it
+if it wanted to.
+
+Two consequences fall out, both correct rather than unfortunate:
+
+- A proposal can only be made while the author is online. There is no queue
+  here to leave it in, because a queue would be the platform holding someone's
+  edit.
+- Proposals are readable only from the author's node, so they disappear with
+  everything else when they stop serving.
+
+Building it surfaced a real bug worth recording: the node was serving readers
+the *rendered* prose, with claim definition blocks already stripped. Editing
+that and posting it back produced a body full of `{{claim:...}}` references
+with nothing defining them, and the node's own validation rejected it. A
+proposal is a diff of the source the way a pull request is a diff of the file,
+so the node now serves the Markdown source to anyone entitled to the whole
+column. The claim checker caught the round trip being lossy, which is more or
+less its job.
 
 ### One thing the cuts improved
 

@@ -22,6 +22,7 @@ import { config } from "dotenv";
 
 import { parseBody } from "../src/lib/claims/syntax";
 import { tierAllows, type Access } from "../src/lib/access";
+import { ProposalStore } from "./proposals";
 import { verifyKeyWithPlatform } from "./verify";
 
 config({ path: ".env.local", quiet: true });
@@ -190,6 +191,7 @@ function readDataset() {
 
 const columns = readColumns();
 const dataset = readDataset();
+const proposals = new ProposalStore(import.meta.dirname);
 
 /* ------------------------------------------------------------------ *
  * Serving readers directly
@@ -198,7 +200,7 @@ const dataset = readDataset();
 const CORS = {
   "access-control-allow-origin": PLATFORM,
   "access-control-allow-headers": "authorization, content-type",
-  "access-control-allow-methods": "GET, OPTIONS",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
   "access-control-max-age": "600",
 };
 
@@ -231,6 +233,50 @@ const server = createServer(async (request, response) => {
     return send(200, dataset);
   }
 
+  // Proposals live here, on the author's disk. The platform never sees them.
+  if (url.pathname === "/proposals" && request.method === "GET") {
+    const columnId = url.searchParams.get("column") ?? undefined;
+    return send(200, { proposals: proposals.list(columnId) });
+  }
+
+  if (url.pathname === "/proposals" && request.method === "POST") {
+    const key = await keyFromRequest(request.headers.authorization);
+    if (!key?.scopes.includes("write:propose")) {
+      return send(403, {
+        error: "Proposing needs a key with write:propose. Membership grants it.",
+      });
+    }
+
+    const payload = await readJson(request);
+    const columnId = String(payload?.columnId ?? "");
+    const column = columns.find((candidate) => candidate.id === columnId);
+    if (!column) return send(404, { error: "not served here" });
+
+    const body = String(payload?.body ?? "");
+    const title = String(payload?.title ?? "").trim();
+    if (!title) return send(400, { error: "Give the proposal a title." });
+    if (body.trim() === column.body.trim()) {
+      return send(400, { error: "Nothing changed." });
+    }
+
+    const parsed = parseBody(body);
+    if (parsed.errors.length > 0) {
+      return send(400, { error: `Claim problems: ${parsed.errors[0].message}` });
+    }
+
+    return send(
+      201,
+      proposals.create({
+        columnId,
+        title,
+        rationale: String(payload?.rationale ?? "").trim(),
+        body,
+        fromSub: key.sub,
+        fromName: String(payload?.fromName ?? "A reader"),
+      }),
+    );
+  }
+
   if (url.pathname.startsWith("/column/")) {
     const id = decodeURIComponent(url.pathname.slice("/column/".length));
     const column = columns.find((candidate) => candidate.id === id);
@@ -256,6 +302,11 @@ const server = createServer(async (request, response) => {
       author: DISPLAY_NAME,
       entitled,
       prose: entitled ? parsed.prose : blocks.slice(0, take).join("\n\n"),
+      // The Markdown source, claim blocks and all, for anyone entitled to the
+      // whole thing. A proposal is an edit to the source the way a pull
+      // request is a diff of the file — handing over the rendered prose
+      // instead strips the claim definitions and makes the round trip lossy.
+      source: entitled ? column.body : null,
       hiddenBlocks: entitled ? 0 : Math.max(0, blocks.length - take),
       claims: parsed.claims,
       errors: parsed.errors,
@@ -275,6 +326,7 @@ function manifest() {
       tags: ["pharmacology"],
       access: column.access,
       summary: column.subtitle,
+      openProposals: proposals.countOpen(column.id),
     })),
     {
       id: dataset.id,
@@ -287,10 +339,25 @@ function manifest() {
   ];
 }
 
+async function keyFromRequest(header: string | undefined) {
+  if (!header?.toLowerCase().startsWith("bearer ")) return null;
+  return verifyKeyWithPlatform(PLATFORM, header.slice(7).trim());
+}
+
 async function tierFromRequest(header: string | undefined) {
-  if (!header?.toLowerCase().startsWith("bearer ")) return "reader" as const;
-  const key = await verifyKeyWithPlatform(PLATFORM, header.slice(7).trim());
-  return key?.tier ?? ("reader" as const);
+  return (await keyFromRequest(header))?.tier ?? ("reader" as const);
+}
+
+async function readJson(
+  request: import("node:http").IncomingMessage,
+): Promise<Record<string, unknown> | null> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) chunks.push(chunk as Buffer);
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    return null;
+  }
 }
 
 /* ------------------------------------------------------------------ *

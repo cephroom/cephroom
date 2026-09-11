@@ -22,6 +22,7 @@ const item = z.object({
   tags: z.array(z.string().max(60)).max(20).default([]),
   access: z.enum(["public", "member", "lab"]).optional(),
   summary: z.string().max(600).optional(),
+  openProposals: z.number().int().min(0).max(100000).optional(),
 });
 
 const announcement = z.object({

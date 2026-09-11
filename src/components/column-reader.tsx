@@ -260,6 +260,33 @@ export function ColumnReader({
           </ReactMarkdown>
         </div>
 
+        {column.entitled && (
+          <section className="mt-14 rounded-xl border border-rule bg-paper-sunken p-5">
+            <h2 className="font-serif text-[1.1rem] font-semibold">
+              Disagree with this?
+            </h2>
+            <p className="mt-1.5 max-w-[54ch] text-[0.88rem] leading-relaxed text-ink-muted">
+              Send {servedBy} an edit. It goes straight to their machine and is
+              stored there next to the column — Bindery neither holds it nor
+              sees it.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href={`/read/${column.id}/propose`}
+                className="rounded-md border border-rule-strong px-4 py-2 text-[0.86rem] font-medium transition-colors hover:border-ink-faint"
+              >
+                Propose an edit
+              </Link>
+              <Link
+                href={`/read/${column.id}/proposals`}
+                className="rounded-md px-4 py-2 text-[0.86rem] font-medium text-ink-muted transition-colors hover:text-ink"
+              >
+                See proposals
+              </Link>
+            </div>
+          </section>
+        )}
+
         {!column.entitled && (
           <Paywall
             access={column.access as "member" | "lab"}

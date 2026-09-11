@@ -31,6 +31,8 @@ export interface ManifestItem {
   /** Who may read it in full. The node enforces this; we only advertise it. */
   access?: "public" | "member" | "lab";
   summary?: string;
+  /** Advertised by the node so a listing can show it. Not a copy of them. */
+  openProposals?: number;
 }
 
 export interface Announcement {
