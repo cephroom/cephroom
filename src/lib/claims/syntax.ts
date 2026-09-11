@@ -75,6 +75,11 @@ const INLINE_REF = /\{\{claim:([A-Za-z0-9][\w-]*)\}\}/g;
 
 const REQUIRED = ["dataset", "metric", "subject", "object"] as const;
 
+/** Collapses CRLF and lone CR to LF. */
+export function normaliseNewlines(text: string): string {
+  return text.split("\r\n").join("\n").split("\r").join("\n");
+}
+
 const SELECTS: ClaimSelect[] = ["value", "n_points", "n_docs"];
 
 /** Pulls `{{claim:key}}` keys out of prose, in document order, deduplicated. */
@@ -133,7 +138,12 @@ function parseFields(body: string): Record<string, string> {
   return fields;
 }
 
-export function parseBody(body: string): ParsedBody {
+export function parseBody(rawBody: string): ParsedBody {
+  // HTML normalises textarea values to CRLF on form submission, which breaks
+  // the fence patterns below, which anchor on a bare newline. Normalising
+  // here means the parser behaves identically whether a body arrived
+  // through a form, a server action argument, or a seed file.
+  const body = normaliseNewlines(rawBody);
   const claims: ParsedClaim[] = [];
   const errors: ClaimParseError[] = [];
   const seenKeys = new Set<string>();

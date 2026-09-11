@@ -135,6 +135,27 @@ describe("parseBody", () => {
     const body = `First.\n\n${CLAIM}\n\nSecond.`;
     expect(parseBody(body).prose).toBe("First.\n\nSecond.");
   });
+
+  it("parses a body that arrived with CRLF line endings", () => {
+    // HTML normalises textarea values to CRLF on form submission. Before this
+    // was handled, saving from the studio silently recorded zero claims while
+    // the live preview - which passes the string directly - showed them all.
+    const body = `Binds at {{claim:hal-d2}}.\n\n${CLAIM}\n`.replace(
+      /\n/g,
+      "\r\n",
+    );
+    const { claims, errors } = parseBody(body);
+
+    expect(errors).toEqual([]);
+    expect(claims).toHaveLength(1);
+    expect(claims[0].expectedValue).toBe(1.549);
+    expect(claims[0].expectedUnit).toBe("nM");
+  });
+
+  it("parses a body with lone carriage returns", () => {
+    const body = `Binds at {{claim:hal-d2}}.\n\n${CLAIM}\n`.replace(/\n/g, "\r");
+    expect(parseBody(body).claims).toHaveLength(1);
+  });
 });
 
 describe("referencedKeys", () => {
