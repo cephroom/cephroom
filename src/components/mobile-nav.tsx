@@ -6,8 +6,10 @@ import { useEffect, useState } from "react";
 
 export function MobileNav({
   items,
+  signedIn,
 }: {
   items: { href: string; label: string }[];
+  signedIn: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -57,12 +59,14 @@ export function MobileNav({
               {item.label}
             </Link>
           ))}
-          <Link
-            href="/signin"
-            className="border-t border-rule py-2.5 text-[0.95rem] text-ink-muted"
-          >
-            Sign in
-          </Link>
+          {!signedIn && (
+            <Link
+              href="/signin"
+              className="border-t border-rule py-2.5 text-[0.95rem] text-ink-muted"
+            >
+              Sign in
+            </Link>
+          )}
         </nav>
       </div>
     </div>
