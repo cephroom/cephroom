@@ -2,47 +2,27 @@ import "server-only";
 
 import { desc, eq } from "drizzle-orm";
 
+import {
+  isEntitling,
+  planAllows,
+  planFromSubscription,
+  planRank,
+  type Access,
+  type Plan,
+} from "@/lib/access";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { subscriptions, users } from "@/lib/db/schema";
 import type { Subscription } from "@/lib/db/schema";
 
-export type Plan = "free" | "member" | "lab";
-export type Access = "public" | "member" | "lab";
-
-const RANK: Record<Plan, number> = { free: 0, member: 1, lab: 2 };
-const REQUIRED: Record<Access, Plan> = {
-  public: "free",
-  member: "member",
-  lab: "lab",
-};
-
-/**
- * Statuses that still grant access.
- *
- * `past_due` is deliberately included. Stripe retries a failed payment over
- * several days; cutting a paying subscriber off at the first declined card
- * punishes an expired card rather than a decision to leave. Access ends when
- * Stripe moves the subscription to `canceled` or `unpaid`.
- */
-const ENTITLING_STATUSES = new Set<Subscription["status"]>([
-  "active",
-  "trialing",
-  "past_due",
-]);
-
-export function planFromSubscription(
-  subscription: Pick<Subscription, "status" | "plan"> | null | undefined,
-): Plan {
-  if (!subscription) return "free";
-  return ENTITLING_STATUSES.has(subscription.status)
-    ? subscription.plan
-    : "free";
-}
-
-export function planAllows(plan: Plan, access: Access): boolean {
-  return RANK[plan] >= RANK[REQUIRED[access]];
-}
+export {
+  ACCESS_LABEL,
+  PLAN_LABEL,
+  planAllows,
+  planFromSubscription,
+  type Access,
+  type Plan,
+} from "@/lib/access";
 
 export interface Viewer {
   id: string | null;
@@ -95,16 +75,15 @@ export async function getViewer(): Promise<Viewer> {
     role: user.role,
     plan: planFromSubscription(subscription),
     subscription: subscription ?? null,
-    inDunning:
-      subscription?.status === "past_due" ||
-      Boolean(subscription?.paymentFailedAt && subscription.status !== "active"),
+    inDunning: subscription?.status === "past_due",
   };
 }
 
 /**
- * The subscription that governs access. A user can accumulate rows over time
- * (an upgrade creates a new Stripe subscription); the entitling one wins, and
- * failing that the most recent.
+ * The subscription that governs access. A reader can accumulate rows over
+ * time (an upgrade creates a new Stripe subscription); the strongest
+ * entitling one wins, and failing that the most recent row is shown so the
+ * account page can explain what happened to it.
  */
 export async function currentSubscription(userId: string) {
   const rows = await db.query.subscriptions.findMany({
@@ -114,8 +93,8 @@ export async function currentSubscription(userId: string) {
   if (rows.length === 0) return null;
 
   const entitling = rows
-    .filter((row) => ENTITLING_STATUSES.has(row.status))
-    .sort((a, b) => RANK[b.plan] - RANK[a.plan])[0];
+    .filter((row) => isEntitling(row.status))
+    .sort((a, b) => planRank(b.plan) - planRank(a.plan))[0];
 
   return entitling ?? rows[0];
 }
@@ -123,15 +102,3 @@ export async function currentSubscription(userId: string) {
 export function canRead(viewer: Viewer, access: Access): boolean {
   return planAllows(viewer.plan, access);
 }
-
-export const PLAN_LABEL: Record<Plan, string> = {
-  free: "Reader",
-  member: "Member",
-  lab: "Lab",
-};
-
-export const ACCESS_LABEL: Record<Access, string> = {
-  public: "Free to read",
-  member: "Member",
-  lab: "Lab",
-};
