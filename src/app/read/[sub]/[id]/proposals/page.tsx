@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { NodeProposalList } from "@/components/node-proposal-list";
+import { getViewer } from "@/lib/auth/session";
+import { mintNodeKey } from "@/lib/keys/tokens";
 import { registry } from "@/lib/signaling/registry";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +18,18 @@ export default async function ProposalsPage({
   const sub = decodeURIComponent(rawSub);
   const id = decodeURIComponent(rawId);
   const located = registry().find(sub, id);
+  const viewer = await getViewer();
+
+  // The node now gates /proposals with the same entitlement as /column, so
+  // the reader must present a key the node can verify. Same short-lived node
+  // key the column reader uses.
+  const nodeKey = viewer.sub
+    ? await mintNodeKey({
+        sub: viewer.sub,
+        tier: viewer.tier,
+        name: viewer.name ?? undefined,
+      })
+    : null;
 
   if (!located) {
     return (
@@ -64,7 +78,11 @@ export default async function ProposalsPage({
         </Link>
       </header>
 
-      <NodeProposalList columnId={id} address={located.presence.address} />
+      <NodeProposalList
+        columnId={id}
+        address={located.presence.address}
+        nodeKey={nodeKey}
+      />
     </main>
   );
 }

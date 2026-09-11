@@ -297,6 +297,23 @@ const server = createServer(async (request, response) => {
   // Proposals live here, on the author's disk. The platform never sees them.
   if (url.pathname === "/proposals" && request.method === "GET") {
     const columnId = url.searchParams.get("column") ?? undefined;
+    const column = columnId
+      ? columns.find((candidate) => candidate.id === columnId)
+      : undefined;
+    if (!column) return send(404, { error: "not served here" });
+
+    // A proposal's body IS the column's full Markdown source — a proposal is
+    // an edit to the source the way a PR is a diff of the file. So listing
+    // proposals must require exactly the entitlement /column requires, or
+    // this route is a side door around the paywall: an anonymous reader could
+    // pull the whole paid article (and every proposer's pseudonymous subject)
+    // out of the proposals on any member or lab column.
+    const tier = await tierFromRequest(request.headers.authorization);
+    if (!tierAllows(tier, column.access)) {
+      return send(403, {
+        error: "Reading proposals needs the same membership as reading the column.",
+      });
+    }
     return send(200, { proposals: proposals.list(columnId) });
   }
 
@@ -320,6 +337,14 @@ const server = createServer(async (request, response) => {
     const columnId = String(payload?.columnId ?? "");
     const column = columns.find((candidate) => candidate.id === columnId);
     if (!column) return send(404, { error: "not served here" });
+
+    // Proposing an edit means editing the source, which means being entitled
+    // to read it. A member cannot propose to a lab column they cannot open.
+    if (!tierAllows(key.tier, column.access)) {
+      return send(403, {
+        error: "Proposing needs the same membership as reading the column.",
+      });
+    }
 
     const body = String(payload?.body ?? "");
     const title = String(payload?.title ?? "").trim();
