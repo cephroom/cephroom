@@ -99,7 +99,20 @@ loosest and tightest values differ by {{claim:cloz-d2-fold}}, while across the
 middle half of the measurements the disagreement is only {{claim:cloz-d2-iqr}}.
 That spread is real disagreement between labs, not the artefact of a detection
 limit: only {{claim:cloz-d2-censored}} of the measurements is a censored
-ceiling rather than a true value.
+ceiling rather than a true value. And it is not a ChEMBL idiosyncrasy either —
+the independent PDSP Ki Database puts the same clozapine–D2 median within
+{{claim:cloz-d2-pdsp}} of this one.
+
+```claim cloz-d2-pdsp
+dataset: receptorome-ki
+metric: median_ki_nm
+subject: DRD2
+object: clozapine
+scope: all
+select: pdsp_fold
+value: 1.33x
+tolerance: 20%
+```
 
 ```claim cloz-d2-censored
 dataset: receptorome-ki

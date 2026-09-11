@@ -37,7 +37,8 @@ export type ClaimSelect =
   | "n_docs"
   | "fold_spread"
   | "fold_spread_iqr"
-  | "censored_fraction";
+  | "censored_fraction"
+  | "pdsp_fold";
 
 /**
  * The dimensionless selects. Fold spread is a ratio of the loosest to the
@@ -49,7 +50,13 @@ export type ClaimSelect =
  * thing; we drop the fold notation, wherever it sits, so it never reads as a
  * unit mismatch, and reject a non-positive ratio as not a real assertion.
  */
-export const FOLD_SELECTS: ClaimSelect[] = ["fold_spread", "fold_spread_iqr"];
+export const FOLD_SELECTS: ClaimSelect[] = [
+  "fold_spread",
+  "fold_spread_iqr",
+  // The ChEMBL-vs-PDSP fold difference is a ratio too, rendered "1.33×", and
+  // shares the bare-ratio parsing (drop notation, reject non-positive).
+  "pdsp_fold",
+];
 
 export function isFoldSelect(select: ClaimSelect): boolean {
   return FOLD_SELECTS.includes(select);
@@ -109,6 +116,7 @@ const SELECTS: ClaimSelect[] = [
   "fold_spread",
   "fold_spread_iqr",
   "censored_fraction",
+  "pdsp_fold",
 ];
 
 /** Pulls `{{claim:key}}` keys out of prose, in document order, deduplicated. */

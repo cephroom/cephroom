@@ -56,6 +56,7 @@ interface Fact {
   foldSpreadIqr: number | null;
   nMeasurements: number | null;
   nCensored: number | null;
+  pdspFold: number | null;
 }
 
 interface Dataset {
@@ -352,6 +353,8 @@ function describeStat(select: ParsedClaim["select"]): string {
       return "document count";
     case "censored_fraction":
       return "censored fraction";
+    case "pdsp_fold":
+      return "PDSP cross-check";
     default:
       return "value";
   }
@@ -395,7 +398,9 @@ function resolveClaims(
                         : null,
                     unit: null,
                   }
-                : { value: fact.value, unit: fact.unit };
+                : claim.select === "pdsp_fold"
+                  ? { value: fact.pdspFold, unit: null }
+                  : { value: fact.value, unit: fact.unit };
 
     // Fold spread reads as a ratio ("5.07×"); a censored fraction reads as a
     // percentage ("7%"); everything else in its own unit.

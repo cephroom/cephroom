@@ -43,6 +43,8 @@ function describeSelect(select: string): string {
       return "This claim asserts the interquartile fold spread — disagreement across the middle half of measurements, ignoring outliers. It is a claim about how well the labs agree.";
     case "censored_fraction":
       return "This claim asserts what fraction of the cell's measurements are censored ceilings (a “>” bound), rather than real point estimates. High means the median rests on few true values.";
+    case "pdsp_fold":
+      return "This claim asserts how far this number sits from the independent PDSP Ki Database's median for the same target and compound. Near 1× means two separate databases agree.";
     default:
       return "This claim asserts the cell's value against the author's recorded number.";
   }

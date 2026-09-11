@@ -143,6 +143,14 @@ function readDataset() {
       n_measurements: number | null;
       n_censored: number | null;
     }[];
+    pdsp_cross_check?: {
+      comparison?: {
+        gene_symbol: string;
+        compound: string;
+        chembl_n: number | null;
+        fold_difference: number | null;
+      }[];
+    };
   };
 
   // The fold spread of a cell — how far its loosest and tightest measurements
@@ -151,6 +159,22 @@ function readDataset() {
   const cellByPair = new Map<string, (typeof report.cells)[number]>();
   for (const cell of report.cells ?? []) {
     cellByPair.set(`${cell.gene_symbol}|${cell.compound}`, cell);
+  }
+
+  // The cross-check against an independent database (the PDSP Ki DB): the
+  // fold difference between ChEMBL's median and PDSP's, per cell. Indexed the
+  // same way, so a fact can carry "does a second source agree with this
+  // number" — the strongest reproducibility signal in the report.
+  const pdspByPair = new Map<string, number | null>();
+  for (const row of report.pdsp_cross_check?.comparison ?? []) {
+    // A row with no ChEMBL measurements has nothing to compare, and NaN folds
+    // were already nulled at parse. Either way the fold is unusable, so the
+    // fact carries null and a pdsp_fold claim on it resolves broken, not 0×.
+    const fold = row.chembl_n ? row.fold_difference : null;
+    pdspByPair.set(
+      `${row.gene_symbol}|${row.compound}`,
+      fold === null ? null : Number.parseFloat(fold.toPrecision(4)),
+    );
   }
 
   const kiNm = matrix("matrix_median_ki_nm.csv");
@@ -175,6 +199,7 @@ function readDataset() {
     foldSpreadIqr: number | null;
     nMeasurements: number | null;
     nCensored: number | null;
+    pdspFold: number | null;
   }[] = [];
 
   for (const [subject, cells] of kiNm.rows) {
@@ -195,6 +220,7 @@ function readDataset() {
         // metric like the fold spread does.
         nMeasurements: cell?.n_measurements ?? null,
         nCensored: cell?.n_censored ?? null,
+        pdspFold: pdspByPair.get(`${subject}|${object}`) ?? null,
       };
 
       const add = (

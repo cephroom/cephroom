@@ -103,6 +103,13 @@ export default function HowItWorksPage() {
             <code>7%</code>. A claim about how much of the median rests on true
             data.
           </li>
+          <li>
+            <code>pdsp_fold</code> — how far this number sits from the
+            <em> independent</em> PDSP Ki Database&rsquo;s median for the same
+            target and compound, as a fold ratio. Near <code>1×</code> means a
+            second, separate database reproduces the number — the strongest
+            check there is.
+          </li>
         </ul>
         <p>
           A fold value is a bare ratio — <code>5.07x</code>,{" "}

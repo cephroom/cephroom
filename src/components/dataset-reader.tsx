@@ -29,6 +29,7 @@ interface Fact {
   foldSpreadIqr: number | null;
   nMeasurements: number | null;
   nCensored: number | null;
+  pdspFold: number | null;
 }
 
 interface Dataset {
