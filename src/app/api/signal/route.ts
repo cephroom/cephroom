@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { verifyAccessKey } from "@/lib/keys/tokens";
 import { LEASE_SECONDS, registry } from "@/lib/signaling/registry";
 
 export const dynamic = "force-dynamic";
@@ -9,10 +10,18 @@ export const dynamic = "force-dynamic";
  * Signaling. The only thing a node says to the platform, and the only thing
  * the platform remembers — in RAM, until the lease lapses.
  *
- * Note what is absent: the platform never reads the client IP. The address a
- * reader should fetch from is stated by the node in its own announcement.
- * Inferring it from the socket would be collecting a network identifier about
- * a person, which Contract 1 forbids.
+ * Authenticated. Every call must carry a valid capability key, and the
+ * subject is taken from that key rather than from the request body. This
+ * closes a takedown: before it, the endpoints accepted a connectionId with no
+ * proof of ownership, and that id was rendered into the /read page, so any
+ * visitor could knock any contributor's node offline. Serving is still free —
+ * any signed-in reader may announce — but it must be attributable, so nobody
+ * can flood the registry anonymously or announce under someone else's
+ * subject. See docs/CONTRACTS.md.
+ *
+ * Note what is still absent: the platform never reads the client IP. The
+ * address a reader should fetch from is stated by the node in its own
+ * announcement.
  */
 
 const item = z.object({
@@ -25,8 +34,8 @@ const item = z.object({
   openProposals: z.number().int().min(0).max(100000).optional(),
 });
 
+// `sub` is intentionally absent: it comes from the key, never the body.
 const announcement = z.object({
-  sub: z.string().min(1).max(120),
   displayName: z.string().min(1).max(120),
   address: z
     .string()
@@ -35,7 +44,23 @@ const announcement = z.object({
   items: z.array(item).max(500),
 });
 
+/** The authenticated subject, or null. Never trusts a body field for this. */
+async function subject(request: Request): Promise<string | null> {
+  const header = request.headers.get("authorization") ?? "";
+  if (!header.toLowerCase().startsWith("bearer ")) return null;
+  const key = await verifyAccessKey(header.slice(7).trim());
+  return key?.sub ?? null;
+}
+
 export async function POST(request: Request) {
+  const sub = await subject(request);
+  if (!sub) {
+    return NextResponse.json(
+      { error: "A valid key is required to announce." },
+      { status: 401 },
+    );
+  }
+
   const parsed = announcement.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
@@ -44,7 +69,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const handle = registry().announce(parsed.data);
+  const handle = registry().announce({ sub, ...parsed.data });
   return NextResponse.json({
     connectionId: handle.connectionId,
     leaseSeconds: LEASE_SECONDS,
@@ -53,10 +78,16 @@ export async function POST(request: Request) {
 
 /** Extends a lease. A node calls this on a timer while it is serving. */
 export async function PUT(request: Request) {
-  const url = new URL(request.url);
-  const connectionId = url.searchParams.get("connection") ?? "";
+  const sub = await subject(request);
+  if (!sub) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
 
-  const alive = registry().heartbeat(connectionId);
+  const url = new URL(request.url);
+  const alive = registry().heartbeat(
+    url.searchParams.get("connection") ?? "",
+    sub,
+  );
   return NextResponse.json(
     { alive, leaseSeconds: LEASE_SECONDS },
     { status: alive ? 200 : 410 },
@@ -66,12 +97,19 @@ export async function PUT(request: Request) {
 /**
  * Withdraws immediately, on graceful shutdown.
  *
- * Without this a stopped node would stay visible until its lease lapsed. With
- * it, "stop the process and the work disappears" is immediate in the ordinary
- * case, and bounded by the lease in the ungraceful one.
+ * Only the subject that announced the connection can withdraw it. A leaked
+ * connectionId is not a capability — the key is.
  */
 export async function DELETE(request: Request) {
+  const sub = await subject(request);
+  if (!sub) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   const url = new URL(request.url);
-  registry().withdraw(url.searchParams.get("connection") ?? "");
-  return NextResponse.json({ withdrawn: true });
+  const withdrawn = registry().withdraw(
+    url.searchParams.get("connection") ?? "",
+    sub,
+  );
+  return NextResponse.json({ withdrawn });
 }

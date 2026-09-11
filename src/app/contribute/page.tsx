@@ -118,7 +118,7 @@ npm run node:serve -- --port 4600 --name "Your Name"`}
           <ul className="mt-3 space-y-2">
             {online.map((presence) => (
               <li
-                key={presence.connectionId}
+                key={presence.sub}
                 className="flex flex-wrap items-baseline gap-x-3 text-[0.88rem]"
               >
                 <span className="inline-flex items-center gap-1.5 font-medium">

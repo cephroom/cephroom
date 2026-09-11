@@ -70,8 +70,19 @@ export interface RegistryHandle {
 
 export interface Registry {
   announce(announcement: Announcement): RegistryHandle;
-  heartbeat(connectionId: string): boolean;
-  withdraw(connectionId: string): void;
+  /**
+   * Extends a lease. `sub` is the authenticated subject from the caller's
+   * signed key; a heartbeat for a connection owned by a different subject is
+   * refused. Returns false if the connection is unknown, lapsed, or not the
+   * caller's.
+   */
+  heartbeat(connectionId: string, sub: string): boolean;
+  /**
+   * Withdraws a connection. Enforces the same ownership check as heartbeat,
+   * so a leaked connectionId is not enough to take someone else offline.
+   * Returns true only if a connection the caller owns was removed.
+   */
+  withdraw(connectionId: string, sub: string): boolean;
   list(): Presence[];
   find(itemId: string): Located | null;
   search(query: string): Located[];
@@ -101,20 +112,25 @@ export function createRegistry(now: () => number = Date.now): Registry {
 
       return {
         connectionId,
-        heartbeat: () => registry.heartbeat(connectionId),
-        close: () => registry.withdraw(connectionId),
+        heartbeat: () => registry.heartbeat(connectionId, announcement.sub),
+        close: () => registry.withdraw(connectionId, announcement.sub),
       };
     },
 
-    heartbeat(connectionId) {
+    heartbeat(connectionId, sub) {
       const presence = live.get(connectionId);
-      if (!presence || !fresh(presence)) return false;
+      // Ownership is checked before freshness, so a mismatched subject learns
+      // nothing about whether the connection exists.
+      if (!presence || presence.sub !== sub || !fresh(presence)) return false;
       presence.expiresAt = now() + LEASE_SECONDS * 1000;
       return true;
     },
 
-    withdraw(connectionId) {
+    withdraw(connectionId, sub) {
+      const presence = live.get(connectionId);
+      if (!presence || presence.sub !== sub) return false;
       live.delete(connectionId);
+      return true;
     },
 
     list() {

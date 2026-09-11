@@ -367,12 +367,36 @@ async function readJson(
 let connectionId: string | null = null;
 let heartbeat: NodeJS.Timeout | null = null;
 
+/**
+ * The key the node signs its announcements with.
+ *
+ * Signaling is authenticated: the platform attributes an announcement to the
+ * subject in this key and refuses a heartbeat or withdrawal for a connection
+ * owned by a different subject. In production the operator supplies their own
+ * capability key as NODE_KEY (they get it by signing in). In this monorepo
+ * dev setup the node shares the platform's signing key, so it mints one for
+ * its configured subject — a convenience that only works because both
+ * processes are on the same machine.
+ */
+async function serveKey(): Promise<string> {
+  if (process.env.NODE_KEY) return process.env.NODE_KEY;
+  if (!process.env.RECEPTOROME_SIGNING_KEY) {
+    throw new Error(
+      "No NODE_KEY set and no local signing key to mint one. Sign in on the platform and set NODE_KEY.",
+    );
+  }
+  const { mintAccessKey } = await import("../src/lib/keys/tokens");
+  return mintAccessKey({ sub: SUB, tier: "reader", name: DISPLAY_NAME });
+}
+
 async function announce() {
   const response = await fetch(`${PLATFORM}/api/signal`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${await serveKey()}`,
+    },
     body: JSON.stringify({
-      sub: SUB,
       displayName: DISPLAY_NAME,
       address: ADDRESS,
       items: manifest(),
@@ -393,7 +417,7 @@ async function announce() {
     if (!connectionId) return;
     const beat = await fetch(
       `${PLATFORM}/api/signal?connection=${connectionId}`,
-      { method: "PUT" },
+      { method: "PUT", headers: { authorization: `Bearer ${await serveKey()}` } },
     ).catch(() => null);
     // A lapsed lease means the platform restarted. Re-announce rather than
     // silently disappearing.
@@ -410,6 +434,7 @@ async function withdraw() {
   if (!connectionId) return;
   await fetch(`${PLATFORM}/api/signal?connection=${connectionId}`, {
     method: "DELETE",
+    headers: { authorization: `Bearer ${await serveKey()}` },
   }).catch(() => {});
   console.log("withdrawn — the work is no longer visible on the platform");
 }

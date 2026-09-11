@@ -176,6 +176,29 @@ address. A sufficiently motivated operator of the platform could observe that.
 The mitigation is that it is never persisted, never logged, and gone the
 instant the socket closes.
 
+### Signaling is authenticated
+
+Contract 2 promises a contributor's work stays available *while they serve
+it*. That promise is only as strong as the platform's refusal to let anyone
+else end their lease.
+
+Every call to `/api/signal` — announce, heartbeat, withdraw — must carry a
+valid capability key, and the subject is taken from that key, never from the
+request body or a URL parameter. A heartbeat or withdrawal touches only a
+connection owned by the caller's own subject.
+
+This closes a takedown found by attacking the local server: the endpoints
+previously accepted a `connectionId` with no proof of ownership, and that id
+was serialized into the `/read` flight payload, so any visitor could read it
+back and knock any contributor offline with one unauthenticated request. The
+same gap let anyone announce anonymously — flooding the registry, or claiming
+another contributor's subject. Regression tests are in
+`tests/contracts/signal-auth.test.ts`.
+
+Serving remains free: any signed-in reader may announce, whatever their tier.
+The requirement is attribution, not payment — an announcement must be
+traceable to a subject, so that the registry cannot be written to anonymously.
+
 ### Discovery without an index
 
 There is no index. There is no crawl. There is no "all columns ever

@@ -76,7 +76,7 @@ export default async function ReadPage({
                   const chip = ACCESS_CHIP[item.access ?? "public"];
                   return (
                     <li
-                      key={`${presence.connectionId}-${item.id}`}
+                      key={`${presence.sub}-${item.id}`}
                       className="border-b border-rule"
                     >
                       <Link
@@ -125,7 +125,7 @@ export default async function ReadPage({
               <ul className="mt-3 space-y-3">
                 {datasets.map(({ presence, item }) => (
                   <li
-                    key={`${presence.connectionId}-${item.id}`}
+                    key={`${presence.sub}-${item.id}`}
                     className="rounded-xl border border-rule bg-paper-raised p-5"
                   >
                     <Link
