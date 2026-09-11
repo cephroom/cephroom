@@ -97,14 +97,14 @@ describe("Contract 2: exercising the platform leaves nothing behind", () => {
       });
 
       expect(registry.list()).toHaveLength(1);
-      expect(registry.find("a-column")).not.toBeNull();
+      expect(registry.find("sub_contract_test", "a-column")).not.toBeNull();
 
       handle.close();
 
       // The whole of Contract 2 in three assertions: the moment the
       // connection ends the content is gone, and nothing was written.
       expect(registry.list()).toHaveLength(0);
-      expect(registry.find("a-column")).toBeNull();
+      expect(registry.find("sub_contract_test", "a-column")).toBeNull();
     } finally {
       process.chdir(previousCwd);
     }

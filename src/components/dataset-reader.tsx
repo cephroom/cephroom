@@ -65,10 +65,12 @@ const METRICS = [
 export function DatasetReader({
   address,
   servedBy,
+  datasetId,
   canExplore,
 }: {
   address: string;
   servedBy: string;
+  datasetId: string;
   canExplore: boolean;
 }) {
   const [dataset, setDataset] = useState<Dataset | null>(null);
@@ -79,7 +81,9 @@ export function DatasetReader({
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`${address}/dataset`);
+        const response = await fetch(
+          `${address}/dataset/${encodeURIComponent(datasetId)}`,
+        );
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const json = (await response.json()) as Dataset;
         if (!cancelled) setDataset(json);
@@ -92,7 +96,7 @@ export function DatasetReader({
     return () => {
       cancelled = true;
     };
-  }, [address]);
+  }, [address, datasetId]);
 
   const metric = METRICS[selected];
 

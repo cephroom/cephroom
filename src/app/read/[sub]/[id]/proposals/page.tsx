@@ -10,10 +10,12 @@ export const metadata: Metadata = { title: "Proposals" };
 export default async function ProposalsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ sub: string; id: string }>;
 }) {
-  const { id } = await params;
-  const located = registry().find(id);
+  const { sub: rawSub, id: rawId } = await params;
+  const sub = decodeURIComponent(rawSub);
+  const id = decodeURIComponent(rawId);
+  const located = registry().find(sub, id);
 
   if (!located) {
     return (
@@ -38,7 +40,7 @@ export default async function ProposalsPage({
   return (
     <main className="mx-auto max-w-[46rem] px-5 py-12">
       <Link
-        href={`/read/${id}`}
+        href={`/read/${sub}/${id}`}
         className="text-[0.82rem] text-ink-faint transition-colors hover:text-ink"
       >
         ← {located.item.title}
@@ -55,7 +57,7 @@ export default async function ProposalsPage({
           </p>
         </div>
         <Link
-          href={`/read/${id}/propose`}
+          href={`/read/${sub}/${id}/propose`}
           className="shrink-0 rounded-md bg-accent px-4 py-2 text-[0.86rem] font-medium text-white transition-colors hover:bg-accent-hover"
         >
           Propose an edit

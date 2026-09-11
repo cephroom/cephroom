@@ -6,7 +6,9 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const online = registry().list();
-  const items = online.flatMap((presence) => presence.items);
+  const items = online.flatMap((presence) =>
+    presence.items.map((item) => ({ item, sub: presence.sub })),
+  );
 
   return (
     <main>
@@ -201,14 +203,10 @@ tolerance: 10%
             </div>
           ) : (
             <ul className="grid gap-x-8 gap-y-px sm:grid-cols-2">
-              {items.slice(0, 6).map((item) => (
-                <li key={item.id} className="border-b border-rule">
+              {items.slice(0, 6).map(({ item, sub }) => (
+                <li key={`${sub}-${item.id}`} className="border-b border-rule">
                   <Link
-                    href={
-                      item.kind === "dataset"
-                        ? `/read/dataset/${encodeURIComponent(item.id)}`
-                        : `/read/${encodeURIComponent(item.id)}`
-                    }
+                    href={`/read/${encodeURIComponent(sub)}/${encodeURIComponent(item.id)}`}
                     className="group block py-6"
                   >
                     <p className="mb-1.5 text-[0.72rem] uppercase tracking-[0.06em] text-ink-faint">

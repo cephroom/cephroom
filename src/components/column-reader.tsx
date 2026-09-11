@@ -66,24 +66,25 @@ type Phase =
   | { state: "ready"; column: ServedColumn; datasets: Map<string, Dataset> };
 
 export function ColumnReader({
+  sub,
   id,
   address,
   servedBy,
-  datasets: datasetAddresses,
   nodeKey,
   tier,
   signedIn,
 }: {
+  sub: string;
   id: string;
   address: string;
   servedBy: string;
-  datasets: Record<string, string>;
   nodeKey: string | null;
   tier: Tier;
   signedIn: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>({ state: "loading" });
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const base = `/read/${encodeURIComponent(sub)}/${encodeURIComponent(id)}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -96,13 +97,19 @@ export function ColumnReader({
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const column = (await response.json()) as ServedColumn;
 
+        // A claim's dataset is resolved from the column's own node, not from
+        // whatever node happens to serve that slug. An author vouches for the
+        // data they serve; letting a stranger's node answer would let anyone
+        // announce a dataset under a shared slug and substitute the numbers a
+        // claim is checked against. Cross-node dataset references are, by
+        // design, not trusted — see docs/CONTRACTS.md.
         const needed = [...new Set(column.claims.map((claim) => claim.datasetSlug))];
         const datasets = new Map<string, Dataset>();
         for (const slug of needed) {
-          const datasetAddress = datasetAddresses[slug];
-          if (!datasetAddress) continue;
-          const data = await fetch(`${datasetAddress}/dataset`);
-          if (data.ok) datasets.set(slug, (await data.json()) as Dataset);
+          const data = await fetch(
+            `${address}/dataset/${encodeURIComponent(slug)}`,
+          ).catch(() => null);
+          if (data?.ok) datasets.set(slug, (await data.json()) as Dataset);
         }
 
         if (cancelled) return;
@@ -120,7 +127,7 @@ export function ColumnReader({
     return () => {
       cancelled = true;
     };
-  }, [address, id, nodeKey, datasetAddresses]);
+  }, [address, id, nodeKey]);
 
   const resolved = useMemo(() => {
     if (phase.state !== "ready") return null;
@@ -272,13 +279,13 @@ export function ColumnReader({
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
-                href={`/read/${column.id}/propose`}
+                href={`${base}/propose`}
                 className="rounded-md border border-rule-strong px-4 py-2 text-[0.86rem] font-medium transition-colors hover:border-ink-faint"
               >
                 Propose an edit
               </Link>
               <Link
-                href={`/read/${column.id}/proposals`}
+                href={`${base}/proposals`}
                 className="rounded-md px-4 py-2 text-[0.86rem] font-medium text-ink-muted transition-colors hover:text-ink"
               >
                 See proposals
@@ -294,7 +301,7 @@ export function ColumnReader({
             signedIn={signedIn}
             hiddenBlocks={column.hiddenBlocks}
             claimCount={claims.size}
-            returnTo={`/read/${column.id}`}
+            returnTo={base}
           />
         )}
       </article>

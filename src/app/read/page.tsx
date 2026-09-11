@@ -80,7 +80,7 @@ export default async function ReadPage({
                       className="border-b border-rule"
                     >
                       <Link
-                        href={`/read/${encodeURIComponent(item.id)}`}
+                        href={`/read/${encodeURIComponent(presence.sub)}/${encodeURIComponent(item.id)}`}
                         className="group block py-7"
                       >
                         <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.78rem] text-ink-faint">
@@ -129,7 +129,7 @@ export default async function ReadPage({
                     className="rounded-xl border border-rule bg-paper-raised p-5"
                   >
                     <Link
-                      href={`/read/dataset/${encodeURIComponent(item.id)}`}
+                      href={`/read/${encodeURIComponent(presence.sub)}/${encodeURIComponent(item.id)}`}
                       className="font-serif text-[1.15rem] font-semibold hover:underline"
                     >
                       {item.title}

@@ -58,8 +58,39 @@ describe("registry ownership", () => {
       address: "http://127.0.0.1:4600",
       items: [{ id: "col", title: "Col", kind: "column", tags: [] }],
     });
-    const located = registry.find("col");
+    const located = registry.find("s_real", "col");
     expect(located?.presence.sub).toBe("s_real");
+  });
+
+  it("resolves an item within a single contributor, not across them", () => {
+    // Discovery hijack found by attacking the server: item ids are
+    // author-chosen slugs, not globally unique. An attacker announced a
+    // column whose id collided with a real one, and a bare find(id) returned
+    // whichever sorted first — routing readers to the attacker's node.
+    // find() now takes the contributor's subject too, so a collision under a
+    // different subject cannot shadow the real item.
+    const registry = createRegistry();
+    registry.announce({
+      sub: "s_real",
+      displayName: "Marcus",
+      address: "http://127.0.0.1:4600",
+      items: [{ id: "col", title: "The real column", kind: "column", tags: [] }],
+    });
+    registry.announce({
+      sub: "s_evil",
+      displayName: "AAA Evil", // sorts first; would win a bare find()
+      address: "http://127.0.0.1:6666",
+      items: [{ id: "col", title: "Free crypto", kind: "column", tags: [] }],
+    });
+
+    expect(registry.find("s_real", "col")?.presence.address).toBe(
+      "http://127.0.0.1:4600",
+    );
+    expect(registry.find("s_evil", "col")?.presence.address).toBe(
+      "http://127.0.0.1:6666",
+    );
+    // Neither subject can reach into the other's namespace.
+    expect(registry.find("s_real", "nope")).toBeNull();
   });
 
   it("does not expose the connectionId as a client-facing field", () => {

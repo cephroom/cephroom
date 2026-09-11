@@ -233,6 +233,16 @@ const server = createServer(async (request, response) => {
     return send(200, dataset);
   }
 
+  // A reader's browser resolves a claim's dataset by slug against the column's
+  // own node. This answers only for the dataset this node actually serves, so
+  // a claim referencing a slug this author does not serve resolves to broken
+  // rather than silently borrowing a stranger's numbers.
+  if (url.pathname.startsWith("/dataset/")) {
+    const wanted = decodeURIComponent(url.pathname.slice("/dataset/".length));
+    if (wanted !== dataset.id) return send(404, { error: "not served here" });
+    return send(200, dataset);
+  }
+
   // Proposals live here, on the author's disk. The platform never sees them.
   if (url.pathname === "/proposals" && request.method === "GET") {
     const columnId = url.searchParams.get("column") ?? undefined;

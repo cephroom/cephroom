@@ -84,7 +84,12 @@ export interface Registry {
    */
   withdraw(connectionId: string, sub: string): boolean;
   list(): Presence[];
-  find(itemId: string): Located | null;
+  /**
+   * Resolves an item within one contributor's namespace. Both the subject and
+   * the item id are required: ids are author-chosen slugs and not globally
+   * unique, so a bare id lookup would let one contributor shadow another's.
+   */
+  find(sub: string, itemId: string): Located | null;
   search(query: string): Located[];
   size(): number;
 }
@@ -139,8 +144,9 @@ export function createRegistry(now: () => number = Date.now): Registry {
         .sort((a, b) => a.displayName.localeCompare(b.displayName));
     },
 
-    find(itemId) {
+    find(sub, itemId) {
       for (const presence of registry.list()) {
+        if (presence.sub !== sub) continue;
         const item = presence.items.find((candidate) => candidate.id === itemId);
         if (item) return { presence, item };
       }

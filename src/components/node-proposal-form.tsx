@@ -15,12 +15,14 @@ import { diffLines, diffStats, toHunks } from "@/lib/diff";
  * holding someone's draft.
  */
 export function NodeProposalForm({
+  sub,
   columnId,
   address,
   nodeKey,
   fromName,
   canPropose,
 }: {
+  sub: string;
   columnId: string;
   address: string;
   nodeKey: string;
@@ -141,7 +143,7 @@ export function NodeProposalForm({
         </p>
         <p className="mt-2 font-mono text-[0.76rem] text-ink-faint">{state.id}</p>
         <Link
-          href={`/read/${columnId}/proposals`}
+          href={`/read/${sub}/${columnId}/proposals`}
           className="mt-5 inline-block rounded-md border border-rule-strong px-4 py-2 text-[0.88rem] font-medium transition-colors hover:border-ink-faint"
         >
           See proposals on this column

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ColumnReader } from "@/components/column-reader";
+import { DatasetReader } from "@/components/dataset-reader";
 import { getViewer } from "@/lib/auth/session";
 import { mintNodeKey } from "@/lib/keys/tokens";
 import { registry } from "@/lib/signaling/registry";
@@ -11,33 +12,38 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ sub: string; id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const located = registry().find(id);
-  // When nobody is serving it, the platform does not know its title, so the
-  // page title is the id. That is not a gap - it is the contract holding.
-  return { title: located?.item.title ?? id };
+  const { sub, id } = await params;
+  const located = registry().find(decodeURIComponent(sub), decodeURIComponent(id));
+  // Offline, the platform does not know the title — it is not a gap, it is
+  // the contract holding — so the page title falls back to the id.
+  return { title: located?.item.title ?? decodeURIComponent(id) };
 }
 
-export default async function ReadColumnPage({
+export default async function ReadItemPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ sub: string; id: string }>;
 }) {
-  const { id } = await params;
-  const located = registry().find(id);
+  const { sub: rawSub, id: rawId } = await params;
+  const sub = decodeURIComponent(rawSub);
+  const id = decodeURIComponent(rawId);
+
+  const located = registry().find(sub, id);
   const viewer = await getViewer();
 
-  if (!located) return <Offline id={id} />;
+  if (!located) return <Offline sub={sub} id={id} />;
 
-  // Every dataset currently being served, so the browser can resolve a claim
-  // by fetching the dataset node directly.
-  const datasets: Record<string, string> = {};
-  for (const presence of registry().list()) {
-    for (const item of presence.items) {
-      if (item.kind === "dataset") datasets[item.id] = presence.address;
-    }
+  if (located.item.kind === "dataset") {
+    return (
+      <DatasetReader
+        address={located.presence.address}
+        servedBy={located.presence.displayName}
+        datasetId={id}
+        canExplore={viewer.tier !== "reader"}
+      />
+    );
   }
 
   const nodeKey = viewer.sub
@@ -50,10 +56,10 @@ export default async function ReadColumnPage({
 
   return (
     <ColumnReader
+      sub={sub}
       id={id}
       address={located.presence.address}
       servedBy={located.presence.displayName}
-      datasets={datasets}
       nodeKey={nodeKey}
       tier={viewer.tier}
       signedIn={Boolean(viewer.sub)}
@@ -66,13 +72,15 @@ export default async function ReadColumnPage({
  *
  * Deliberately uninformative. A helpful "Three empty cells, by Marcus
  * Oyelaran — currently offline" would require the platform to have kept the
- * title, which is the thing Contract 2 forbids. All this page has is the id
- * that was in the URL.
+ * title, which is the thing Contract 2 forbids. All this page has is the
+ * contributor and id that were in the URL.
  */
-function Offline({ id }: { id: string }) {
+function Offline({ sub, id }: { sub: string; id: string }) {
   return (
     <main className="mx-auto max-w-[40rem] px-5 py-20">
-      <p className="font-mono text-[0.8rem] text-ink-faint">{id}</p>
+      <p className="font-mono text-[0.8rem] text-ink-faint">
+        {sub} / {id}
+      </p>
 
       <h1 className="mt-4 font-serif text-[1.9rem] font-semibold leading-tight tracking-[-0.025em]">
         Nobody is serving this right now

@@ -13,14 +13,16 @@ export const metadata: Metadata = { title: "Propose an edit" };
 export default async function ProposePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ sub: string; id: string }>;
 }) {
-  const { id } = await params;
-  const located = registry().find(id);
+  const { sub: rawSub, id: rawId } = await params;
+  const sub = decodeURIComponent(rawSub);
+  const id = decodeURIComponent(rawId);
+  const located = registry().find(sub, id);
   const viewer = await getViewer();
 
   if (!viewer.sub) {
-    redirect(`/signin?next=${encodeURIComponent(`/read/${id}/propose`)}`);
+    redirect(`/signin?next=${encodeURIComponent(`/read/${sub}/${id}/propose`)}`);
   }
   if (!located) {
     return (
@@ -52,7 +54,7 @@ export default async function ProposePage({
   return (
     <main className="mx-auto max-w-4xl px-5 py-12">
       <Link
-        href={`/read/${id}`}
+        href={`/read/${sub}/${id}`}
         className="text-[0.82rem] text-ink-faint transition-colors hover:text-ink"
       >
         ← {located.item.title}
@@ -71,6 +73,7 @@ export default async function ProposePage({
       </header>
 
       <NodeProposalForm
+        sub={sub}
         columnId={id}
         address={located.presence.address}
         nodeKey={nodeKey}
