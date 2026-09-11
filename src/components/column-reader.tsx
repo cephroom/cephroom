@@ -142,8 +142,8 @@ export function ColumnReader({
 
   const resolved = useMemo(() => {
     if (phase.state !== "ready") return null;
-    return resolveClaims(phase.column.claims, phase.datasets);
-  }, [phase]);
+    return resolveClaims(phase.column.claims, phase.datasets, sub);
+  }, [phase, sub]);
 
   if (phase.state === "loading") {
     return (
@@ -324,7 +324,11 @@ export function ColumnReader({
  * Runs every claim against the datasets currently being served. The pure
  * judge from lib/claims/verdict is the same code the author's editor uses.
  */
-function resolveClaims(claims: ParsedClaim[], datasets: Map<string, Dataset>) {
+function resolveClaims(
+  claims: ParsedClaim[],
+  datasets: Map<string, Dataset>,
+  owner: string,
+) {
   const views = new Map<string, ClaimView>();
   const verdicts: ("verified" | "drifted" | "broken")[] = [];
 
@@ -392,6 +396,7 @@ function resolveClaims(claims: ParsedClaim[], datasets: Map<string, Dataset>) {
       query: {
         dataset: dataset?.name ?? claim.datasetSlug,
         datasetSlug: claim.datasetSlug,
+        owner,
         metric: claim.metric,
         subject: claim.subject,
         object: claim.object,

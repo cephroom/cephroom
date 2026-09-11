@@ -16,6 +16,8 @@ export interface ClaimView {
   query: {
     dataset: string;
     datasetSlug: string;
+    /** The pseudonymous subject serving the dataset, for the explorer link. */
+    owner: string;
     metric: string;
     subject: string;
     object: string;
@@ -196,7 +198,7 @@ export function ClaimChip({
             )}
 
             <Link
-              href={`/datasets/${claim.query.datasetSlug}?subject=${claim.query.subject}&object=${claim.query.object}`}
+              href={`/read/${encodeURIComponent(claim.query.owner)}/${encodeURIComponent(claim.query.datasetSlug)}?subject=${encodeURIComponent(claim.query.subject)}&object=${encodeURIComponent(claim.query.object)}`}
               className="mt-3 inline-block text-[0.78rem] font-medium text-accent hover:underline"
             >
               Open in dataset explorer →

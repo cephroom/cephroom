@@ -23,8 +23,10 @@ export async function generateMetadata({
 
 export default async function ReadItemPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ sub: string; id: string }>;
+  searchParams: Promise<{ subject?: string; object?: string }>;
 }) {
   const { sub: rawSub, id: rawId } = await params;
   const sub = decodeURIComponent(rawSub);
@@ -36,12 +38,18 @@ export default async function ReadItemPage({
   if (!located) return <Offline sub={sub} id={id} />;
 
   if (located.item.kind === "dataset") {
+    // A claim's inspector links here with the cell it was about, so the
+    // explorer opens on that row rather than making the reader hunt for it.
+    const { subject, object } = await searchParams;
+    const highlight =
+      subject && object ? { subject, object } : null;
     return (
       <DatasetReader
         address={located.presence.address}
         servedBy={located.presence.displayName}
         datasetId={id}
         canExplore={viewer.tier !== "reader"}
+        highlight={highlight}
       />
     );
   }

@@ -2,6 +2,24 @@ export interface MatrixCell {
   display: string;
   nPoints: number | null;
   nDocs: number | null;
+  /** Interquartile fold spread — how well the labs agree. Null if unknown. */
+  foldSpreadIqr: number | null;
+}
+
+/**
+ * How the middle-half spread reads at a glance. The thresholds are this
+ * dataset's own quartiles (median IQR fold spread ~2.25x, upper quartile
+ * ~3.9x), so "tight" and "loose" mean tight and loose relative to the data,
+ * not an arbitrary line. The word carries the meaning; the colour only
+ * reinforces it, so a reader who cannot see the colour loses nothing.
+ */
+export function describeAgreement(fold: number): {
+  word: string;
+  tone: string;
+} {
+  if (fold <= 2.5) return { word: "tight", tone: "text-verified" };
+  if (fold <= 4) return { word: "mixed", tone: "text-ink-muted" };
+  return { word: "loose", tone: "text-drifted" };
 }
 
 /**
@@ -87,6 +105,18 @@ export function DatasetMatrix({
                             {cell.nDocs !== null && ` · ${cell.nDocs} papers`}
                           </span>
                         )}
+                        {cell.foldSpreadIqr !== null &&
+                          (() => {
+                            const agree = describeAgreement(cell.foldSpreadIqr);
+                            return (
+                              <span
+                                className={`mt-0.5 block text-[0.68rem] tnum ${agree.tone}`}
+                                title="Interquartile fold spread: how far the middle half of the measurements disagree. Lower is tighter agreement between labs."
+                              >
+                                IQR {cell.foldSpreadIqr}× {agree.word}
+                              </span>
+                            );
+                          })()}
                       </>
                     ) : (
                       <span

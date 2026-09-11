@@ -25,6 +25,8 @@ interface Fact {
   unit: string | null;
   nPoints: number | null;
   nDocs: number | null;
+  foldSpread: number | null;
+  foldSpreadIqr: number | null;
 }
 
 interface Dataset {
@@ -68,11 +70,13 @@ export function DatasetReader({
   servedBy,
   datasetId,
   canExplore,
+  highlight = null,
 }: {
   address: string;
   servedBy: string;
   datasetId: string;
   canExplore: boolean;
+  highlight?: { subject: string; object: string } | null;
 }) {
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +125,7 @@ export function DatasetReader({
         display: formatValue(fact.value, null),
         nPoints: fact.nPoints,
         nDocs: fact.nDocs,
+        foldSpreadIqr: fact.foldSpreadIqr,
       });
     }
 
@@ -286,9 +291,9 @@ export function DatasetReader({
           <DatasetMatrix
             subjects={subjects}
             objects={objects}
+            highlight={highlight}
             cells={cells}
             unit={metric.unit}
-            highlight={null}
           />
         ) : (
           <div className="mt-5 rounded-xl border border-rule bg-paper-raised p-6">
