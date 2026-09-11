@@ -81,3 +81,53 @@ contract-clean. Noted for the research/extend steps, not built yet.
   central storage, permanent cached repos.
 - Open question for later cycles: content-addressed identifiers for
   cite-time verification without storage.
+
+## Visit: Our World in Data, read as a reader (2026-09-12)
+
+Read the Life expectancy chart page, ourworldindata.org/grapher/life-expectancy.
+This is the closest live analog to the whole product: prose and a chart whose
+truth depends on data that keeps moving. What they do about that is the point.
+
+Observed on the page itself:
+
+- **A freshness contract, stated inline.** Under the chart:
+  "Last updated 2025-10-22 · Next expected update 2026-10-22". They do not
+  just timestamp the data; they *promise a next refresh date* and name the
+  steward ("Managed by …"). The data is treated as living, on a published
+  cadence.
+- **Sources and licence ride with the chart**, not in a footnotes page:
+  "Data source: Riley (2005); Zijdeman et al. (2015); HMD (2025); UN WPP
+  (2024) — with major processing by Our World in Data … CC BY". Provenance
+  includes *how much processing* sits between source and number.
+- **The same data in several shapes** — Table / Map / Line / Bar toggles over
+  one dataset — plus Download (the underlying numbers) and a stable citable
+  URL.
+
+### Adopt
+
+- **Say when the data was made, next to the number.** Our claim-check header
+  shows the dataset release (`@ChEMBL_37`) but not *when* that release was
+  generated. The node already carries `generatedAt`; surfacing it as a
+  "dataset generated YYYY-MM-DD" line would make the freshness of a verified
+  claim legible the way OWID's "last updated" does — without promising a next
+  update we do not control.
+- **One dataset, more than one shape.** The matrix is table-only. OWID's
+  Table/Line/Bar toggle is a reminder that a reader compares cells better
+  with a second representation. A later cycle: a per-target or per-compound
+  view of the same facts, still node-served.
+
+### Reject (the contracts forbid the mechanism, not the goal)
+
+- **The "next expected update" promise.** It requires the platform to own the
+  update pipeline and the archive behind the URL. Contract 2 puts the data on
+  the contributor's machine; we cannot promise a refresh we do not run. Our
+  answer to staleness is the opposite shape: not a promised future refresh,
+  but a re-check that runs in the reader's browser *every* read. OWID keeps
+  the number current and dates it; we keep the *claim* honest and flag it the
+  instant the data moves.
+- **The stable, always-available citable URL.** OWID's page is the sharpest
+  illustration of what Contract 3 costs us: their URL is permanent and always
+  answers because they store everything centrally. Ours stops answering the
+  moment the contributor goes offline. This is the citability gap, already
+  recorded honestly in CONTRACTS.md — OWID is the concrete thing a reader
+  gives up in exchange for "no data at rest".
