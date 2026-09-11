@@ -3,12 +3,17 @@
 **Science writing with a build step.**
 
 A subscription publication for pharmacology and neuroscience where every
-number in a column is a live query against a versioned dataset, and every one
-of those queries is re-run whenever the dataset ships a new release.
+number in a column is a live query against a dataset, re-checked in your
+browser on the way in.
+
+It is also built to two constraints that decide nearly everything else about
+it: **the platform stores nothing about you, and stores nothing anyone
+writes.** Both are specified in [docs/CONTRACTS.md](docs/CONTRACTS.md) and
+enforced by tests in [`tests/contracts/`](tests/contracts).
 
 ---
 
-## The problem
+## The editorial problem
 
 A review article is a snapshot. The databases underneath it are not.
 
@@ -19,14 +24,9 @@ against the current data, so the literature slowly accumulates sentences that
 were true once.
 
 Software had the same problem and did not solve it by writing more carefully.
-It solved it with continuous integration: every change re-runs every test, and
-a regression announces itself. Bindery applies that mechanism to the numbers
-in prose.
-
-## How it works
-
-An author does not type a measured number. They write the query that produces
-it, and record what that query returned at the time of writing:
+It solved it with continuous integration. Bindery does the same for numbers in
+prose — an author never types a measured value, they write the query that
+produces it:
 
 ````markdown
 Haloperidol binds the human D2 receptor with a median Ki of
@@ -38,142 +38,131 @@ dataset: receptorome-ki
 metric:  median_ki_nm
 subject: DRD2
 object:  haloperidol
-scope:   all
 value:   1.549 nM
 tolerance: 10%
 ```
 ````
 
-The reader gets the value the dataset holds *now*, rendered at read time, with
-a coloured dot carrying the verdict of the last check run. The `value:` line is
-never displayed — it exists so CI has something to compare against.
-
-Three verdicts:
-
 | Verdict | Meaning |
 | --- | --- |
-| **verified** | Within the tolerance the author set. The sentence still says what it said. |
+| **verified** | Within the tolerance the author set. |
 | **drifted** | Both values exist and differ by more than the tolerance. The number on the page is current; the argument around it may not follow. |
-| **broken** | The query no longer resolves. A unit mismatch counts as broken, not drifted — `1.55 nM` against `1.55 µM` is not a 0% drift, it is a question the runner is not allowed to answer by guessing a conversion. |
+| **broken** | The query did not resolve. A unit mismatch counts as broken, not drifted — `1.55 nM` against `1.55 µM` is a question nothing here may answer by guessing a conversion. |
 
-Checks run on publish, on demand, and — the one that matters — on every
-dataset release:
+The check runs **in the reader's browser, at read time**, against the dataset
+as it is right now. That is a consequence of the second contract rather than a
+design flourish, and it is better than what it replaced: a badge can no longer
+be green because of a build that ran three weeks ago.
 
-```bash
-npm run db:release                 # re-import the snapshot, re-check everything
-npm run db:release -- --simulate   # model an upstream release that moves values
-```
+## The two contracts
 
-`--simulate` perturbs three cells to model ChEMBL adding papers, then cascades.
-Two columns flip from passing to drifted with the responsible claims named; a
-control cell that moves 4% inside a 15% tolerance correctly stays green. It is
-labelled in the dataset's own release string and provenance notes, because a
-publication whose premise is traceable numbers should not quietly sit on
-fabricated ones.
+### 1. No user data at rest
 
-## What else GitHub actually contributed
+No user table, no profile rows, no session store, no local mirror of anyone's
+subscription. There is no database at all — no schema, no migrations, and no
+ORM in the dependency list.
 
-Version control was never the interesting part. What changed software was that
-every change got diffed, reviewed and re-tested. So:
+You sign in with Google; nothing is written as a result. You receive an
+Ed25519-signed **capability key** carrying a pseudonymous subject, a tier and
+an expiry. Every authorization decision after that is a signature check.
 
-- **Revisions.** Every publish is a commit with a message, not a
-  last-modified timestamp.
-- **Forks.** Copy a column into a draft you own, lineage recorded and shown on
-  the published page. A copy, not a live reference — a fork is a claim that
-  your version stands on its own.
-- **Proposals.** The pull request. Edit the text, say why, and the author
-  reviews a unified diff. Merging writes a revision crediting the proposer and
-  re-runs CI; if a claim comes back broken the merge is rolled back rather than
-  published.
-- **Repository pinning.** A column names the GitHub repo and commit that
-  produced its analysis, so the prose, the data snapshot and the code all point
-  at each other.
+- Tier is read from **Stripe, live**, at key-issue and every renewal. Stripe
+  is the only stateful party, and it holds the subject-to-customer mapping in
+  its own customer metadata so that we do not have to.
+- **Keys cannot be revoked.** Revocation needs a blocklist and a blocklist is
+  state. Access keys last 15 minutes, renewal keys 7 days. A cancellation
+  takes effect within 15 minutes; a stolen renewal key cannot be invalidated
+  short of rotating the signing key, which signs everybody out. That weakness
+  is real and is written down rather than hidden behind "short-lived tokens".
+- No password, because a password is something we would have to store.
+- No request logging that retains identity, no analytics, no error reporter,
+  and the platform never reads a client IP.
 
-## What it does not do
+Signing is asymmetric because a contributor's node has to verify a reader's
+key with a public key alone. A shared secret would let every node mint keys.
 
-It does not check reasoning. A column can be entirely green and still draw a
-conclusion the numbers do not support — one of the seeded columns is partly
-about exactly that failure. Checked claims remove the silent-rot class of
-error and leave every other class where it was.
+### 2. Data stays local
 
-It does not improve the underlying data either. The seeded dataset has cells
-resting on a single measurement from a single paper. Those cells are checkable
-and still thin, which is why every claim carries its evidence count beside its
-value.
+A contributor runs a **node** on their own machine. It reads their columns off
+their own disk, announces ids, titles and an address to the platform, and
+serves readers directly. Your browser fetches the bytes from theirs — the
+platform is not in the request path, so it has nothing to cache or proxy.
 
-## The dataset
+The registry of who is online is a `Map` keyed by a lease, held in RAM and
+never written. Expiry is lazy: a lapsed entry is filtered out on read rather
+than swept, so work disappears because the lease was what made it visible, not
+because a cleanup job noticed.
 
-The evidence layer is a vendored snapshot of the
-[receptorome](https://github.com/jtchang/receptorome) pipeline: median Ki and
-pKi for eight antipsychotics across ten aminergic GPCRs, derived from ChEMBL
-release 37.
+- **There is no archive.** You cannot cite a column and expect it next year.
+  If nobody will serve it, nobody is standing behind it.
+- **Discovery is presence.** Search reaches what is online, because an index
+  of everything would be a copy of everything.
+- An offline contributor is absent, and the page you land on cannot even name
+  what used to be there — a helpful tombstone would mean the platform had kept
+  the title.
 
-Its discipline is carried through to the UI rather than flattened into it:
-
-- **Ki only.** IC50 and Kd are landed for context and never converted.
-- **No imputation.** Empty cells stay empty and are listed by name. Three of
-  the eighty cells have no data at all; they are named on the dataset page.
-- **Censored is not missing.** `>10000 nM` is a measurement and a true
-  negative. Counted separately, never folded into the empty count.
-- **Coverage is a ladder, not a number.** 96% have any measurement; 88% have a
-  point estimate from a confirmed-human assay. Which one you should quote
-  depends on what you intend to do next.
+Both contracts bend in four documented places, all listed in
+[docs/CONTRACTS.md](docs/CONTRACTS.md), along with the features that were
+built and then cut because they could not coexist with the rules.
 
 ## Running it
 
+Two processes: the platform, and at least one contributor node.
+
 ```bash
 npm install
-cp .env.example .env.local     # the defaults work as-is for local development
-npm run db:push                # create the SQLite database
-npm run db:seed                # dataset, users, five columns, one CI run each
-npm run dev
+cp .env.example .env.local
+npm run keys:generate        # paste the three lines into .env.local
+npm run dev                  # the platform, on :3000
+
+# in another terminal
+npm run node:serve           # a contributor's node, on :4600
 ```
 
-Open <http://localhost:3000>. Seeded logins, all with password `binderydemo`:
+Open <http://localhost:3000/read>. The node ships five columns and the
+receptorome dataset as example content; point it at your own directory and it
+serves that instead.
 
-| Email | Role |
-| --- | --- |
-| `demo@bindery.science` | reader, no subscription |
-| `marcus@bindery.science` | author |
-| `elena@bindery.science` | editor |
+Stop the node and reload — the work disappears from the site. That is the
+second contract, observable.
 
 ### Authentication
 
-Google and GitHub OAuth are wired and need credentials only the owner of a
-deployment can create; set `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` and
-`AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` to enable them. Until then they render
-as disabled buttons naming the variables they want, rather than disappearing.
+Google and GitHub OAuth need credentials only the owner of a deployment can
+create; set `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` and the GitHub pair to
+enable them. Until then they render as disabled buttons naming the variables
+they want.
 
 With `AUTH_DEV_OAUTH=1` a local OAuth identity provider is mounted at
-`/api/dev-oauth`. It is not a mock of Auth.js — it is a mock of the *identity
-provider*, which is the part that cannot be provisioned locally. The full
-authorize → code → token → userinfo → account-linking flow runs exactly as it
-will against Google.
+`/api/dev-oauth`. It is not a mock of our auth code — it is a mock of the
+*identity provider*, the part that cannot be provisioned locally. The full
+authorization-code flow with PKCE runs against it exactly as it will against
+Google.
+
+The OAuth flow is hand-rolled rather than delegated to a library. Auth
+libraries are built around an adapter that persists users, accounts and
+sessions; even configured not to, they carry the machinery. Implementing the
+code flow directly is about 150 lines and makes "nothing is written" auditable
+by reading it.
 
 ### Billing
 
-The application talks to a narrow `StripeGateway` port, and one environment
+The platform talks to a narrow `StripeGateway` port, and one environment
 variable decides which implementation answers.
 
-- **`STRIPE_SECRET_KEY` set** → the real Stripe SDK. A test key gives Stripe
-  test mode; a live key gives live mode. Going live is a key swap plus the
-  `STRIPE_PRICE_*` ids, and nothing else.
-- **unset** → a local stand-in that stores customers, subscriptions and
-  invoices, serves a stand-in checkout page, and posts *genuinely signed*
-  webhook events back to this application's real `/api/stripe/webhook`.
+- **`STRIPE_SECRET_KEY` set** → the real Stripe SDK. Test key for test mode,
+  live key for live. Going live is a key swap plus the `STRIPE_PRICE_*` ids.
+- **unset** → a simulated counterparty under `simulated-counterparties/`,
+  holding its own records the way Stripe would.
 
-Signature verification, event idempotency, the subscription state machine and
-the entitlement rules are the same code in both modes. A forged signature gets
-a 400 either way. The account page grows a set of local controls that fire the
-events Stripe would send over the following days — a successful retry, an
-exhausted dunning cycle, a period rollover — so the lifecycle is walkable now
-rather than in a week.
+The simulated store is the one place in the repository that writes user data
+to disk, and it is outside `src/` so that the boundary is structural rather
+than a comment. The contract tests allowlist exactly that path and fail if the
+allowlist grows.
 
-One judgement call worth knowing about: `past_due` keeps access. Stripe retries
-a declined card over several days, and cutting someone off at the first decline
-punishes an expired card rather than a decision to leave. Access ends at
-`unpaid` or `canceled`. Cancellation is always at period end — someone who paid
-for the month keeps the month.
+`past_due` keeps access: Stripe retries a declined card over several days, and
+cutting someone off at the first decline punishes an expired card rather than
+a decision to leave. Cancellation is always at period end.
 
 ## Plans
 
@@ -183,55 +172,59 @@ for the month keeps the month.
 | Open columns in full | ✓ | ✓ | ✓ |
 | Member columns | preview | ✓ | ✓ |
 | Claim inspector | | ✓ | ✓ |
-| Dataset explorer | | ✓ | ✓ |
-| Propose edits and fork | | ✓ | ✓ |
 | Lab columns | | | ✓ |
-| The studio and your own datasets | | | ✓ |
+
+Access is enforced by the **node**, not by the platform — the node verifies
+your key with the platform's public key and decides what to send. The platform
+could not enforce it if it wanted to, because it is not in the request path.
+
+Publishing costs nothing. Run a node and your work is discoverable for as long
+as you serve it.
 
 ## Stack
 
 - **Next.js 16** — App Router, Turbopack, React Server Components
-- **TypeScript** in strict mode, **Tailwind CSS v4**
-- **Drizzle ORM** over **libSQL** — a file in development, a Turso URL in
-  production
-- **Auth.js v5** — Google, GitHub, email/password
-- **Stripe** — behind a port, with a local stand-in for the counterparty
+- **TypeScript** strict, **Tailwind CSS v4**
+- **jose** — Ed25519 capability keys
+- **Stripe** — behind a port, with a simulated counterparty for development
 - **Vitest** — the claim parser, the drift judge, the access policy, the
-  subscription projection and the differ are pure and covered
+  differ, and both contracts
+- No database, by contract
 
 ## Layout
 
 ```
 src/
-  app/                 routes; (auth) and dev/ are grouped separately
-  components/          view layer, mostly server components
+  app/                    routes
+    api/auth/             hand-rolled OAuth, key minting and renewal
+    api/signal/           the only thing nodes say to the platform
+    .well-known/          the public key a node verifies readers with
   lib/
-    access.ts          who can read what, no I/O, tested
-    claims/
-      syntax.ts        the claim grammar, pure
-      verdict.ts       the drift judge, pure
-      engine.ts        the CI runner, takes its db handle as an argument
-      runner.ts        the same engine bound to the app's handle
-    collab/            forks and proposals
-    diff.ts            line diff for proposal review, pure
-    stripe/
-      plans.ts         the only price table
-      projection.ts    Stripe subscription -> stored row, pure
-      gateway.ts       one switch between live and local
-      live.ts local.ts the two implementations
-    studio/            authoring
-content/seed/          the five seeded columns, as authored
-data/receptorome/      the vendored ChEMBL snapshot
-scripts/               seed, import, release
+    access.ts             who may read what, pure, tested
+    keys/tokens.ts        minting and verifying capability keys
+    signaling/registry.ts presence, in RAM, keyed by a lease
+    claims/syntax.ts      the claim grammar, pure
+    claims/verdict.ts     the drift judge, pure
+    diff.ts               line diff, pure
+    stripe/               the gateway port and the live adapter
+node/                     a contributor's node, and its example content
+simulated-counterparties/ stands in for Stripe in development
+tests/contracts/          the contracts, enforced
+docs/CONTRACTS.md         the contracts, stated
 ```
 
 ## Tests
 
 ```bash
-npm test        # vitest
-npm run lint
+npm test
 npm run build
 ```
+
+95 tests. The contract suite is the interesting part: it fails if a schema
+file appears, if a database client is added to the dependency list, if
+anything in `src/` writes to disk, if a client IP is read, if identity
+handling spreads into a module not on a short named allowlist, or if
+exercising the registry leaves a single byte behind.
 
 ## Licence
 

@@ -6,6 +6,22 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Working on Bindery
 
+## Read docs/CONTRACTS.md first
+
+Two constraints govern this platform: it persists nothing about users, and it
+stores nothing anyone writes. They are not preferences. When a feature and a
+contract conflict, the contract wins and the feature is cut.
+
+`tests/contracts/` enforces them. If you can make those tests pass while
+violating the spirit of a contract, the test is wrong - fix the test. If you
+genuinely need to bend a contract, add it to the "Where the contracts bend"
+list with a reason, and expect the allowlist assertions to make that a visible
+diff.
+
+There is no database. Do not add one, do not add an ORM, and do not add a
+cache keyed by identity. If something seems to need durable state, it almost
+certainly belongs in the contributor's node or at Stripe.
+
 ## Things that will bite you
 
 **Tailwind's automatic source detection skips directories whose names contain
@@ -26,32 +42,37 @@ element's key is read as `node.properties.claimkey`, lowercase, not
 `dataClaimKey`.
 
 **Server actions are public endpoints.** Every one of them re-derives the
-viewer and re-checks authorisation; none of them trust a hidden field. The
-local billing controls in particular only act on the signed-in reader's own
-subscription.
+viewer from their key and re-checks authorisation against Stripe; none trust a
+hidden field. The simulated billing controls in particular confirm the
+subscription belongs to the caller before touching it.
+
+**Cookies cannot be set while rendering a page.** Re-issuing a key after a
+billing change has to happen in a route handler or a server action, which is
+why checkout returns through `/api/auth/restamp` rather than straight to
+`/account`.
 
 ## Where the invariants live
 
 Business rules are in pure modules with tests beside them, deliberately
-separated from the code that reaches a database:
+separated from anything that touches a network or a cookie:
 
 | Rule | Module |
 | --- | --- |
 | Who can read what | `src/lib/access.ts` |
 | The claim grammar | `src/lib/claims/syntax.ts` |
 | Verified / drifted / broken | `src/lib/claims/verdict.ts` |
-| Stripe subscription → stored row | `src/lib/stripe/projection.ts` |
+| Presence, and when it lapses | `src/lib/signaling/registry.ts` |
+| Minting and verifying keys | `src/lib/keys/tokens.ts` |
 | Diffing a proposal | `src/lib/diff.ts` |
 
 If you are about to encode a judgement call — what `past_due` means for
 access, whether a unit mismatch is drift — it belongs in one of those, with a
 test that states the decision rather than only exercising the code.
 
-**The check engine takes its database handle as an argument**
-(`src/lib/claims/engine.ts`). `runner.ts` binds the app's server-only handle;
-the seed and release scripts pass their own. An earlier version had the
-scripts carrying a second implementation of the same loop, which is how you
-end up with a CI runner that disagrees with itself. Do not reintroduce that.
+**The claim parser and the drift judge are shared three ways**: the
+contributor's node parses with them, the reader's browser judges with them,
+and the tests cover them. Keep them pure and free of Node built-ins, or the
+browser half breaks.
 
 ## Local counterparties, not local mocks
 
@@ -60,28 +81,27 @@ and a Stripe account. Both are handled by mocking the *counterparty* rather
 than our own code.
 
 - `src/lib/auth/dev-oauth.ts` plus `src/app/api/dev-oauth/*` is a real OAuth
-  2.0 provider. Auth.js runs its ordinary flow against it.
-- `src/lib/stripe/local.ts` stores customers, subscriptions and invoices,
-  serves a checkout page, and posts webhook events signed with Stripe's real
-  signature scheme to our real webhook route.
+  2.0 provider. The hand-rolled code flow runs against it exactly as it will
+  against Google.
+- `simulated-counterparties/stripe/` stores customers and subscriptions the
+  way Stripe would, and the gateway switch decides which answers.
 
-The consequence is that signature verification, idempotency, the state machine
-and the entitlement rules are the production code paths in development too.
-Keep it that way: a mock of our own billing logic would test nothing.
+The consequence is that the entitlement rules, the key minting and the access
+decisions are the production code paths in development too. Keep it that way:
+a mock of our own billing logic would test nothing.
 
 ## Data honesty
 
 This is a publication about evidence quality, and the codebase is held to the
 same standard as the columns.
 
-- Empty dataset cells are dropped on import, never null-filled, so a claim
-  against one fails loudly instead of resolving to "no data".
-- The runner never converts between units or activity types. A unit mismatch
-  is `broken`.
-- `npm run db:release -- --simulate` writes values that are not from ChEMBL. It
-  labels them in the dataset's release string and provenance notes, and the
-  demo database is restored afterwards. If you add another simulation, label it
-  the same way.
+- Empty dataset cells are dropped when the node reads them, never null-filled,
+  so a claim against one fails loudly instead of resolving to "no data".
+- The judge never converts between units or activity types. A unit mismatch is
+  `broken`.
+- If you ever ship values that are not from the upstream source, label them in
+  the dataset's own release string and notes, and restore the real snapshot
+  afterwards.
 
 ## Before committing
 
