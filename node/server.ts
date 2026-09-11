@@ -52,6 +52,15 @@ const DATA_DIR = resolve(
 );
 const HAS_DATASET = existsSync(join(DATA_DIR, "gap_report.json"));
 
+// Proposal-channel limits. A proposal lands on this contributor's disk, so
+// these bound a member's ability to fill it. A column body is Markdown;
+// 512 KB is generous. The request cap sits a little above the body cap to
+// leave room for the surrounding JSON.
+const MAX_BODY_CHARS = 512 * 1024;
+const MAX_PROPOSAL_BYTES = 640 * 1024;
+const MAX_OPEN_PER_SUBJECT = 20;
+const TOO_LARGE = Symbol("payload-too-large");
+
 /* ------------------------------------------------------------------ *
  * What this node serves, read from the contributor's own disk
  * ------------------------------------------------------------------ */
@@ -270,16 +279,35 @@ const server = createServer(async (request, response) => {
       });
     }
 
-    const payload = await readJson(request);
+    // A proposal is written to the contributor's own disk, so the channel is
+    // a disk-fill vector: without caps, any member could POST unbounded bytes
+    // or unbounded proposals to fill it. Bound the body at the door, bound
+    // each field, and bound how many open proposals one subject may hold on
+    // one column.
+    const payload = await readJson(request, MAX_PROPOSAL_BYTES);
+    if (payload === TOO_LARGE) {
+      return send(413, { error: "Proposal too large." });
+    }
     const columnId = String(payload?.columnId ?? "");
     const column = columns.find((candidate) => candidate.id === columnId);
     if (!column) return send(404, { error: "not served here" });
 
     const body = String(payload?.body ?? "");
     const title = String(payload?.title ?? "").trim();
+    const rationale = String(payload?.rationale ?? "").trim();
+    const fromName = String(payload?.fromName ?? "A reader").slice(0, 120);
+
     if (!title) return send(400, { error: "Give the proposal a title." });
+    if (title.length > 300 || rationale.length > 4000 || body.length > MAX_BODY_CHARS) {
+      return send(400, { error: "A field is too long." });
+    }
     if (body.trim() === column.body.trim()) {
       return send(400, { error: "Nothing changed." });
+    }
+    if (proposals.openFromSubject(columnId, key.sub) >= MAX_OPEN_PER_SUBJECT) {
+      return send(429, {
+        error: "You have too many open proposals on this column already.",
+      });
     }
 
     const parsed = parseBody(body);
@@ -292,10 +320,10 @@ const server = createServer(async (request, response) => {
       proposals.create({
         columnId,
         title,
-        rationale: String(payload?.rationale ?? "").trim(),
+        rationale,
         body,
         fromSub: key.sub,
-        fromName: String(payload?.fromName ?? "A reader"),
+        fromName,
       }),
     );
   }
@@ -377,9 +405,20 @@ async function tierFromRequest(header: string | undefined) {
 
 async function readJson(
   request: import("node:http").IncomingMessage,
-): Promise<Record<string, unknown> | null> {
+  maxBytes: number,
+): Promise<Record<string, unknown> | null | typeof TOO_LARGE> {
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(chunk as Buffer);
+  let total = 0;
+  for await (const chunk of request) {
+    total += (chunk as Buffer).length;
+    // Stop reading the moment the cap is exceeded, so an attacker cannot make
+    // the node buffer gigabytes before it decides to reject them.
+    if (total > maxBytes) {
+      request.destroy();
+      return TOO_LARGE;
+    }
+    chunks.push(chunk as Buffer);
+  }
   try {
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch {

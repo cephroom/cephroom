@@ -83,4 +83,11 @@ export class ProposalStore {
   countOpen(columnId: string): number {
     return this.list(columnId).filter((p) => p.status === "open").length;
   }
+
+  /** Open proposals a single subject holds on a column — the flood limiter. */
+  openFromSubject(columnId: string, sub: string): number {
+    return this.list(columnId).filter(
+      (p) => p.status === "open" && p.fromSub === sub,
+    ).length;
+  }
 }

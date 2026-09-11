@@ -339,6 +339,17 @@ Contract 2 — their data lives with them.
 **Bounded by:** `node/` is not the platform. The contract tests scope
 themselves to `src/` and the deployed surface.
 
+**Hardened against the write channel it exposes.** A proposal is the one thing
+a stranger can cause a node to write, so it is a disk-fill vector. Attacking
+the local node confirmed an unbounded one: a 3 MB proposal body was accepted
+and written. The node now (a) caps the request body while reading it, so it
+never buffers more than ~640 KB before rejecting with 413; (b) bounds each
+field — 512 KB body, 300-char title, 4 KB rationale — with 400; and (c) limits
+one subject to 20 open proposals per column with 429, so nobody can flood the
+count. Verified all three against the running node, and the count gate is
+covered by `tests/node/proposal-store.test.ts`. A resolved proposal frees the
+subject's budget, so an author working through their queue is not punished.
+
 ---
 
 ## What was cut
