@@ -29,6 +29,11 @@ import { importReceptorome } from "./import-receptorome";
 
 const CONTENT_DIR = join(process.cwd(), "content", "seed");
 
+// The seeded authors get passwords so the author-side flows - the studio,
+// reviewing a proposal on your own column - are reachable in a fresh clone
+// without editing the database by hand.
+const DEMO_PASSWORD = "binderydemo";
+
 const AUTHORS = [
   {
     key: "elena",
@@ -36,6 +41,7 @@ const AUTHORS = [
     name: "Elena Warrick",
     email: "elena@bindery.science",
     role: "editor" as const,
+    password: DEMO_PASSWORD,
     bio: "Editor of Bindery. Pharmacology, badly-behaved numbers, and the gap between an assay and a patient.",
   },
   {
@@ -44,6 +50,7 @@ const AUTHORS = [
     name: "Marcus Oyelaran",
     email: "marcus@bindery.science",
     role: "author" as const,
+    password: DEMO_PASSWORD,
     bio: "Writes about evidence quality in chemical biology. Previously built target-deconvolution pipelines that did not work, and said so.",
   },
 ];
@@ -52,7 +59,7 @@ const DEMO_READER = {
   handle: "demo",
   name: "Demo Reader",
   email: "demo@bindery.science",
-  password: "binderydemo",
+  password: DEMO_PASSWORD,
 };
 
 interface SeedDoc {
@@ -338,7 +345,11 @@ async function main() {
   }
 
   console.log("\nSeed complete.");
-  console.log(`Demo login: ${DEMO_READER.email} / ${DEMO_READER.password}`);
+  console.log(`Logins, all with the password "${DEMO_PASSWORD}":`);
+  console.log(`  ${DEMO_READER.email}  (reader, no subscription)`);
+  for (const author of AUTHORS) {
+    console.log(`  ${author.email}  (${author.role})`);
+  }
 }
 
 main().then(

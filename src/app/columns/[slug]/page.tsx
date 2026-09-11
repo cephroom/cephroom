@@ -12,6 +12,7 @@ import {
   relatedColumns,
   splitPreview,
 } from "@/lib/columns";
+import { openProposalCount } from "@/lib/collab/queries";
 import { canRead, getViewer } from "@/lib/entitlements";
 
 export async function generateMetadata({
@@ -45,7 +46,10 @@ export default async function ColumnPage({
   const entitled = canRead(viewer, column.access);
   const { preview, hiddenBlocks } = splitPreview(detail!.prose);
   const body = entitled ? detail!.prose : preview;
-  const related = await relatedColumns(column.id);
+  const [related, openProposals] = await Promise.all([
+    relatedColumns(column.id),
+    openProposalCount(column.id),
+  ]);
 
   return (
     <main>
@@ -86,6 +90,18 @@ export default async function ColumnPage({
               </span>
             )}
           </div>
+
+          {detail!.forkedFrom && (
+            <p className="mt-3 text-[0.82rem] text-ink-muted">
+              Forked from{" "}
+              <Link
+                href={`/columns/${detail!.forkedFrom.slug}`}
+                className="font-medium text-accent hover:underline"
+              >
+                {detail!.forkedFrom.title}
+              </Link>
+            </p>
+          )}
         </header>
 
         {/* --------------------------------------------- Build status strip */}
@@ -196,6 +212,14 @@ export default async function ColumnPage({
                 className="rounded-md border border-rule-strong px-4 py-2 text-[0.86rem] font-medium transition-colors hover:border-ink-faint"
               >
                 Fork this column
+              </Link>
+              <Link
+                href={`/columns/${column.slug}/proposals`}
+                className="rounded-md px-4 py-2 text-[0.86rem] font-medium text-ink-muted transition-colors hover:text-ink"
+              >
+                {openProposals > 0
+                  ? `${openProposals} open proposal${openProposals === 1 ? "" : "s"}`
+                  : "All proposals"}
               </Link>
             </div>
           </section>
