@@ -22,7 +22,11 @@ export default async function HomePage() {
           <div className="max-w-3xl">
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-rule bg-paper-raised px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-ink-muted">
               <span className="h-1.5 w-1.5 rounded-full bg-verified" />
-              Pharmacology · neuroscience · evidence quality
+              {/* The full list does not fit on one line at 375px, and a
+                  two-line pill reads as a mistake. */}
+              Pharmacology
+              <span className="hidden sm:inline"> · neuroscience</span> ·
+              evidence quality
             </p>
 
             <h1 className="font-serif text-[2.6rem] font-semibold leading-[1.08] tracking-[-0.025em] sm:text-[3.6rem]">
