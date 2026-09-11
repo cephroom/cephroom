@@ -60,6 +60,8 @@ interface Dataset {
   id: string;
   name: string;
   release: string;
+  /** When this release of the data was generated. Absent on older nodes. */
+  generatedAt?: string;
   facts: Fact[];
 }
 
@@ -252,6 +254,17 @@ export function ColumnReader({
               <span key={dataset.id}>
                 <span className="text-ink-faint">dataset</span> {dataset.id}{" "}
                 <span className="font-mono">@{dataset.release}</span>
+                {dataset.generatedAt && (
+                  <span className="text-ink-faint">
+                    {" "}
+                    · generated{" "}
+                    {new Date(dataset.generatedAt).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                )}
               </span>
             ))}
             {column.repo && (
