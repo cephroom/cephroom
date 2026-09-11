@@ -3,8 +3,9 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand";
 import { KeyMenu } from "@/components/key-menu";
 import { MobileNav } from "@/components/mobile-nav";
+import { SessionResume } from "@/components/session-resume";
 import { TIER_LABEL } from "@/lib/access";
-import { getViewer } from "@/lib/auth/session";
+import { canResumeSession, getViewer } from "@/lib/auth/session";
 
 const NAV = [
   { href: "/read", label: "Reading now" },
@@ -17,8 +18,14 @@ export async function SiteHeader() {
   // Reading a cookie and verifying a signature. No lookup, because there is
   // nothing to look anything up in.
   const viewer = await getViewer();
+  // A returning member whose 15-minute access key lapsed but whose 7-day
+  // refresh key is still good would otherwise appear signed out on a cold
+  // load. This resumes them silently.
+  const resumable = !viewer.sub && (await canResumeSession());
 
   return (
+    <>
+    {resumable && <SessionResume />}
     <header className="sticky top-0 z-40 border-b border-rule bg-paper/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-5">
         <Wordmark />
@@ -64,5 +71,6 @@ export async function SiteHeader() {
         </div>
       </div>
     </header>
+    </>
   );
 }
