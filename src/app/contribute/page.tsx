@@ -31,17 +31,33 @@ export default async function ContributePage() {
       <div className="prose mt-10">
         <h2>Start a node</h2>
         <p>
-          The repository ships one, with the receptorome dataset and a handful
-          of columns as its example content. Point it at your own directory and
-          it serves that instead.
+          Clone the repository and run the node it ships. With no arguments it
+          serves the demo content — the receptorome dataset and a handful of
+          example columns — so you can see the whole loop working before you
+          point it anywhere.
         </p>
       </div>
 
       <pre className="scroll-x mt-5 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed">
-        {`npm run node:serve
+        {`git clone <this repo> && cd receptorome && npm install
+npm run node:serve                       # serves the demo content`}
+      </pre>
 
-# or, with your own identity and port
-npm run node:serve -- --port 4600 --name "Your Name"`}
+      <div className="prose mt-8">
+        <h3>Serve your own work</h3>
+        <p>
+          A column is a Markdown file with front matter (a <code>slug</code>,{" "}
+          <code>title</code>, and <code>access</code>). Put your columns in a
+          directory and point the node at it. That directory <em>is</em> your
+          manifest — the node serves every <code>.md</code> file it finds.
+        </p>
+      </div>
+
+      <pre className="scroll-x mt-5 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed">
+        {`npm run node:serve -- \\
+  --content ./my-columns \\
+  --name "Your Name" \\
+  --port 4600`}
       </pre>
 
       <div className="prose mt-8">
@@ -50,6 +66,16 @@ npm run node:serve -- --port 4600 --name "Your Name"`}
           alive. On <code>Ctrl-C</code> it withdraws, and the platform forgets
           it immediately — there is nothing to clean up, because the
           announcement was the only record.
+        </p>
+
+        <h3>Serving under your own identity</h3>
+        <p>
+          Every announcement is signed. In this local build the node borrows
+          the platform&rsquo;s signing key and serves under a default subject,
+          which is fine for trying it out. To serve as <em>you</em> — so your
+          work is namespaced to your subject and nobody else can announce under
+          it — sign in, and set the key you are issued as{" "}
+          <code>NODE_KEY</code> in the node&rsquo;s environment.
         </p>
 
         <h2>What the platform learns</h2>

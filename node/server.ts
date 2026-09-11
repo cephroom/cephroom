@@ -15,8 +15,8 @@
  *   npm run node:serve -- --port 4600 --name "Marcus Oyelaran"
  */
 import { createServer } from "node:http";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import { config } from "dotenv";
 
@@ -39,8 +39,18 @@ const DISPLAY_NAME = flag("name", "Marcus Oyelaran");
 const SUB = flag("sub", process.env.NODE_SUBJECT ?? "s_localnode_marcus");
 const ADDRESS = flag("address", `http://127.0.0.1:${PORT}`);
 
-const CONTENT_DIR = join(import.meta.dirname, "content");
-const DATA_DIR = join(import.meta.dirname, "data");
+// A contributor points the node at their own work with --content and --data
+// (or CONTENT_DIR / DATA_DIR in the env). Absent, it serves the demo content
+// that ships with the repo. Relative paths resolve against the directory the
+// node runs from, not the repo, so `--content ./my-columns` does what a
+// contributor expects.
+const CONTENT_DIR = resolve(
+  flag("content", process.env.CONTENT_DIR ?? join(import.meta.dirname, "content")),
+);
+const DATA_DIR = resolve(
+  flag("data", process.env.DATA_DIR ?? join(import.meta.dirname, "data")),
+);
+const HAS_DATASET = existsSync(join(DATA_DIR, "gap_report.json"));
 
 /* ------------------------------------------------------------------ *
  * What this node serves, read from the contributor's own disk
@@ -190,7 +200,7 @@ function readDataset() {
 }
 
 const columns = readColumns();
-const dataset = readDataset();
+const dataset = HAS_DATASET ? readDataset() : null;
 const proposals = new ProposalStore(import.meta.dirname);
 
 /* ------------------------------------------------------------------ *
@@ -230,6 +240,7 @@ const server = createServer(async (request, response) => {
   }
 
   if (url.pathname === "/dataset") {
+    if (!dataset) return send(404, { error: "no dataset served here" });
     return send(200, dataset);
   }
 
@@ -239,7 +250,9 @@ const server = createServer(async (request, response) => {
   // rather than silently borrowing a stranger's numbers.
   if (url.pathname.startsWith("/dataset/")) {
     const wanted = decodeURIComponent(url.pathname.slice("/dataset/".length));
-    if (wanted !== dataset.id) return send(404, { error: "not served here" });
+    if (!dataset || wanted !== dataset.id) {
+      return send(404, { error: "not served here" });
+    }
     return send(200, dataset);
   }
 
@@ -338,14 +351,18 @@ function manifest() {
       summary: column.subtitle,
       openProposals: proposals.countOpen(column.id),
     })),
-    {
-      id: dataset.id,
-      title: dataset.name,
-      kind: "dataset" as const,
-      tags: ["chembl", "binding"],
-      access: "public" as const,
-      summary: dataset.description,
-    },
+    ...(dataset
+      ? [
+          {
+            id: dataset.id,
+            title: dataset.name,
+            kind: "dataset" as const,
+            tags: ["chembl", "binding"],
+            access: "public" as const,
+            summary: dataset.description,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -450,7 +467,9 @@ async function withdraw() {
 }
 
 server.listen(PORT, "127.0.0.1", async () => {
-  console.log(`node serving ${columns.length} columns + 1 dataset on ${ADDRESS}`);
+  console.log(
+    `node serving ${columns.length} columns${dataset ? " + 1 dataset" : ""} on ${ADDRESS}`,
+  );
   try {
     await announce();
   } catch (error) {

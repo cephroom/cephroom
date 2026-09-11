@@ -30,12 +30,15 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     id: "member",
     name: "Member",
     tagline: "Every column in full, and the evidence behind every number.",
+    // No "archive" or "fork" — both were cut by the contracts (there is no
+    // stored history, and forking would mean the platform holding a copy).
+    // Selling a feature the product does not have is worse than a bug.
     features: [
-      "The complete archive, including member columns",
+      "Every member column in full, from whoever is serving it",
       "The claim inspector: query, evidence count, drift",
-      "The dataset explorer with full provenance",
-      "Propose edits to any published column",
-      "Fork a column and publish your own version",
+      "The dataset explorer, fetched from the author's node",
+      "Propose edits, delivered straight to the author",
+      "Your key verified by the node, not by us",
     ],
     prices: {
       month: {
@@ -54,12 +57,14 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     id: "lab",
     name: "Lab",
     tagline: "For groups who publish their own checked work.",
+    // No API over "check history" — there is no stored history to expose.
+    // Lab is about serving your own work, not about us keeping more of it.
     features: [
       "Everything in Member",
       "Lab columns: the long methodological pieces",
-      "Private drafts and unlimited check runs",
-      "Upload your own datasets for claims to resolve against",
-      "Read-only API access to claims and check history",
+      "Serve your own columns and datasets from your node",
+      "Claims resolve against the datasets you serve yourself",
+      "Serve under your own signed identity",
     ],
     prices: {
       month: {

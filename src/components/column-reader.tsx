@@ -114,7 +114,15 @@ export function ColumnReader({
 
         if (cancelled) return;
         setPhase({ state: "ready", column, datasets });
-        setCheckedAt(new Date().toLocaleTimeString());
+        // Pinned locale: a bare toLocaleTimeString renders in the browser's
+        // system locale, which showed Chinese AM/PM markers in an English UI.
+        setCheckedAt(
+          new Date().toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+        );
       } catch (error) {
         if (cancelled) return;
         setPhase({
