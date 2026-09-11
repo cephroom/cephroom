@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DiffView } from "@/components/diff-view";
 import { diffLines, diffStats, toHunks } from "@/lib/diff";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 /**
  * Proposing an edit, posted straight to the author's node.
@@ -42,7 +43,7 @@ export function NodeProposalForm({
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(
+        const response = await fetchWithTimeout(
           `${address}/column/${encodeURIComponent(columnId)}`,
           { headers: { authorization: `Bearer ${nodeKey}` } },
         );
@@ -87,7 +88,7 @@ export function NodeProposalForm({
     event.preventDefault();
     setState({ kind: "sending" });
     try {
-      const response = await fetch(`${address}/proposals`, {
+      const response = await fetchWithTimeout(`${address}/proposals`, {
         method: "POST",
         headers: {
           "content-type": "application/json",

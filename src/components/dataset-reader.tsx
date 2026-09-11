@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DatasetMatrix, type MatrixCell } from "@/components/dataset-matrix";
 import { formatValue } from "@/lib/claims/syntax";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 /**
  * The dataset explorer, fetched from the node serving it.
@@ -81,7 +82,7 @@ export function DatasetReader({
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(
+        const response = await fetchWithTimeout(
           `${address}/dataset/${encodeURIComponent(datasetId)}`,
         );
         if (!response.ok) throw new Error(`node returned ${response.status}`);

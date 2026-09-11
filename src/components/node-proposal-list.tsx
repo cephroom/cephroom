@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
 interface Proposal {
   id: string;
   title: string;
@@ -32,7 +34,7 @@ export function NodeProposalList({
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(
+        const response = await fetchWithTimeout(
           `${address}/proposals?column=${encodeURIComponent(columnId)}`,
         );
         if (!response.ok) throw new Error(`node returned ${response.status}`);

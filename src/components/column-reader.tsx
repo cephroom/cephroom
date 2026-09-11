@@ -12,6 +12,7 @@ import type { Access, Tier } from "@/lib/access";
 import { formatValue, type ParsedClaim } from "@/lib/claims/syntax";
 import { concludeRun, judge, type Conclusion } from "@/lib/claims/verdict";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 /**
  * Reads a column by fetching it from the contributor's node.
@@ -91,7 +92,7 @@ export function ColumnReader({
 
     (async () => {
       try {
-        const response = await fetch(`${address}/column/${encodeURIComponent(id)}`, {
+        const response = await fetchWithTimeout(`${address}/column/${encodeURIComponent(id)}`, {
           headers: nodeKey ? { authorization: `Bearer ${nodeKey}` } : {},
         });
         if (!response.ok) throw new Error(`node returned ${response.status}`);
@@ -106,7 +107,7 @@ export function ColumnReader({
         const needed = [...new Set(column.claims.map((claim) => claim.datasetSlug))];
         const datasets = new Map<string, Dataset>();
         for (const slug of needed) {
-          const data = await fetch(
+          const data = await fetchWithTimeout(
             `${address}/dataset/${encodeURIComponent(slug)}`,
           ).catch(() => null);
           if (data?.ok) datasets.set(slug, (await data.json()) as Dataset);

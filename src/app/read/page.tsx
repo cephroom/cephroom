@@ -58,10 +58,29 @@ export default async function ReadPage({
           </button>
         </form>
 
+        {/* During a search the counts describe the matches; otherwise they
+            describe everything online. Mixing an unfiltered "contributors
+            online" with filtered item counts read as a discrepancy mid-search,
+            so the labels change with the mode. */}
         <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-[0.82rem]">
-          <Stat label="Contributors online" value={String(nodes.length)} />
-          <Stat label="Columns" value={String(columns.length)} />
-          <Stat label="Datasets" value={String(datasets.length)} />
+          {q.trim() ? (
+            <>
+              <Stat
+                label="Contributors matched"
+                value={String(
+                  new Set(located.map((entry) => entry.presence.sub)).size,
+                )}
+              />
+              <Stat label="Columns matched" value={String(columns.length)} />
+              <Stat label="Datasets matched" value={String(datasets.length)} />
+            </>
+          ) : (
+            <>
+              <Stat label="Contributors online" value={String(nodes.length)} />
+              <Stat label="Columns" value={String(columns.length)} />
+              <Stat label="Datasets" value={String(datasets.length)} />
+            </>
+          )}
         </dl>
       </header>
 
