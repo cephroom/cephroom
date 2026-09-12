@@ -18,11 +18,6 @@ const MARK_TONE = {
   removed: "text-broken",
 } as const;
 
-/**
- * A unified diff. Line numbers on both sides, changed lines tinted with the
- * same two colours the verdict scale already uses, and each hunk scrolling
- * inside itself so a long line never widens the page.
- */
 export function DiffView({ hunks }: { hunks: DiffHunk[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-rule">

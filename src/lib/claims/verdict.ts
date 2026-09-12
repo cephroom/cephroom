@@ -9,18 +9,6 @@ export interface Judgement {
   note: string | null;
 }
 
-/**
- * Compares what the author asserted against what the dataset says now.
- *
- * - `broken`  the query no longer resolves, or the author never recorded a
- *             value to compare against. The sentence cannot be trusted at all.
- * - `drifted` both numbers exist but differ by more than the tolerance.
- * - `verified` within tolerance.
- *
- * Unit mismatch is `broken`, not `drifted`: 1.55 nM and 1.55 uM are not a
- * 0% drift, they are a question the runner is not allowed to answer by
- * guessing a conversion.
- */
 export function judge(
   expected: { value: number | null; unit: string | null },
   observed: { value: number | null | undefined; unit: string | null | undefined },
@@ -80,7 +68,6 @@ export function describeTolerance(tolerance: ClaimTolerance): string {
     : `±${trimNumber(tolerance.amount)}`;
 }
 
-/** The worst verdict wins, the way a red test turns the whole build red. */
 export function concludeRun(verdicts: Verdict[]): Conclusion {
   if (verdicts.length === 0) return "empty";
   if (verdicts.includes("broken")) return "broken";

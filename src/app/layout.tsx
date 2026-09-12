@@ -42,31 +42,7 @@ export default function RootLayout({
       className={`${inter.variable} ${newsreader.variable} ${plexMono.variable} h-full`}
     >
       <head>
-        {/*
-          Dark Reader, and extensions like it, re-derive a page's colours from
-          its light theme. Two reasons not to let it here.
-
-          This site already has a real dark theme — a full token set, every
-          text-on-background pair measured against WCAG AA in both modes — so
-          a second inversion on top of it produces something nobody designed
-          and nobody checked.
-
-          More importantly, colour on this page carries meaning. Verified,
-          drifted and broken are four deliberately separated hues, held off the
-          brand's orange precisely so a reader never has to decide whether an
-          orange thing is a warning or a button. An extension remapping that
-          scale corrupts the page's primary signal.
-
-          Observed, not theorised: with Dark Reader active this page's SVG
-          strokes arrive carrying injected `--darkreader-inline-stroke`
-          overrides, which is also the entire content of the hydration warning
-          in the dev overlay.
-
-          The lock is a request, not a guarantee, so it is the second line of
-          defence rather than the first: every verdict is also carried as a
-          word, never by colour alone, and the page stays readable if an
-          extension ignores this.
-        */}
+        {}
         <meta name="darkreader-lock" />
       </head>
       <body className="flex min-h-full flex-col bg-paper text-ink">

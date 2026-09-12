@@ -5,27 +5,6 @@ import { registry } from "@/lib/signaling/registry";
 
 export const dynamic = "force-dynamic";
 
-/**
- * What is being served right now.
- *
- * The machine-readable form of `/read`, and the endpoint that was missing when
- * I last walked the consumer role: finding a column's address meant scraping
- * anchor tags out of rendered HTML.
- *
- * **Presence only.** This is a scan over live announcements, which is all the
- * platform has. A column nobody is serving is not here, not because it was
- * filtered out but because nothing anywhere knows it existed. There is no
- * `?since=`, no `?all=`, and no pagination cursor into history, because there
- * is no history to page into.
- *
- * Anonymous, because what is live is public — the same thing `/read` shows a
- * signed-out visitor. Access is decided by the node when you fetch, not here.
- *
- * Query parameters:
- *   `q`    free-text over titles, summaries and tags
- *   `tag`  exact tag match, repeatable
- *   `kind` "column" | "dataset"
- */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") ?? "").trim();

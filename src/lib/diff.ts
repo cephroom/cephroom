@@ -1,20 +1,10 @@
-/**
- * A line diff, used to review a proposed edit the way a pull request is
- * reviewed. Pure and dependency-free so it can be tested on its own.
- *
- * Plain LCS over lines. Column bodies are a few hundred lines at most, so the
- * O(n*m) table is not worth avoiding, and the output is stable and easy to
- * reason about - which matters more here than speed.
- */
 
 export type DiffKind = "context" | "added" | "removed";
 
 export interface DiffLine {
   kind: DiffKind;
   text: string;
-  /** 1-based line number in the original, null for added lines. */
   before: number | null;
-  /** 1-based line number in the proposal, null for removed lines. */
   after: number | null;
 }
 
@@ -27,7 +17,6 @@ export interface DiffHunk {
 export interface DiffStats {
   added: number;
   removed: number;
-  /** Lines present in both, unchanged. */
   unchanged: number;
 }
 
@@ -88,10 +77,6 @@ export function diffStats(lines: DiffLine[]): DiffStats {
   );
 }
 
-/**
- * Groups changed lines into hunks with surrounding context, so a two-word
- * edit to a long column does not render as a thousand unchanged lines.
- */
 export function toHunks(lines: DiffLine[], context = 3): DiffHunk[] {
   const changed = lines
     .map((line, index) => (line.kind === "context" ? -1 : index))

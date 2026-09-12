@@ -5,13 +5,6 @@ import {
   recoverPaymentAction,
 } from "@/lib/stripe/simulated-actions";
 
-/**
- * Moves a subscription the way Stripe would over the following days — a retry
- * succeeding, a dunning cycle running out, a period rolling over — so the
- * whole lifecycle can be walked now rather than in a week.
- *
- * Only rendered while the simulated counterparty is standing in for Stripe.
- */
 export function SimulatedBillingControls({
   subscriptionId,
   status,

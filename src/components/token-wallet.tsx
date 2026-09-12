@@ -5,14 +5,6 @@ import { useEffect, useState } from "react";
 
 import { clearWallet, stockUp, walletCount } from "@/lib/tokens/wallet";
 
-/**
- * The reader's control over anonymous reading.
- *
- * Deliberately something they do rather than something done for them. The
- * tokens are bearer credentials living in their browser, and a reader ought to
- * know they are there, be able to see how many are left, and be able to throw
- * them away.
- */
 export function TokenWallet({ entitled }: { entitled: boolean }) {
   const [count, setCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);

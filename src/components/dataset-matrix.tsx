@@ -4,17 +4,9 @@ export interface MatrixCell {
   display: string;
   nPoints: number | null;
   nDocs: number | null;
-  /** Interquartile fold spread — how well the labs agree. Null if unknown. */
   foldSpreadIqr: number | null;
 }
 
-/**
- * How the middle-half spread reads at a glance. The thresholds are this
- * dataset's own quartiles (median IQR fold spread ~2.25x, upper quartile
- * ~3.9x), so "tight" and "loose" mean tight and loose relative to the data,
- * not an arbitrary line. The word carries the meaning; the colour only
- * reinforces it, so a reader who cannot see the colour loses nothing.
- */
 export function describeAgreement(fold: number): {
   word: string;
   tone: string;
@@ -24,12 +16,6 @@ export function describeAgreement(fold: number): {
   return { word: "loose", tone: "text-drifted" };
 }
 
-/**
- * The targets-by-compounds grid. Each populated cell carries its evidence
- * count underneath the value, because a cell resting on one paper and a cell
- * resting on ninety-three should not look identical. Empty cells render as a
- * middle dot and are enumerated by name below the table, never zero-filled.
- */
 export function DatasetMatrix({
   subjects,
   objects,

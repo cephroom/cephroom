@@ -58,10 +58,7 @@ export default async function ReadPage({
           </button>
         </form>
 
-        {/* During a search the counts describe the matches; otherwise they
-            describe everything online. Mixing an unfiltered "contributors
-            online" with filtered item counts read as a discrepancy mid-search,
-            so the labels change with the mode. */}
+        {}
         <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-[0.82rem]">
           {q.trim() ? (
             <>

@@ -1,53 +1,3 @@
-/**
- * Claim syntax
- * ============
- *
- * A column body is Markdown with two extra constructs.
- *
- * 1. An inline reference, written in the prose where the number belongs:
- *
- *        Haloperidol binds D2 at {{claim:hal-d2}}.
- *
- * 2. A fenced definition block that says what that number *is* - a query
- *    against a versioned dataset, plus the value the author observed when
- *    they wrote the sentence:
- *
- *        ```claim hal-d2
- *        dataset: receptorome-ki
- *        metric: median_ki_nm
- *        subject: DRD2
- *        object: haloperidol
- *        scope: all
- *        value: 1.55 nM
- *        tolerance: 15%
- *        ```
- *
- *    Where a dataset holds the same cell under more than one analysis — an
- *    evaluation protocol, a preprocessing pipeline — the claim must also name
- *    which one it means:
- *
- *        ```claim tcnet-online
- *        dataset: mi-decoders-2025
- *        metric: accuracy_pct
- *        subject: EEG-TCNet
- *        object: four-class-motor-imagery
- *        method: online
- *        value: 70.0 %
- *        tolerance: 2%
- *        ```
- *
- *    Leaving `method:` out there is not a shortcut to a sensible default; it
- *    resolves broken and names the analyses that exist. lib/claims/method.ts
- *    says why.
- *
- * The author never types a bare number into the prose. The number is
- * rendered from the dataset at read time, and the `value:` line is what CI
- * compares against - so if the dataset moves, the sentence is flagged
- * rather than quietly becoming wrong.
- *
- * This module is pure: no database, no I/O. It is the contract that both
- * the editor preview and the CI runner parse with.
- */
 
 export type ClaimSelect =
   | "value"
@@ -60,16 +10,6 @@ export type ClaimSelect =
   | "method_spread"
   | "dispersion";
 
-/**
- * The dimensionless selects. Fold spread is a ratio of the loosest to the
- * tightest measurement in a cell (`fold_spread`) or across its interquartile
- * range (`fold_spread_iqr`). A claim on one of these asserts *agreement
- * between labs* rather than a point estimate — often the real scientific
- * point, since a cell can have a tight median and a 100x full spread. The
- * value is a bare ratio, so "5x", "5-fold", "×5" and "5" all mean the same
- * thing; we drop the fold notation, wherever it sits, so it never reads as a
- * unit mismatch, and reject a non-positive ratio as not a real assertion.
- */
 export const FOLD_SELECTS: ClaimSelect[] = [
   "fold_spread",
   "fold_spread_iqr",
@@ -87,7 +27,6 @@ export function isFoldSelect(select: ClaimSelect): boolean {
 }
 
 export interface ClaimTolerance {
-  /** "percent" compares relative drift, "absolute" compares raw difference. */
   kind: "percent" | "absolute";
   amount: number;
 }
@@ -99,20 +38,11 @@ export interface ParsedClaim {
   subject: string;
   object: string;
   scope: string;
-  /**
-   * The analysis this claim means, or null when it names none.
-   *
-   * Deliberately has **no default**, unlike `scope`. Where a cell exists under
-   * more than one analysis, a claim that leaves this out resolves broken. See
-   * lib/claims/method.ts for why, and for what happened to the one field set
-   * that made it optional.
-   */
   method: string | null;
   select: ClaimSelect;
   expectedValue: number | null;
   expectedUnit: string | null;
   tolerance: ClaimTolerance;
-  /** Optional prose label rendered next to the value. */
   label: string | null;
   source: string;
 }
@@ -124,11 +54,9 @@ export interface ClaimParseError {
 }
 
 export interface ParsedBody {
-  /** The body with claim definition blocks stripped out. */
   prose: string;
   claims: ParsedClaim[];
   errors: ClaimParseError[];
-  /** Keys referenced by {{claim:...}} in the prose. */
   referenced: string[];
 }
 
@@ -137,7 +65,6 @@ const INLINE_REF = /\{\{claim:([A-Za-z0-9][\w-]*)\}\}/g;
 
 const REQUIRED = ["dataset", "metric", "subject", "object"] as const;
 
-/** Collapses CRLF and lone CR to LF. */
 export function normaliseNewlines(text: string): string {
   return text.split("\r\n").join("\n").split("\r").join("\n");
 }
@@ -154,7 +81,6 @@ const SELECTS: ClaimSelect[] = [
   "dispersion",
 ];
 
-/** Pulls `{{claim:key}}` keys out of prose, in document order, deduplicated. */
 export function referencedKeys(prose: string): string[] {
   const seen = new Set<string>();
   for (const match of prose.matchAll(INLINE_REF)) seen.add(match[1]);
@@ -177,10 +103,6 @@ function parseTolerance(raw: string | undefined): ClaimTolerance {
     : { kind: "percent", amount: 10 };
 }
 
-/**
- * Splits "1.55 nM" into value and unit. A bare number yields a null unit,
- * which is correct for dimensionless metrics such as pKi and document counts.
- */
 export function parseMeasurement(raw: string | undefined): {
   value: number | null;
   unit: string | null;
@@ -257,13 +179,6 @@ export function parseBody(rawBody: string): ParsedBody {
       }
 
       const parsed = parseMeasurement(fields.value);
-      // A fold spread is a bare ratio. "5x", "5-fold", "×5" and "5" are the
-      // same assertion, so the fold notation is not treated as a unit —
-      // otherwise it would read as a unit mismatch against the dimensionless
-      // observed value and the claim would go broken. parseMeasurement only
-      // strips a *trailing* notation, so for a fold select pull the first
-      // number out wherever it sits, and never let a nonsensical negative
-      // ratio through.
       let value = parsed.value;
       if (isFoldSelect(select)) {
         if (value === null) {
@@ -331,7 +246,6 @@ export function parseBody(rawBody: string): ParsedBody {
   return { prose, claims, errors, referenced };
 }
 
-/** Formats a measured value for display, with sensible significant figures. */
 export function formatValue(
   value: number | null | undefined,
   unit?: string | null,

@@ -63,10 +63,6 @@ export async function openBillingPortal() {
   redirect(session.url);
 }
 
-/**
- * Cancellation is always at period end, never immediate. Someone who has paid
- * for the month keeps the month.
- */
 export async function cancelSubscription(formData: FormData) {
   await setCancellation(String(formData.get("subscriptionId") ?? ""), true);
 }
@@ -91,13 +87,6 @@ async function setCancellation(subscriptionId: string, cancel: boolean) {
   await restampKey();
 }
 
-/**
- * Re-mints the access key after a billing change.
- *
- * Without this the reader would carry a key stating the old tier for up to
- * fifteen minutes. There is no session to update instead — the key *is* the
- * session, so changing what someone is entitled to means issuing a new one.
- */
 export async function restampKey() {
   const viewer = await getViewer();
   if (!viewer.sub) return;

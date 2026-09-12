@@ -2,20 +2,6 @@
 
 import { useState } from "react";
 
-/**
- * Getting a credential onto a machine that has no browser.
- *
- * Found by walking the consumer role against the CLI: the first version told
- * people to open a devtools console and paste a `fetch` call. That works and
- * is obviously wrong — the rule is that anything only the API can do is a UI
- * defect, and "get the credential the API needs" was exactly that.
- *
- * What it hands over is a renewal key, not an API key. The difference is not
- * cosmetic: an API key is a stable identifier the issuer stores so it can
- * check it, and Contract 1 forbids the storing. This is a signed statement the
- * holder carries, verified by signature, written down nowhere, and expiring on
- * its own in seven days.
- */
 export function CliKey() {
   const [state, setState] = useState<
     | { kind: "idle" }

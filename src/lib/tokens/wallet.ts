@@ -7,38 +7,12 @@ import {
   type PublishedKey,
 } from "./issuer";
 
-/**
- * The reader's token wallet, in their own browser.
- *
- * Layer 1's tokens are bearer credentials and have to live somewhere between
- * being issued and being spent. The only place that can be is the reader's own
- * device: the platform storing them would defeat the entire mechanism, because
- * a stored token is a token the platform can recognise.
- *
- * So `localStorage`, with the properties that implies stated plainly rather
- * than glossed:
- *
- * - **Anyone with the device can read them.** They are bearer tokens worth one
- *   reading session each, at the tier they were issued for. That is the same
- *   exposure as the session cookie sitting beside them, and a smaller one than
- *   the refresh key, which is good for seven days.
- * - **They do not sync.** A second browser has no tokens and stocks up on its
- *   own. Which is correct: two browsers holding tokens from one subscription
- *   is exactly the thing that must not be linkable.
- * - **Clearing site data throws them away.** They are replaceable by asking
- *   for more, so nothing is lost but a round trip.
- *
- * Never sent anywhere except the redemption endpoint, one at a time.
- */
 
 const STORAGE_KEY = "cephroom.tokens.v1";
 
 interface Wallet {
-  /** Which tier these were issued for. A downgrade makes them useless. */
   tier: "member" | "lab";
-  /** Base64 serialized tokens, spent from the front. */
   tokens: string[];
-  /** The issuing epoch, so a stale wallet can be discarded without a request. */
   epoch: number;
 }
 
@@ -78,13 +52,6 @@ export function clearWallet(): void {
   write(null);
 }
 
-/**
- * Asks the platform for a batch, blinding every request in this browser first.
- *
- * The blinding factors live in `clients` and stay on this machine. Without
- * them the signatures the platform returns cannot be turned into tokens, which
- * is the reason the platform cannot precompute what it is signing.
- */
 export async function stockUp(): Promise<
   { ok: true; count: number } | { ok: false; error: string }
 > {
@@ -147,18 +114,6 @@ export async function stockUp(): Promise<
   return { ok: false, error: "No key would sign for this account." };
 }
 
-/**
- * Spends one token for a short-lived, subject-less read key.
- *
- * Returns null when the wallet is empty or the token would not redeem, and the
- * caller falls back to the reader's ordinary key. Falling back is a downgrade
- * in privacy and never in access, which is the right way round: a reader must
- * not lose a column they paid for because a token expired.
- *
- * The spent token is removed **before** the request rather than after. A token
- * that fails to redeem is worthless anyway — it was expired, or already spent
- * — and keeping it would make the next read retry the same dead token.
- */
 export async function spendToken(): Promise<
   { key: string; tier: "member" | "lab" } | null
 > {

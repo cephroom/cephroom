@@ -5,22 +5,6 @@ import { mintRefreshKey, REFRESH_TTL_SECONDS } from "@/lib/keys/tokens";
 
 export const dynamic = "force-dynamic";
 
-/**
- * A renewal key to paste into a shell, so the API needs no browser.
- *
- * The alternative everybody expects here is an API key, and Contract 1 forbids
- * it: an API key is a stable identifier issued to a person and stored by the
- * issuer so it can be checked. This is the opposite — a signed statement the
- * holder carries, verified by signature, recorded nowhere, and expiring on its
- * own in seven days.
- *
- * It is **freshly minted**, not the one in the browser's cookie. Revealing the
- * session's own key would mean a script and a browser sharing one credential,
- * so that losing either loses both. Two keys for the same subject is fine —
- * neither is written down, so there is no list of issued keys to keep straight.
- *
- * POST, so it is never baked into a page render the user did not ask for.
- */
 export async function POST() {
   const viewer = await getViewer();
   if (!viewer.sub) {

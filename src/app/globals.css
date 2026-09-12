@@ -1,75 +1,28 @@
 @import "tailwindcss";
 
-/* Explicit source globs. Tailwind's automatic detection skips directories
-   whose names contain glob metacharacters, which is every dynamic App Router
-   segment: app/columns/[slug] and friends were silently unscanned. */
 @source "../**/*.{ts,tsx}";
-
-/* ------------------------------------------------------------------ *
- * Cephroom design tokens
- *
- * Orange primary, purple counterpart. Both are real cephalopod chromatophore
- * pigments, and together they read as a neural activation map rather than as
- * a developer tool (orange on black) or an ecology site (orange on green) —
- * which matters, because this is a publication about nervous systems.
- *
- * Rules this file exists to enforce:
- *
- * 1. Components name a role, never a colour. `bg-accent`, not `bg-orange-600`;
- *    `text-accent-ink`, not `text-white`. The hex lives here and nowhere else.
- *    (`text-white` on `bg-accent` was the previous leak, and it was not
- *    cosmetic: in dark mode it rendered white on a bright accent at 2.3:1,
- *    failing AA on every primary button on the site.)
- *
- * 2. Every text-on-background pair below clears WCAG AA — 4.5:1 for body
- *    text — on every surface it can land on: paper, raised, sunken, and its
- *    own wash. Measured, not eyeballed; the numbers are in the comments and
- *    `tests/contrast.test.ts` recomputes them so a future edit cannot quietly
- *    drop one below the line.
- *
- * 3. The four verdict colours are a separate scale from the brand, and are
- *    kept off the brand's hue on purpose. Orange is now the accent, so
- *    `drifted` was pulled toward gold and `broken` toward crimson; a reader
- *    must never have to decide whether an orange thing is a warning or a
- *    button. (Hue separation is the belt; the braces are that every verdict
- *    is also carried as a word, never by colour alone.)
- * ------------------------------------------------------------------ */
 
 :root {
   color-scheme: light;
 
-  /* Surfaces. Warm paper — an orange accent on a blue-grey ground looks
-     accidental, on a warm one it looks chosen. */
   --paper: #fbfaf6;
   --paper-raised: #ffffff;
   --paper-sunken: #f4f1ea;
 
-  /* Text. ink-faint is the dimmest tier that still clears AA on all three
-     surfaces (4.66:1 on sunken, its worst case). */
   --ink: #16181a;        /* 17.0 on paper */
   --ink-muted: #55585e;  /*  6.8 on paper */
   --ink-faint: #696c73;  /*  5.0 on paper, 4.7 on sunken */
 
   --rule: #e5e0d4;
   --rule-strong: #cfc8b7;
-  /* The border of an interactive control, which WCAG 1.4.11 holds to 3:1
-     against its background — a rule --rule-strong does not meet (1.6:1) and
-     should not have to: a table divider is decoration, a text field's edge
-     is the only thing telling you where to click. They were the same token,
-     which is how the search box ended up outlined at 1.6:1. */
   --field-border: #8e8676;   /* 3.45 on paper, 3.61 on raised */
 
-  /* Primary — orange. `accent` is the text/interactive value and clears AA
-     on paper (5.2), sunken (4.8) and its own wash (4.7); `accent-bright` is
-     for graphics only, where 3:1 is the bar. */
   --accent: #ba4105;
   --accent-hover: #9c3604;
   --accent-bright: #e8590c;
   --accent-wash: #fbeade;
   --accent-ink: #ffffff;  /* on an accent fill: 5.5 */
 
-  /* Counterpart — purple. Carries the distributed half of the idea: the
-     ganglia in the mark, dataset provenance, secondary emphasis. */
   --counter: #6b3fa0;
   --counter-hover: #572f88;
   --counter-bright: #7c3aed;
@@ -89,9 +42,6 @@
   --focus: var(--accent);
 }
 
-/* The dark palette, defined once and applied from two places: the system
-   preference (unless the reader has explicitly chosen light) and the explicit
-   choice. Neither block may be the only definition of a colour. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
@@ -238,10 +188,6 @@ body {
   font-feature-settings: "tnum" 1;
 }
 
-/* ------------------------------------------------------------------ *
- * Prose - the reading surface for a column body.
- * ------------------------------------------------------------------ */
-
 .prose {
   font-family: var(--font-serif);
   font-size: 1.1875rem;
@@ -375,12 +321,6 @@ body {
   font-family: var(--font-sans);
 }
 
-/* A withheld claim, inside prose.
-   `.prose a` is (0,1,1) and beats a `text-counter` utility (0,1,0), so the
-   lock rendered in the accent orange with a link underline — which is the one
-   colour it must not be, since orange is the interactive hue and this is the
-   opposite of interactive. Stated explicitly rather than fought with
-   utilities. */
 .prose a.claim-locked,
 .prose a.claim-locked:hover {
   color: var(--counter);

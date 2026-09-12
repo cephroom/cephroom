@@ -1,21 +1,5 @@
 import { createHash } from "node:crypto";
 
-/**
- * Turning a JWT into the circuit's inputs, then into a proof.
- *
- * Split out of `prover.ts` so the witness construction — the fiddly part, and
- * the part where a mistake produces a proof of the wrong statement — can be
- * tested without a server or a 3 GB proving key.
- *
- * The circuit is `jwt-tx-validation.circom` from
- * Moonsong-Labs/zksync-social-login-circuit at commit 27cda6e, audited by
- * OpenZeppelin in April 2025. Its inputs are mostly *indices*: it does not
- * parse JSON, it is told where in the payload each claim sits and checks that
- * what is there matches. Computing those indices is this file's job, and
- * getting one wrong makes the proof fail to verify rather than prove something
- * weaker — which is the safe direction, and is why the indices are derived
- * here rather than supplied by the caller.
- */
 
 export interface JwtParts {
   header: string;
@@ -31,18 +15,10 @@ export function splitJwt(jwt: string): JwtParts {
   return { header, payload, signature };
 }
 
-/** The decoded payload, for locating claims. Never returned to a caller. */
 export function decodePayload(payloadB64: string): string {
   return Buffer.from(payloadB64, "base64url").toString("utf8");
 }
 
-/**
- * Finds where a claim's value starts, and how long it is.
- *
- * The circuit is told the index of `"name":` and the length of the value that
- * follows. Returning a length of zero where the claim is missing lets the
- * caller fail loudly rather than proving over a claim that is not there.
- */
 export function locateClaim(
   payload: string,
   claim: string,
@@ -66,23 +42,11 @@ export function locateClaim(
   return { keyStartIndex, asciiLength: valueEnd - valueStart };
 }
 
-/**
- * The nonce the user must have put in their OIDC request.
- *
- * The platform issues a challenge; the client asks Google to embed this value
- * as the `nonce` claim; the circuit recomputes a hash of that claim and
- * exposes it publicly, so the platform can check the proof answers the
- * challenge it issued rather than one from somebody else's session.
- *
- * Base64url of the SHA-256, which is 43 characters — the circuit's nonce
- * handling expects a 44-character base64url value, so it is padded to that.
- */
 export function nonceForChallenge(challenge: string): string {
   const digest = createHash("sha256").update(challenge, "utf8").digest();
   return digest.toString("base64url").padEnd(44, "=");
 }
 
-/** The two field elements the circuit exposes for that nonce. */
 export function nonceContentHash(challenge: string): [string, string] {
   const digest = createHash("sha256").update(challenge, "utf8").digest();
   return [
@@ -91,7 +55,6 @@ export function nonceContentHash(challenge: string): [string, string] {
   ];
 }
 
-/** Splits a big-endian byte buffer into little-endian limbs of `bits`. */
 export function toChunks(bytes: Buffer, bits = 121, count = 17): string[] {
   let value = 0n;
   for (const byte of bytes) value = (value << 8n) | BigInt(byte);
@@ -101,13 +64,6 @@ export function toChunks(bytes: Buffer, bits = 121, count = 17): string[] {
   );
 }
 
-/**
- * SHA-256 padding, applied to `header.payload` before it enters the circuit.
- *
- * The circuit takes an already-padded message because padding inside a circuit
- * costs constraints for no security. Getting this wrong yields a proof that
- * does not verify.
- */
 export function sha256Pad(message: Buffer, maxLength: number): Buffer {
   const bitLength = BigInt(message.length) * 8n;
   const padded = Buffer.alloc(maxLength);
@@ -132,14 +88,6 @@ export interface ProveInput {
   zkey: string;
 }
 
-/**
- * Builds the witness and proves.
- *
- * `salt` is the user's and arrives with the request. It never leaves this
- * process and is not written anywhere — it is what makes the resulting
- * `oidcDigest` unlinkable to the Google account, so a prover that kept it
- * would be keeping the one thing that undoes the whole scheme.
- */
 export async function proveJwt(input: ProveInput): Promise<{
   proof: unknown;
   publicSignals: string[];

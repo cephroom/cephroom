@@ -7,14 +7,6 @@ import { DatasetMatrix, type MatrixCell } from "@/components/dataset-matrix";
 import { formatValue } from "@/lib/claims/syntax";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
-/**
- * The dataset explorer, fetched from the node serving it.
- *
- * Same rule as a column: the bytes come from the contributor's machine to
- * yours, and the platform is not in the path. The coverage ladder is shown to
- * everyone because it is the honest part — what is known and what is not —
- * and the matrix itself is where the membership sits.
- */
 
 interface Fact {
   subject: string;

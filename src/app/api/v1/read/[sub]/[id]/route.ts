@@ -5,21 +5,6 @@ import { registry } from "@/lib/signaling/registry";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Where to fetch one item from, and how to check it when you have it.
- *
- * **This endpoint does not return the column.** It returns the address of the
- * machine serving it. That is not an oversight and not a stepping stone to a
- * proxy: Contract 2 says the bytes go from the contributor's machine to yours
- * and the platform is not in that request, so an endpoint here that returned
- * content would make the platform a host. The response says so in as many
- * words, because a client author who does not know that will build a proxy
- * themselves and wonder why it is discouraged.
- *
- * What it *does* give you is everything needed to do the fetch properly: the
- * address, the exact URLs, which datasets the column's claims will need, and
- * the rule that those datasets come from this same node and no other.
- */
 export async function GET(
   _request: Request,
   context: { params: Promise<{ sub: string; id: string }> },

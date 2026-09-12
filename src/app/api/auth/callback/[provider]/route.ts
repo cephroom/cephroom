@@ -19,15 +19,6 @@ import { entitlementFor } from "@/lib/stripe/entitlement";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Completes the flow and mints a key.
- *
- * Contract 1, step 2: nothing is written anywhere as a result of this. No row
- * is created, no session stored, no file touched. The provider's answer is
- * turned into a pseudonymous subject, Stripe is asked what that subject is
- * entitled to, and the result is signed into a key that goes to the browser.
- * The platform then forgets all of it.
- */
 export async function GET(
   request: Request,
   context: { params: Promise<{ provider: string }> },

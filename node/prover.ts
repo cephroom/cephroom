@@ -1,45 +1,3 @@
-/**
- * A Cephroom prover node.
- *
- *   npm run prover:serve
- *   npm run prover:serve -- --port 4700 --circuit ./circuit
- *
- * This is the third node type. The platform already depends on nodes it does
- * not run — contributors serve their own columns — and proving is another of
- * them. A reader who wants the platform never to see their Google identity
- * sends their JWT to a prover of their choosing, which returns a
- * zero-knowledge proof the platform can check without learning anything.
- *
- * ## Read this before running somebody else's
- *
- * **A prover sees the JWT you give it.** That is the whole of the trade: this
- * does not remove trust, it moves it from the platform to a party you pick.
- * The only configuration with no trust assumption at all is the one where you
- * run this yourself, on your own machine, which is why the documentation leads
- * with that and why this file exists rather than a hosted service.
- *
- * ## What a prover must not learn
- *
- * A prover is handed a JWT and a challenge. It is deliberately not told, and
- * has no way to find out:
- *
- * - what the user will read afterwards — proving happens at sign-in, the
- *   reading happens later against a contributor's node, and the two are joined
- *   by nothing;
- * - which platform resource the proof will be spent on — the challenge is 32
- *   random bytes with no structure, so it names nothing;
- * - whether the proof was ever used at all.
- *
- * A prover that logged every JWT it saw would learn who signed in to Cephroom
- * and when. That is the exposure, stated plainly. It is strictly less than the
- * platform has today, and it is the user's to place.
- *
- * ## What this process stores
- *
- * Nothing. The JWT is held for the length of one request. There is no queue,
- * no cache, no log of requests — the same discipline as the rest of this
- * repository, for the same reason, and `--log-requests` does not exist.
- */
 import { createServer } from "node:http";
 import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -55,22 +13,11 @@ const PORT = Number.parseInt(flag("port", "4700"), 10);
 const CIRCUIT_DIR = resolve(flag("circuit", "./circuit"));
 const SYSTEM = flag("system", "plonk") as "plonk" | "groth16";
 
-/** Largest request body accepted, before anything is parsed. */
 const MAX_BODY_BYTES = 64 * 1024;
 
-/**
- * The circuit artefacts this prover was pointed at.
- *
- * A prover is useless without them and they are not in this repository: the
- * proving key for the pinned circuit is roughly 3 GB under PLONK, or 0.55 GB
- * under Groth16, and both are build outputs rather than source. `npm run
- * prover:fetch` gets them; docs/PROVER-PROTOCOL.md says where from and how to
- * check what you got.
- */
 interface Artefacts {
   wasm: string;
   zkey: string;
-  /** SHA-256 of the verification key, to compare against the platform's. */
   verificationKeyHash: string;
 }
 
@@ -117,14 +64,6 @@ const server = createServer(async (request, response) => {
 
   const url = new URL(request.url ?? "/", `http://127.0.0.1:${PORT}`);
 
-  /**
-   * What this prover is and what it can prove.
-   *
-   * A user's client fetches this before sending anything, and compares
-   * `circuit` and `verificationKeyHash` against what the platform publishes.
-   * If they differ, this prover cannot produce a proof the platform will
-   * accept, and the client says so rather than sending a JWT to find out.
-   */
   if (url.pathname === "/prover" && request.method === "GET") {
     return send(200, {
       protocol: "cephroom-prover/1",

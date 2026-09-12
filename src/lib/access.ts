@@ -1,11 +1,3 @@
-/**
- * Access policy, with no I/O in it.
- *
- * Under Contract 1 there is nothing to look up: a reader's tier arrives in a
- * signed key and these functions decide what it permits. Keeping them pure
- * means the same rules run on the platform, in a contributor's node when it
- * decides whether to serve a member-only column, and in the browser.
- */
 
 export type Tier = "reader" | "member" | "lab";
 export type Access = "public" | "member" | "lab";
@@ -17,17 +9,6 @@ const REQUIRED: Record<Access, Tier> = {
   lab: "lab",
 };
 
-/**
- * Stripe statuses that grant a paid tier.
- *
- * `past_due` is deliberately included. Stripe retries a failed payment over
- * several days; cutting a paying subscriber off at the first declined card
- * punishes an expired card rather than a decision to leave. Access ends when
- * Stripe moves the subscription to `canceled` or `unpaid`.
- *
- * Under Contract 1 this is evaluated against Stripe's live answer at key-issue
- * time, never against a local mirror.
- */
 export const ENTITLING_STATUSES: ReadonlySet<string> = new Set([
   "active",
   "trialing",
@@ -46,11 +27,6 @@ export function tierRank(tier: Tier): number {
   return RANK[tier];
 }
 
-/**
- * The tier a set of Stripe subscriptions grants. Lapsed subscriptions are
- * ignored, so an upgrade that left a cancelled row behind at Stripe does not
- * keep granting the old tier.
- */
 export function tierFromSubscriptions(
   subscriptions: { status: string; tier: "member" | "lab" }[],
 ): Tier {
@@ -60,23 +36,6 @@ export function tierFromSubscriptions(
   }, "reader");
 }
 
-/**
- * Which of a customer's subscriptions is the one to describe.
- *
- * A customer can hold several — an old one that lapsed, a new one just
- * bought, a Member alongside a Lab. `tierFromSubscriptions` decides what they
- * may *read*; this decides what the account page should *say*, and the two
- * have to agree or the page contradicts itself.
- *
- * Preference order: a subscription at the granting tier that actually
- * entitles, then any subscription at that tier, then anything at all. The
- * middle rung matters — a reader whose only subscription has lapsed still
- * needs to be told about it rather than shown an empty panel.
- *
- * The bug this replaces: `subscriptions.find(s => s.tier === tier)` returned
- * whichever Stripe happened to list first, so a reader who resubscribed after
- * cancelling was shown "Cancelled · This subscription has ended" while paying.
- */
 export function governingSubscription<
   T extends { status: string; tier: "member" | "lab" },
 >(subscriptions: T[], tier: Tier): T | null {

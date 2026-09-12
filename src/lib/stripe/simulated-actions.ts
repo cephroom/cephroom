@@ -5,12 +5,6 @@ import { getViewer } from "@/lib/auth/session";
 import { gateway, usingRealStripe } from "./gateway";
 import { restampKey } from "./actions";
 
-/**
- * Drives the events Stripe would send on its own schedule - a retry
- * succeeding, a dunning cycle running out, a period rolling over - so the
- * whole subscription lifecycle can be walked through now rather than over a
- * week. Only available while the simulated counterparty is in use.
- */
 async function guard(formData: FormData): Promise<string> {
   if (usingRealStripe()) {
     throw new Error("Unavailable with a Stripe key set.");

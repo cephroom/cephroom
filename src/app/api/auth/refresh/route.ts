@@ -15,19 +15,6 @@ import { entitlementFor } from "@/lib/stripe/entitlement";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Renewal, which is where subscription changes actually take effect.
- *
- * Because there is no local mirror of Stripe, an access key is only as
- * current as its last renewal. Fifteen minutes is the worst case between a
- * reader cancelling and losing access, and this handler is the thing that
- * closes that window: it asks Stripe again and mints a key reflecting the
- * answer.
- *
- * Renewal deliberately does not rotate the refresh key with reuse detection,
- * because detection means remembering which keys have been seen, and that is
- * state. See docs/CONTRACTS.md.
- */
 export async function POST(request: Request) {
   const token = request.headers
     .get("cookie")

@@ -2,30 +2,12 @@ import { methodSpread, selectByMethod } from "@/lib/claims/method";
 import { formatValue, isFoldSelect, type ParsedClaim } from "@/lib/claims/syntax";
 import { concludeRun, judge, type Conclusion, type Verdict } from "@/lib/claims/verdict";
 
-/**
- * Running a column's claims against the datasets its author is serving.
- *
- * This lived inside the reader component until the API was built, which made
- * it the clearest example of the rule that an API nobody can do the real work
- * through is decorative: a script could fetch a column, but it could not
- * *check* one without reimplementing the judge, the method selection, the
- * statistic selection and the display rules — and a second implementation of
- * the drift rules would eventually disagree with the first, silently, which is
- * the whole failure this platform exists to prevent.
- *
- * So it is here, pure and free of React and of Node built-ins, and the reader
- * and the API call the same function. A consumer who does not trust the
- * platform's rendering can import it and check a column themselves against
- * bytes they fetched from the author's node directly.
- */
 
-/** A fact as a node serves it. */
 export interface Fact {
   subject: string;
   object: string;
   metric: string;
   scope: string;
-  /** The analysis that produced this number, or null when there is one. */
   method?: string | null;
   value: number;
   unit: string | null;
@@ -36,7 +18,6 @@ export interface Fact {
   nMeasurements: number | null;
   nCensored: number | null;
   pdspFold: number | null;
-  /** The spread the dataset reports, in the value's units. Null: none given. */
   dispersion?: number | null;
   dispersionKind?: string | null;
   nObservations?: number | null;
@@ -53,7 +34,6 @@ export interface Dataset {
   facts: Fact[];
 }
 
-/** One claim, judged. The same shape the reader renders and the API returns. */
 export interface ResolvedClaim {
   key: string;
   display: string;
@@ -86,7 +66,6 @@ export interface ResolutionRun {
   counts: { verified: number; drifted: number; broken: number };
 }
 
-/** Human phrase for a claim's select, for the "statistic not available" note. */
 function describeStat(select: ParsedClaim["select"]): string {
   switch (select) {
     case "fold_spread_iqr":
@@ -110,8 +89,6 @@ export function resolveClaims(
   claims: ParsedClaim[],
   datasets: Map<string, Dataset>,
   owner: string,
-  /** How the check should describe when it happened. The reader says "in your
-   *  browser"; an API consumer is told the timestamp instead. */
   checkedAt: string = "just now",
 ): ResolutionRun {
   const views = new Map<string, ResolvedClaim>();
@@ -134,13 +111,6 @@ export function resolveClaims(
     const picked = selectByMethod(candidates, claim.method);
     const fact = picked.kind === "resolved" ? picked.fact : undefined;
 
-    // A cell with several analyses and a claim that names none is the case
-    // this whole mechanism exists for. It resolves broken and says which
-    // analyses there are, rather than choosing one or averaging them into a
-    // number no experiment produced. See src/lib/claims/method.ts.
-    // ...except for method_spread, which is a question *about* the set of
-    // analyses. Demanding that it name one would be demanding it answer a
-    // different question.
     const methodProblem =
       claim.select === "method_spread"
         ? null
@@ -210,11 +180,6 @@ export function resolveClaims(
 
     verdicts.push(judgement.verdict);
 
-    // When the cell exists but the selected statistic does not — a human-scope
-    // interquartile fold spread, say, which the pipeline does not compute — the
-    // judge sees a null observed value and reports "no cell matches this query".
-    // The cell is there; only the statistic is absent. Say what is actually
-    // missing rather than implying the query found nothing.
     const statMissing =
       Boolean(dataset) &&
       Boolean(fact) &&
@@ -275,18 +240,6 @@ export function resolveClaims(
 }
 
 
-
-/**
- * Renders a value with the spread the dataset reports around it.
- *
- * "59.45 %" becomes "59.45 ± 3.33 %". Not decoration: the honest rendering of
- * a distribution is not its centre, and showing the centre alone is how this
- * repository came to ship a column asserting a direction from a gap of 2.02
- * against a standard error of 2.99.
- *
- * Only for `select: value`. A count, a fold ratio or the dispersion itself has
- * no dispersion of its own to show, and attaching one would be nonsense.
- */
 function withDispersion(
   rendered: string,
   claim: ParsedClaim,

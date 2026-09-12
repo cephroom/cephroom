@@ -3,23 +3,10 @@ import { governingSubscription, tierFromSubscriptions } from "@/lib/access";
 
 import { gateway } from "./gateway";
 
-/**
- * Deriving a tier from Stripe, live.
- *
- * Contract 1 forbids mirroring Stripe's records locally, so there is no
- * `subscription` table to read and no webhook keeping one current. The
- * question "what is this reader entitled to" is answered by asking Stripe at
- * key-issue and at every renewal, and the answer is then stamped into a
- * 15-minute key.
- *
- * The cost is a Stripe call per renewal per active reader. That is the price
- * of not holding the data, and it is accepted.
- */
 
 export interface Entitlement {
   tier: Tier;
   customerId: string | null;
-  /** Stripe's own status words, for the account page. Never persisted. */
   status: string | null;
   currentPeriodEnd: number | null;
   cancelAtPeriodEnd: boolean;
@@ -33,13 +20,6 @@ export const NO_ENTITLEMENT: Entitlement = {
   cancelAtPeriodEnd: false,
 };
 
-/**
- * Finds the Stripe customer for a subject.
- *
- * The subject-to-customer mapping lives in Stripe's customer metadata, which
- * is the point: Stripe is the stateful party, so Stripe holds the mapping.
- * The platform asks rather than remembers.
- */
 export async function entitlementFor(sub: string): Promise<Entitlement> {
   const customerId = await (await gateway()).findCustomerBySubject(sub);
   if (!customerId) return NO_ENTITLEMENT;

@@ -2,10 +2,6 @@
 
 import { useState } from "react";
 
-/**
- * Reveals a serve key for the signed-in contributor to paste into their
- * node's NODE_KEY. Minted on click, never on render.
- */
 export function ServeKey({ sub }: { sub: string }) {
   const [state, setState] = useState<
     | { kind: "idle" }
@@ -42,7 +38,6 @@ export function ServeKey({ sub }: { sub: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked; the field is selectable */
     }
   }
 

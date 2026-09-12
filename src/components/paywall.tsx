@@ -7,10 +7,6 @@ const REQUIRED_LABEL: Record<Exclude<Access, "public">, string> = {
   lab: "Lab",
 };
 
-/**
- * The gate shown where a column is cut off. It states plainly what is behind
- * it and how much, rather than hiding the price behind a second click.
- */
 export function Paywall({
   access,
   tier,
@@ -23,8 +19,6 @@ export function Paywall({
   tier: Tier;
   signedIn: boolean;
   hiddenBlocks: number;
-  /** Claims the reader cannot currently see — what they would gain, not what
-   *  they already have. */
   claimCount: number;
   returnTo: string;
 }) {
@@ -32,7 +26,7 @@ export function Paywall({
 
   return (
     <div className="relative mt-2">
-      {/* The fade sits above the last visible paragraph, not over the gate. */}
+      {}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 -top-28 h-28 bg-gradient-to-b from-transparent to-paper"

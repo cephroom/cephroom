@@ -23,12 +23,6 @@ function escapeHtml(value: string): string {
   );
 }
 
-/**
- * The authorisation endpoint. Renders a minimal account chooser, the way a
- * real identity provider would, then redirects back with an authorisation
- * code. Standalone HTML on purpose: this page is not part of the product and
- * should not look like it is.
- */
 export async function GET(request: Request) {
   if (!isDevOAuthEnabled()) {
     return new NextResponse("Dev OAuth is disabled.", { status: 404 });

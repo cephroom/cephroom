@@ -6,15 +6,6 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Tier } from "@/lib/access";
 
-/**
- * The key, rather than an account menu.
- *
- * It shows what the reader is holding — subject, tier, and how long until it
- * expires — because under Contract 1 that really is the whole of their
- * relationship with the platform. It also renews the key quietly before it
- * lapses, which is the mechanism that makes a cancellation take effect
- * without a session store to update.
- */
 export function KeyMenu({
   name,
   subject,

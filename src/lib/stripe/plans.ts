@@ -3,7 +3,6 @@ export type BillingInterval = "month" | "year";
 
 export interface PricePoint {
   interval: BillingInterval;
-  /** Amount in the smallest currency unit, as Stripe reports it. */
   unitAmount: number;
   priceId: string;
 }
@@ -14,29 +13,9 @@ export interface PlanDefinition {
   tagline: string;
   features: string[];
   prices: Record<BillingInterval, PricePoint>;
-  /**
-   * A self-declared reduced annual rate, for students and anyone for whom the
-   * full price is the reason they are not here.
-   *
-   * A norm in this field rather than a discount gimmick: SfN charges $245 a
-   * year for a regular membership and $95 for a graduate student, OHBM $220
-   * against $100. Both verify status with a letter from a department head —
-   * which Contract 1 forbids us from doing, because verifying means holding a
-   * record of who proved what. So it is asked, not proved. The reader picks
-   * this price at checkout and nothing about the choice is written down.
-   *
-   * It buys the same tier. Nothing about the reading experience differs, and
-   * nothing marks a reduced-rate key, because a key that said "student" would
-   * be a stored fact about a person riding around in their browser.
-   */
   reduced?: PricePoint & { label: string; note: string };
 }
 
-/**
- * Price IDs come from the environment so that moving from test mode to live
- * is a change of keys and price IDs and nothing else. The `price_local_*`
- * fallbacks are only ever used by the local Stripe stand-in.
- */
 function priceId(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
@@ -83,14 +62,6 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     id: "lab",
     name: "Lab",
     tagline: "For groups reading and arguing with each other's work.",
-    // No API over "check history" — there is no stored history to expose.
-    // Lab is about serving your own work, not about us keeping more of it.
-    // Two entries were removed here in cycle 3: "Serve your own columns and
-    // datasets from your node" and "Serve under your own signed identity".
-    // Both are free at every tier, by contract, and were never enforced — so
-    // the only thing they did was tell a prospective contributor that
-    // publishing costs $29 a month. Selling something free is worse than a
-    // bug. tests/contracts/serving-is-free.test.ts keeps them out.
     features: [
       "Everything in Member",
       "Lab columns: the long methodological pieces",
@@ -114,14 +85,6 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
 
 export const PLAN_ORDER: PlanId[] = ["member", "lab"];
 
-/**
- * Reverse lookup: which plan does this Stripe price belong to.
- *
- * The reduced rate resolves to its plan's annual interval, so a reduced-rate
- * subscriber is a Member subscriber in every respect the rest of the system
- * can see. That is deliberate: the tier is the entitlement, and what someone
- * paid is between them and Stripe.
- */
 export function planForPrice(
   stripePriceId: string,
 ): { plan: PlanId; interval: BillingInterval } | null {
@@ -138,15 +101,6 @@ export function planForPrice(
   return null;
 }
 
-/**
- * Finds a price by its Stripe price id.
- *
- * A checkout session is identified by a price id, not by a plan and an
- * interval — so anything rendering what a session costs has to look it up
- * this way. Reconstructing it from `plan` + `interval` silently loses any
- * price that is not one of the two on that axis, which is how the simulated
- * checkout came to offer the reduced rate at the full annual price.
- */
 export function priceForId(
   stripePriceId: string,
 ): { plan: PlanDefinition; price: PricePoint } | null {
@@ -169,7 +123,6 @@ export function formatPrice(unitAmount: number): string {
   return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
 }
 
-/** Monthly-equivalent price of an annual plan, for the comparison line. */
 export function monthlyEquivalent(plan: PlanDefinition): string {
   return formatPrice(Math.round(plan.prices.year.unitAmount / 12));
 }

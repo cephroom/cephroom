@@ -3,17 +3,9 @@
 import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
-/**
- * What the chip renders.
- *
- * Re-exported from the pure resolver rather than declared again: the reader
- * and the API both produce this shape, and two declarations of it would drift
- * the moment somebody added a field to one.
- */
 export type { ResolvedClaim as ClaimView } from "@/lib/claims/resolve";
 import type { ResolvedClaim as ClaimView } from "@/lib/claims/resolve";
 
-/** A plain-language gloss of what the claim's `select` actually asserts. */
 function describeSelect(select: string): string {
   switch (select) {
     case "n_points":
@@ -65,16 +57,6 @@ export function ClaimChip({
 }: {
   claim: ClaimView | undefined;
   canInspect: boolean;
-  /**
-   * The node named this claim in the preview prose but did not send its
-   * value, because the reader has not paid for it.
-   *
-   * Rendered as a lock in the counterpart hue, never as a broken claim. The
-   * two states look nothing alike on purpose: "you cannot see this" and
-   * "this number stopped being true" are different facts, and conflating them
-   * would both make a healthy paid column look defective and hide genuine
-   * breakage behind the paywall.
-   */
   withheld?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -154,16 +136,7 @@ export function ClaimChip({
           aria-hidden
           className={`inline-block h-[5px] w-[5px] shrink-0 translate-y-[-2px] rounded-full ${tone.dot}`}
         />
-        {/*
-          The verdict, for anyone not reading the colour.
-          It used to live only in `title`, which is not reliably announced and
-          never reaches a touch user at all — so the dot was `aria-hidden`, the
-          visible text was the bare number, and a screen reader got "59.45
-          percent, button" with no verdict in it. That is colour-only status,
-          which is the exact failure the accessibility step of the loop exists
-          to catch, and the loop's own notes claimed the chips already carried
-          text. They did not; the summary badge did.
-        */}
+        {}
         <span className="sr-only">{tone.label}: </span>
         {claim.display}
       </button>

@@ -8,26 +8,10 @@ import {
   type AccessKey,
 } from "@/lib/keys/tokens";
 
-/**
- * Reading the current reader's key.
- *
- * There is no session lookup here because there is no session store. The
- * whole of "who is this" is: read a cookie, verify a signature. If the
- * signature does not check out, or the key has expired, the reader is
- * anonymous — there is nothing else to consult.
- */
 
 export const ACCESS_COOKIE = "cephroom_key";
 export const REFRESH_COOKIE = "cephroom_renew";
 
-/**
- * Cookie names from before the platform was renamed.
- *
- * Nothing reads them — a key minted under the old issuer would fail
- * verification anyway. They are here so that signing out clears them, rather
- * than leaving a dead credential sitting in the browsers of everyone who was
- * signed in across the rename until it expires on its own.
- */
 const LEGACY_COOKIES = ["receptorome_key", "receptorome_renew"];
 
 export interface Viewer {
@@ -36,7 +20,6 @@ export interface Viewer {
   tier: Tier;
   cus: string | null;
   key: AccessKey | null;
-  /** Seconds until the key expires. The UI renews shortly before this. */
   expiresIn: number;
 }
 
@@ -66,17 +49,6 @@ export async function getViewer(): Promise<Viewer> {
   };
 }
 
-/**
- * True when there is no usable access key but a refresh cookie is present.
- *
- * The access key lives fifteen minutes; the refresh key seven days. A member
- * who comes back the next day has an expired access key and a valid refresh
- * one, and nothing on a cold page load would otherwise consult the refresh
- * key — so they would appear signed out despite holding a live session. The
- * header uses this to trigger a one-shot silent refresh. Presence only: the
- * refresh key is not verified here, just noticed, so this stays cheap and
- * does no Stripe call. The refresh endpoint does the real work.
- */
 export async function canResumeSession(): Promise<boolean> {
   const store = await cookies();
   if (store.get(ACCESS_COOKIE)?.value) {
@@ -106,12 +78,6 @@ export function refreshCookie(token: string) {
   };
 }
 
-/**
- * Signing out clears the cookies and nothing else, because there is nothing
- * else. Note the honest consequence recorded in docs/CONTRACTS.md: a copy of
- * the key taken before signing out stays valid until it expires. Clearing a
- * cookie is not revocation, and this design has no revocation.
- */
 export function clearedCookies() {
   return [
     { name: ACCESS_COOKIE, value: "", ...SHARED, maxAge: 0 },

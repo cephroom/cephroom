@@ -3,15 +3,6 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-/**
- * Silently resumes a session on cold load.
- *
- * Rendered only when the access key has lapsed but a refresh cookie is
- * present. It calls the refresh endpoint once — which re-asks Stripe and
- * mints a fresh access key — then re-renders the tree so the header comes
- * back signed in. A returning member within the refresh window never sees a
- * spurious signed-out state or has to click sign-in again.
- */
 export function SessionResume() {
   const router = useRouter();
   const ran = useRef(false);

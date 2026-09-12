@@ -17,11 +17,6 @@ function stripe(): Stripe {
   return client;
 }
 
-/**
- * Recent Stripe API versions moved the billing period onto the subscription
- * item rather than the subscription. Read whichever one is present so this
- * survives an API version bump.
- */
 function periodEnd(subscription: Stripe.Subscription): number | null {
   const item = subscription.items?.data?.[0] as
     | (Stripe.SubscriptionItem & { current_period_end?: number })

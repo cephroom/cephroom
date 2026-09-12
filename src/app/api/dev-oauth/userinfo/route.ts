@@ -19,14 +19,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "invalid_token" }, { status: 401 });
   }
 
-  // No email, deliberately.
-  //
-  // This provider stands in for Google, and Google returns an address only
-  // when the `email` scope was asked for — which, since the platform stopped
-  // asking, it is not. A stand-in that answered more richly than the real
-  // thing would let code grow a dependency on a field that will not be there
-  // in production, which is the one failure a local counterparty is supposed
-  // to prevent.
   return NextResponse.json(
     {
       sub: persona.sub,

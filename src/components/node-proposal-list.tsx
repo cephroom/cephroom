@@ -19,7 +19,6 @@ const STATUS_TONE = {
   closed: "border-rule bg-paper-sunken text-ink-muted",
 } as const;
 
-/** Reads the author's proposals from their node. The platform holds none. */
 export function NodeProposalList({
   columnId,
   address,

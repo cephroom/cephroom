@@ -1,24 +1,4 @@
 #!/usr/bin/env tsx
-/**
- * The Cephroom command line.
- *
- *   npx tsx scripts/cephroom.ts live "motor imagery"
- *   npx tsx scripts/cephroom.ts read s_localnode_marcus which-protocol-produced-that-number
- *
- * This exists because of the rule that an API you cannot do the real work
- * through is decorative — and its mirror, that anything only the API can do is
- * a UI defect. Everything here is a plain HTTP call anybody could make with
- * curl; what the CLI adds is the one step that is genuinely awkward by hand,
- * which is blinding and unblinding anonymous access tokens.
- *
- * **There are no API keys.** An API key is a stable identifier issued to a
- * person and stored by the issuer so it can be checked, which is exactly what
- * Contract 1 forbids. Authentication is the Layer 1 token scheme: a renewal
- * key you paste in once, which mints short access keys, which buy blind-signed
- * tokens, which are spent one per read for a key carrying a tier and no
- * identity. The platform cannot tell which of your reads are yours, and that
- * is as true from a script as from a browser.
- */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -35,9 +15,7 @@ const HOME = join(homedir(), ".cephroom");
 const CREDENTIALS = join(HOME, "credentials.json");
 
 interface Stored {
-  /** The renewal key. On your disk, in your home directory, and nowhere else. */
   renewalKey?: string;
-  /** Unspent anonymous tokens, base64. */
   tokens?: string[];
 }
 
@@ -54,11 +32,7 @@ function save(next: Stored): void {
   writeFileSync(CREDENTIALS, JSON.stringify(next, null, 2), { mode: 0o600 });
 }
 
-/* ------------------------------------------------------------------ *
- * Authentication, such as it is
- * ------------------------------------------------------------------ */
 
-/** Turns the renewal key into a short access key, the way a browser does. */
 async function accessKey(): Promise<string | null> {
   const { renewalKey } = load();
   if (!renewalKey) return null;
@@ -76,13 +50,6 @@ async function accessKey(): Promise<string | null> {
   return match ? match[1] : null;
 }
 
-/**
- * Tops up the local wallet with blind-signed tokens.
- *
- * The blinding factors are generated here and never leave this process, which
- * is the whole mechanism: the platform signs twelve values it cannot read, and
- * later cannot recognise the one you spend.
- */
 async function stockUp(): Promise<number> {
   const key = await accessKey();
   if (!key) throw new Error("No renewal key. Run `login` first.");
@@ -147,13 +114,6 @@ async function stockUp(): Promise<number> {
   throw new Error("No issuer key would sign for this account.");
 }
 
-/**
- * Spends one token for a read key that carries a tier and no identity.
- *
- * Returns null rather than throwing when the wallet is empty: reading public
- * columns needs no key at all, and a script that only reads open work should
- * not be made to subscribe.
- */
 async function readKey(): Promise<string | null> {
   const stored = load();
   if (!stored.tokens || stored.tokens.length === 0) return null;
@@ -170,9 +130,6 @@ async function readKey(): Promise<string | null> {
   return ((await response.json()) as { key: string }).key;
 }
 
-/* ------------------------------------------------------------------ *
- * Commands
- * ------------------------------------------------------------------ */
 
 async function cmdLogin(argument?: string): Promise<void> {
   if (!argument) {
@@ -244,14 +201,6 @@ async function cmdLive(query?: string): Promise<void> {
   }
 }
 
-/**
- * Fetches a column from its author's node and checks every claim locally.
- *
- * The checking uses the same pure module the website uses. A consumer who does
- * not trust the platform's rendering gets the same verdicts by running the same
- * code over bytes they fetched themselves, which is the point of the claim
- * system being pure and the point of this command existing.
- */
 async function cmdRead(sub?: string, id?: string): Promise<void> {
   if (!sub || !id) throw new Error("Usage: read <sub> <id>");
 
@@ -329,7 +278,6 @@ async function cmdRead(sub?: string, id?: string): Promise<void> {
   }
 }
 
-/** Checks a local Markdown column before serving it. No network, no node. */
 async function cmdCheck(path?: string): Promise<void> {
   if (!path) throw new Error("Usage: check <file.md>");
   if (!existsSync(path)) throw new Error(`No such file: ${path}`);
@@ -349,7 +297,6 @@ async function cmdCheck(path?: string): Promise<void> {
   if (parsed.errors.length > 0) process.exitCode = 1;
 }
 
-/* ------------------------------------------------------------------ */
 
 const [command, ...rest] = process.argv.slice(2);
 

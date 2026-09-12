@@ -20,19 +20,6 @@ import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { spendToken } from "@/lib/tokens/wallet";
 
-/**
- * Reads a column by fetching it from the contributor's node.
- *
- * This runs in the browser on purpose. Under Contract 2 the platform must not
- * hold or proxy content, so the bytes go straight from the author's machine
- * to the reader's — the server that rendered this page never sees them.
- *
- * Claims are verified here too, at read time, against the dataset fetched
- * from whichever node is serving it. That is a consequence of Contract 2
- * rather than a design flourish: a stored check run would be a derived record
- * of content the platform may not keep. It turns out better than what it
- * replaced, because a badge can no longer be green from a run three weeks ago.
- */
 
 interface ServedColumn {
   id: string;
@@ -46,16 +33,7 @@ interface ServedColumn {
   prose: string;
   hiddenBlocks: number;
   claims: ParsedClaim[];
-  /**
-   * Claims the preview names but whose values the node withheld.
-   *
-   * These must render as locked rather than as broken. A number you have not
-   * paid for and a number whose query stopped resolving are different facts,
-   * and showing both in broken red would make a working paid column look
-   * defective — and would hide real breakage behind the paywall.
-   */
   withheldClaims?: string[];
-  /** How many claims in the whole column the reader cannot see. */
   withheldClaimCount?: number;
   servedAt: string;
 }
@@ -79,7 +57,6 @@ export function ColumnReader({
   id: string;
   address: string;
   servedBy: string;
-  /** Where this contributor says they can be paid, verbatim. May be absent. */
   payTo: string | null;
   nodeKey: string | null;
   tier: Tier;
@@ -95,15 +72,6 @@ export function ColumnReader({
 
     (async () => {
       try {
-        // Spend an anonymous token if this browser is holding any. The key it
-        // returns carries a tier and no subject, so the contributor's node
-        // serves the column without ever learning who asked — and the platform
-        // that signed the token cannot tell which subscriber redeemed it.
-        //
-        // Falling back to the subject-bearing key when the wallet is empty is
-        // a downgrade in privacy and never in access, which is the right way
-        // round: nobody should lose a column they paid for because a token
-        // expired.
         const spent = await spendToken();
         if (cancelled) return;
         const presentedKey = spent?.key ?? nodeKey;
@@ -115,12 +83,6 @@ export function ColumnReader({
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const column = (await response.json()) as ServedColumn;
 
-        // A claim's dataset is resolved from the column's own node, not from
-        // whatever node happens to serve that slug. An author vouches for the
-        // data they serve; letting a stranger's node answer would let anyone
-        // announce a dataset under a shared slug and substitute the numbers a
-        // claim is checked against. Cross-node dataset references are, by
-        // design, not trusted — see docs/CONTRACTS.md.
         const needed = [...new Set(column.claims.map((claim) => claim.datasetSlug))];
         const datasets = new Map<string, Dataset>();
         for (const slug of needed) {
@@ -263,13 +225,7 @@ export function ColumnReader({
             <p className="mt-3 border-t border-rule pt-3 text-[0.82rem] leading-relaxed text-broken">
               {counts.broken} claim{counts.broken === 1 ? "" : "s"} could not be
               resolved.{" "}
-              {/* The banner used to assert a cause — "either the dataset moved,
-                  or nobody is serving it" — which is wrong for every failure
-                  that is not about availability. A claim that does not name
-                  which analysis it means breaks while the dataset is right
-                  there, and telling the reader to go looking for a missing
-                  node sends them somewhere there is nothing to find. Each
-                  claim knows its own reason; the banner counts and points. */}
+              {}
               Open one to see why — each says what went wrong with it.
             </p>
           )}
@@ -388,10 +344,6 @@ export function ColumnReader({
   );
 }
 
-/**
- * Runs every claim against the datasets currently being served. The pure
- * judge from lib/claims/verdict is the same code the author's editor uses.
- */
 function components(
   claims: Map<string, ResolvedClaim>,
   canInspect: boolean,

@@ -7,15 +7,6 @@ import { entitlementFor } from "@/lib/stripe/entitlement";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Re-issues the access key, then continues to `next`.
- *
- * Checkout is the case this exists for. Coming back from a payment, the
- * reader still holds a key stating the tier they had before it - and because
- * the key is the session, the only way to change what they are entitled to is
- * to hand them a new one. Cookies cannot be written while rendering a page,
- * so the redirect goes through here.
- */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const next = safeNext(url.searchParams.get("next"));

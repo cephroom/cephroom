@@ -10,20 +10,6 @@ import {
   type SubscriptionView,
 } from "@/lib/stripe/types";
 
-/**
- * A stand-in for Stripe's servers. Development only.
- *
- * This file writes user data to disk, which Contract 1 forbids the platform
- * from doing. It is permitted as bend #3 in docs/CONTRACTS.md on a specific
- * reading: this is not the platform storing user data, it is a simulation of
- * the one party that is allowed to. Live Stripe keys need KYC and a bank
- * account; without a stand-in the billing path cannot be exercised at all.
- *
- * The boundary is structural rather than a comment. Everything under
- * simulated-counterparties/ is outside the platform, the contract tests
- * allowlist exactly this directory, and a test fails if that allowlist grows.
- * Nothing here is loaded when STRIPE_SECRET_KEY is set.
- */
 
 const STORE_PATH = join(process.cwd(), ".stripe-simulated.json");
 const MONTH = 30 * 86_400;
@@ -31,12 +17,6 @@ const YEAR = 365 * 86_400;
 
 interface Customer {
   id: string;
-  /**
-   * Keyed by whichever name the platform used when this customer was created.
-   * Real Stripe metadata is an open string map and holds records written by
-   * older releases, so the stand-in models that rather than a fixed key — it
-   * is the shape that made the receptorome → cephroom rename dangerous.
-   */
   metadata: Record<string, string>;
 }
 
@@ -107,9 +87,6 @@ function baseUrl(): string {
   return process.env.AUTH_URL ?? "http://localhost:3000";
 }
 
-/* ------------------------------------------------------------------ *
- * Actions the simulated checkout page drives
- * ------------------------------------------------------------------ */
 
 export function readSession(sessionId: string): Session | null {
   return load().sessions[sessionId] ?? null;
@@ -129,12 +106,10 @@ export function planFor(sessionId: string) {
   return { session, plan, price: plan.prices[session.request.interval] };
 }
 
-/** The happy path. */
 export function completeCheckout(sessionId: string): void {
   settle(sessionId, "active");
 }
 
-/** The declined-card path: the subscription exists but is not paid for. */
 export function declineCheckout(sessionId: string): void {
   settle(sessionId, "past_due");
 }
@@ -160,21 +135,18 @@ function settle(sessionId: string, status: string): void {
   save(store);
 }
 
-/** A retry succeeding, as Stripe would report it days later. */
 export function recoverPayment(subscriptionId: string): void {
   mutate(subscriptionId, (subscription) => {
     subscription.status = "active";
   });
 }
 
-/** Dunning exhausted: Stripe gives up and cancels. */
 export function exhaustDunning(subscriptionId: string): void {
   mutate(subscriptionId, (subscription) => {
     subscription.status = "canceled";
   });
 }
 
-/** Period rollover, honouring a scheduled cancellation. */
 export function advancePeriod(subscriptionId: string): void {
   mutate(subscriptionId, (subscription) => {
     if (subscription.cancelAtPeriodEnd) {
@@ -209,9 +181,6 @@ function mutate(
   save(store);
 }
 
-/* ------------------------------------------------------------------ *
- * The gateway
- * ------------------------------------------------------------------ */
 
 export function simulatedGateway(): StripeGateway {
   return {

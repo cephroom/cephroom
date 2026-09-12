@@ -76,14 +76,6 @@ export default async function ReadItemPage({
   );
 }
 
-/**
- * What a reader sees when the contributor is not serving.
- *
- * Deliberately uninformative. A helpful "Three empty cells, by Marcus
- * Oyelaran — currently offline" would require the platform to have kept the
- * title, which is the thing Contract 2 forbids. All this page has is the
- * contributor and id that were in the URL.
- */
 function Offline({ sub, id }: { sub: string; id: string }) {
   return (
     <main className="mx-auto max-w-[40rem] px-5 py-20">

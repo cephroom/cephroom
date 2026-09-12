@@ -7,14 +7,6 @@ import { DiffView } from "@/components/diff-view";
 import { diffLines, diffStats, toHunks } from "@/lib/diff";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
-/**
- * Proposing an edit, posted straight to the author's node.
- *
- * The whole exchange is browser-to-node: the current text is fetched from
- * them, the diff is computed here, and the proposal is posted back to them.
- * Under Contract 2 the platform cannot be a party to this — it would mean
- * holding someone's draft.
- */
 export function NodeProposalForm({
   sub,
   columnId,

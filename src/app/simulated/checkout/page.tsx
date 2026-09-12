@@ -6,11 +6,6 @@ import { formatPrice } from "@/lib/stripe/plans";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Stands in for Stripe's hosted checkout while no Stripe key is configured.
- * Whichever outcome is chosen moves the simulated counterparty's own records,
- * which the platform then reads back through the ordinary gateway.
- */
 export default async function SimulatedCheckoutPage({
   searchParams,
 }: {
@@ -29,12 +24,6 @@ export default async function SimulatedCheckoutPage({
     "use server";
     const inner = await import("@simulated/stripe/store");
     inner.completeCheckout(sessionId!);
-    // Real Stripe returns the browser to successUrl (the restamp route) as a
-    // genuine top-level navigation, so its Set-Cookie lands. This page is a
-    // server action instead, and the redirect it throws is followed as an
-    // RSC navigation that drops the intermediate route's cookie — so the
-    // reader would land on /account still stamped Reader. Re-stamp here, in
-    // the action, where cookies().set() actually sticks.
     await restampKey();
     redirect(session.request.successUrl);
   }

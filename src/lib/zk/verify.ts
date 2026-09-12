@@ -11,33 +11,10 @@ import {
 } from "./params";
 import { isAcceptedModulus } from "./jwks";
 
-/**
- * Verifying a proof, using public parameters and nothing else.
- *
- * The rule this module exists to enforce: **prover identity is not an input to
- * verification.** There is no allowlist, no registry, no callback to whoever
- * produced the proof, and no field anywhere in this file that names one. A
- * proof from a prover nobody has heard of verifies exactly like a proof from a
- * prover the platform's own author runs, because the verifier cannot tell them
- * apart and must not be able to.
- *
- * That is what makes "pick your own prover, or run one" a real choice rather
- * than a slogan. The moment the platform prefers a prover, users converge on
- * it, and the trust that was supposed to move to a party of their choosing
- * moves back to a party of ours.
- *
- * A ZK proof does not prevent replay on its own — a valid proof copied is
- * still valid. So a proof binds to a challenge this platform issued, the
- * challenge is spent on use, and the spend goes through the same bounded-epoch
- * nullifier machinery as Layer 1's tokens. See docs/PROVER-PROTOCOL.md.
- */
 
 export interface ZkProofSubmission {
-  /** The proof object, as the proof system serialises it. */
   proof: unknown;
-  /** Public signals, in the layout the published parameters name. */
   publicSignals: string[];
-  /** The challenge this proof claims to answer. */
   challenge: string;
 }
 
@@ -53,18 +30,7 @@ export type VerifyResult =
   | { ok: true; subject: string }
   | { ok: false; reason: VerifyFailure };
 
-/* ------------------------------------------------------------------ *
- * Challenges
- * ------------------------------------------------------------------ */
 
-/**
- * A challenge is 32 random bytes and a moment. Nothing else.
- *
- * Deliberately not derived from anything about the caller: a challenge that
- * encoded who asked for it would let the platform recognise the proof that came
- * back, which is the linkage this layer removes. Two callers asking at the same
- * instant get indistinguishable challenges.
- */
 export const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
 interface IssuedChallenge {
@@ -84,26 +50,6 @@ export function challengeEpoch(now: number = Date.now()): number {
   return Math.floor(now / CHALLENGE_TTL_MS);
 }
 
-/**
- * A hard ceiling on outstanding challenges.
- *
- * The epoch bound alone limits the set to twenty minutes of traffic, which is
- * bounded in principle and not in practice: this endpoint is anonymous, by
- * necessity, so anybody can ask for challenges as fast as they can open
- * sockets and the set grows until the process dies.
- *
- * A cap converts that into a bounded failure instead. It is not a fix, and the
- * tradeoff is real and stated rather than glossed: past the ceiling, the
- * oldest outstanding challenges are evicted, so somebody flooding this
- * endpoint can push out a legitimate sign-in that is in flight and make it
- * fail. Degraded service under attack beats an out-of-memory crash under
- * attack, and that is the whole of the argument.
- *
- * The thing that would actually solve it — rate limiting per caller — needs an
- * identity for the caller, and the platform does not read client IPs and has
- * no identity for someone who has not signed in yet. See docs/API.md, which
- * says so where an API consumer will read it.
- */
 const MAX_OUTSTANDING = 50_000;
 
 export function issueChallenge(now: number = Date.now()): string {
@@ -128,7 +74,6 @@ export function issueChallenge(now: number = Date.now()): string {
   return value;
 }
 
-/** Outstanding challenges, for a health check. Never per-caller. */
 export function outstandingChallenges(): number {
   return challenges().size;
 }
@@ -149,17 +94,6 @@ export function clearChallenges(): void {
   challenges().clear();
 }
 
-/**
- * What the circuit's `nonceContentHash` must equal for this challenge.
- *
- * The user puts `nonce` in their OIDC request; the circuit recomputes a hash
- * of that claim from a private blinding factor and exposes it publicly. The
- * verifier checks it names the challenge it issued. The blinding factor is why
- * the prover learns nothing useful from the nonce: it sees a value it cannot
- * connect to anything the platform later does.
- *
- * Split across two field elements because a 256-bit value does not fit in one.
- */
 export function expectedNonceHash(challenge: string): [bigint, bigint] {
   const digest = createHash("sha256").update(challenge, "utf8").digest();
   const high = BigInt(`0x${digest.subarray(0, 16).toString("hex")}`);
@@ -167,9 +101,6 @@ export function expectedNonceHash(challenge: string): [bigint, bigint] {
   return [high, low];
 }
 
-/* ------------------------------------------------------------------ *
- * Verification
- * ------------------------------------------------------------------ */
 
 function parseSignals(signals: string[]): bigint[] | null {
   if (!Array.isArray(signals) || signals.length !== EXPECTED_SIGNAL_COUNT) {
@@ -187,14 +118,6 @@ function parseSignals(signals: string[]): bigint[] | null {
   }
 }
 
-/**
- * Checks a submitted proof.
- *
- * `verifyingKey` and `system` come from the published parameters. `spend` is
- * the nullifier store's single-shot check-and-record, injected rather than
- * imported so this function stays pure enough to test without a process-wide
- * store — and so that the replay check cannot accidentally be made optional.
- */
 export async function verifySubmission(
   submission: ZkProofSubmission,
   options: {

@@ -1,18 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-/**
- * Proposals, stored on the contributor's own disk.
- *
- * The review half of the thesis, rebuilt to fit Contract 2. A reader's
- * browser posts a proposed edit straight to the author's node; the platform
- * is not involved and holds nothing. If the author is offline, the proposal
- * cannot be delivered — which is the same constraint that applies to reading
- * their work, and for the same reason.
- *
- * This writes files. That is allowed: it is the contributor's machine, which
- * is the entire point of the contract rather than an exception to it.
- */
 
 export interface Proposal {
   id: string;
@@ -20,7 +8,6 @@ export interface Proposal {
   title: string;
   rationale: string;
   body: string;
-  /** The proposer's pseudonymous subject. Never an email. */
   fromSub: string;
   fromName: string;
   status: "open" | "merged" | "closed";
@@ -84,7 +71,6 @@ export class ProposalStore {
     return this.list(columnId).filter((p) => p.status === "open").length;
   }
 
-  /** Open proposals a single subject holds on a column — the flood limiter. */
   openFromSubject(columnId: string, sub: string): number {
     return this.list(columnId).filter(
       (p) => p.status === "open" && p.fromSub === sub,

@@ -1,10 +1,3 @@
-/**
- * Generates the Ed25519 signing pair and the subject HMAC secret.
- *
- * Rotating the signing key is the only revocation this design has: it
- * invalidates every key at once and signs everyone out. That is a blunt
- * instrument and it is the intended one - see docs/CONTRACTS.md.
- */
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");

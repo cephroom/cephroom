@@ -12,7 +12,7 @@ export default async function HomePage() {
 
   return (
     <main>
-      {/* ---------------------------------------------------------- Hero */}
+      {}
       <section className="border-b border-rule">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:py-24">
           <div className="max-w-3xl">
@@ -53,7 +53,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* The mechanism, shown rather than described. */}
+          {}
           <figure className="mt-14 max-w-3xl rounded-xl border border-rule bg-paper-raised p-5 sm:p-7">
             <figcaption className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-ink-faint">
               What an author writes
@@ -94,7 +94,7 @@ tolerance: 10%
         </div>
       </section>
 
-      {/* --------------------------------------------------- The two ideas */}
+      {}
       <section className="border-b border-rule bg-paper-sunken">
         <div className="mx-auto max-w-6xl px-5 py-16">
           <h2 className="font-serif text-[1.7rem] font-semibold tracking-[-0.02em]">
@@ -170,7 +170,7 @@ tolerance: 10%
         </div>
       </section>
 
-      {/* ------------------------------------------------------ Live state */}
+      {}
       <section>
         <div className="mx-auto max-w-6xl px-5 py-16">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">

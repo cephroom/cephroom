@@ -98,7 +98,7 @@ export default async function AccountPage({
         {fresh.name ?? "Reader"}
       </p>
 
-      {/* --------------------------------------------------- What you hold */}
+      {}
       <section className="mt-8 rounded-xl border border-rule bg-paper-raised p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -201,7 +201,7 @@ export default async function AccountPage({
         )}
       </section>
 
-      {/* ------------------------------------------ What we know about you */}
+      {}
       <section className="mt-8 rounded-xl border border-rule p-5">
         <h2 className="text-[0.95rem] font-semibold">
           What Cephroom knows about you
@@ -234,7 +234,7 @@ export default async function AccountPage({
         </Link>
       </section>
 
-      {/* -------------------------------------------- Anonymous reading */}
+      {}
       <section className="mt-8 rounded-xl border border-rule p-5">
         <h2 className="text-[0.95rem] font-semibold">Read without us knowing</h2>
         <p className="mt-2 max-w-[62ch] text-[0.88rem] leading-relaxed text-ink-muted">
@@ -249,7 +249,7 @@ export default async function AccountPage({
         </div>
       </section>
 
-      {/* -------------------------------------------------- Work from a script */}
+      {}
       <section className="mt-8 rounded-xl border border-rule p-5">
         <h2 className="text-[0.95rem] font-semibold">Use it from a script</h2>
         <p className="mt-2 max-w-[62ch] text-[0.88rem] leading-relaxed text-ink-muted">
@@ -269,7 +269,7 @@ export default async function AccountPage({
         </a>
       </section>
 
-      {/* ------------------------------------------- Run a node as yourself */}
+      {}
       <section className="mt-8 rounded-xl border border-rule p-5">
         <h2 className="text-[0.95rem] font-semibold">Run a node as yourself</h2>
         <p className="mt-1.5 max-w-[60ch] text-[0.87rem] leading-relaxed text-ink-muted">

@@ -10,22 +10,6 @@ import {
 
 import type { Tier } from "@/lib/access";
 
-/**
- * Capability keys.
- *
- * Contract 1: the platform persists nothing about users. There is no session
- * table, so a key *is* the session — a signed statement of who you are and
- * what you may do, which the platform verifies by signature rather than by
- * looking anything up.
- *
- * Signing is Ed25519 rather than an HMAC because a contributor's node has to
- * verify a reader's key before serving member-only content, and it must be
- * able to do that with a public key alone. A shared secret would let every
- * node mint keys.
- *
- * See docs/CONTRACTS.md for the revocation tradeoff, which is real and
- * unmitigated: these keys cannot be revoked, only outlived.
- */
 
 export const ACCESS_TTL_SECONDS = 15 * 60;
 export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -33,11 +17,6 @@ export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 export const ISSUER = "cephroom";
 export const ACCESS_AUDIENCE = "cephroom:access";
 export const REFRESH_AUDIENCE = "cephroom:refresh";
-// The serve key announces a node's presence and does nothing else. It gets
-// its own audience so that verifyAccessKey — the reader-session verifier used
-// by the platform and, via the platform's public key, by every node — refuses
-// it. A leaked 30-day NODE_KEY can therefore announce, and grant no read
-// access to any paid content.
 export const SERVE_AUDIENCE = "cephroom:serve";
 
 export type Scope =
@@ -48,22 +27,10 @@ export type Scope =
   | "serve:node";
 
 export interface AccessKey {
-  /**
-   * Pseudonymous subject, or null for an anonymous key.
-   *
-   * Null is the Layer 1 case: a key minted by redeeming a blind-signed token
-   * carries a tier and nothing else, because the platform genuinely does not
-   * know who redeemed it. Everything that needs attribution — announcing a
-   * node, proposing an edit — needs a subject and therefore cannot be done
-   * with one of these, which is correct rather than a limitation. Reading
-   * needs no attribution.
-   */
   sub: string | null;
   tier: Tier;
   scp: Scope[];
-  /** Stripe customer id, when the subject has one. */
   cus?: string;
-  /** Display name the reader chose at the provider. Never stored by us. */
   name?: string;
   iat: number;
   exp: number;
@@ -77,17 +44,6 @@ export interface RefreshKey {
   exp: number;
 }
 
-/**
- * What a tier may do.
- *
- * Note what is *not* here: `serve:node`. Announcing is free at every tier, by
- * contract — "the requirement is attribution, not payment" — and the signal
- * endpoint has always accepted any valid key, so granting `serve:node` to Lab
- * alone enforced nothing. It only advertised a paywall on publishing that
- * does not exist, in the plan the Lab tier sells. The scope lives on the
- * serve key and nowhere else; `tests/contracts/serving-is-free.test.ts` holds
- * the line.
- */
 export function scopesForTier(tier: Tier): Scope[] {
   const scopes: Scope[] = ["read:public"];
   if (tier === "member" || tier === "lab") {
@@ -97,17 +53,7 @@ export function scopesForTier(tier: Tier): Scope[] {
   return scopes;
 }
 
-/* ------------------------------------------------------------------ *
- * Pseudonymous subjects
- * ------------------------------------------------------------------ */
 
-/**
- * Derives a stable subject from a provider account id.
- *
- * Stable, so attribution survives signing out and back in. One-way, so a
- * token in the wild does not reveal which Google account it came from, and
- * neither would a leak of the platform — which has nothing to leak.
- */
 export function deriveSubject(provider: string, accountId: string): string {
   const secret = requireEnv("AUTH_SUBJECT_SECRET");
   const digest = createHmac("sha256", secret)
@@ -116,7 +62,6 @@ export function deriveSubject(provider: string, accountId: string): string {
   return `s_${digest.slice(0, 27)}`;
 }
 
-/** Constant-time compare, for CSRF state and similar short opaque values. */
 export function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
@@ -124,9 +69,6 @@ export function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
-/* ------------------------------------------------------------------ *
- * Signing and verification
- * ------------------------------------------------------------------ */
 
 let privateKey: CryptoKey | null = null;
 let publicKey: CryptoKey | null = null;
@@ -147,7 +89,6 @@ export async function verificationKey(): Promise<CryptoKey> {
   return publicKey;
 }
 
-/** The public key, in the form a node fetches from /.well-known. */
 export function publicKeyPem(): string {
   return decodePem(requireEnv("CEPHROOM_PUBLIC_KEY"));
 }
@@ -173,14 +114,6 @@ export async function mintAccessKey(input: {
     .sign(await signingKey());
 }
 
-/**
- * A key for presenting to a node, minted per page view.
- *
- * The reader's own key is httpOnly, so the browser cannot read it to put in
- * an Authorization header. Rather than dropping the real key into the page,
- * this mints a separate one that lives for two minutes: long enough to fetch
- * a column, short enough that finding it in a page source is worth little.
- */
 export const NODE_KEY_TTL_SECONDS = 120;
 
 export async function mintNodeKey(input: {
@@ -202,24 +135,6 @@ export async function mintNodeKey(input: {
     .sign(await signingKey());
 }
 
-/**
- * A read key with a tier and no subject — Layer 1's output.
- *
- * Minted by redeeming a blind-signed access token. The platform cannot put a
- * subject in it because it does not have one: the redemption arrived with no
- * cookie, and the token it carried is unlinkable to the issuance that produced
- * it. So this is not "a key with the subject omitted for privacy"; it is a key
- * for which no subject exists anywhere.
- *
- * It carries read scopes only. `write:propose` is deliberately withheld even
- * at Member tier, because a proposal arrives on a contributor's disk and an
- * unattributable one would be both unreviewable and a spam channel. If you
- * want to argue with an author you sign your name; if you want to read, you
- * do not.
- *
- * Lifetime matches the per-page-view node key. A token buys a reading session,
- * not a subscription.
- */
 export async function mintAnonymousKey(input: {
   tier: Tier;
 }): Promise<string> {
@@ -237,17 +152,6 @@ export async function mintAnonymousKey(input: {
     .sign(await signingKey());
 }
 
-/**
- * A long-lived key a contributor pastes into their node as NODE_KEY, so it
- * can announce under their own subject.
- *
- * Longer than the browser keys because a node runs unattended for days. It
- * shares their revocation model — outlived, not revoked — so the lifetime is
- * the exposure: a leaked serve key lets someone announce under this subject
- * (list content in the namespace, nothing more — it grants no read access to
- * anyone's data and cannot touch billing) until it expires. Thirty days
- * balances "a node should stay up" against that. See docs/CONTRACTS.md.
- */
 export const SERVE_KEY_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const SERVE_KEY_TTL_DAYS = 30;
 
@@ -313,12 +217,6 @@ export async function verifyAccessKey(token: string): Promise<AccessKey | null> 
   };
 }
 
-/**
- * Verifies a serve key — the announce-only NODE_KEY. Distinct from
- * verifyAccessKey on purpose: this accepts the serve audience and returns only
- * a subject to announce under. It grants no tier and no read scope, so nothing
- * downstream can mistake a serve key for a reader session.
- */
 export async function verifyServeKey(
   token: string,
 ): Promise<{ sub: string; name?: string } | null> {

@@ -13,14 +13,6 @@ export const dynamic = "force-dynamic";
 
 export const FLOW_COOKIE = "cephroom_flow";
 
-/**
- * Begins an authorization-code flow.
- *
- * The CSRF state and the PKCE verifier have to survive the round trip to the
- * provider. Under Contract 1 they cannot be put in a server-side store, so
- * they go in a short-lived httpOnly cookie: the state lives with the client,
- * and the platform writes nothing.
- */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const provider = providerById(url.searchParams.get("provider") ?? "");

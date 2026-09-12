@@ -1,18 +1,3 @@
-/**
- * A local OAuth 2.0 identity provider, for development only.
- *
- * Google and GitHub OAuth need client credentials that only the owner of a
- * deployment can create. Without them the OAuth code path is unreachable and
- * therefore untested. This provider stands up a real authorisation endpoint,
- * token endpoint and userinfo endpoint on this same server, so the full
- * Auth.js OAuth flow - state check, code exchange, profile mapping, adapter
- * account linking - runs exactly as it will against Google.
- *
- * It is not a mock of Auth.js. It is a mock of the identity provider, which
- * is the part that cannot be provisioned locally.
- *
- * Enabled only when AUTH_DEV_OAUTH=1 and NODE_ENV is not production.
- */
 
 export const DEV_OAUTH_CLIENT_ID = "cephroom-local";
 export const DEV_OAUTH_CLIENT_SECRET = "cephroom-local-secret";
@@ -28,7 +13,6 @@ export interface DevPersona {
   name: string;
   email: string;
   picture: string | null;
-  /** Which real provider this persona is standing in for, for the UI label. */
   mimics: "google" | "github";
   login?: string;
 }

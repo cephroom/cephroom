@@ -206,7 +206,7 @@ export default function HowItWorksPage() {
         </Verdict>
       </div>
 
-      {/* ------------------------------------------------------- Contracts */}
+      {}
       <div id="contracts" className="prose mt-14 scroll-mt-20">
         <h2>The two constraints</h2>
         <p>

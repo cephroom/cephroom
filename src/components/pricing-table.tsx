@@ -154,10 +154,7 @@ export function PricingTable({
                 )}
               </div>
 
-              {/* The reduced rate sits inside the card, at the same weight as
-                  the plan it belongs to, rather than in a footnote someone has
-                  to go looking for. A rate people do not find is a rate that
-                  does not exist. */}
+              {}
               {plan.reduced && !isCurrent && !isDowngrade && (
                 <div className="mt-5 border-t border-rule pt-4">
                   <form action={checkoutAction}>
@@ -191,12 +188,6 @@ export function PricingTable({
   );
 }
 
-/**
- * The reduced-rate button, deliberately not styled as a lesser option.
- *
- * It takes the counterpart hue rather than a muted grey: someone who needs
- * this price should not have to click something that looks like a downgrade.
- */
 function ReducedButton() {
   const { pending } = useFormStatus();
   return (
