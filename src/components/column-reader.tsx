@@ -433,6 +433,18 @@ function NodeFigure({
   address: string;
 }) {
   const url = nodeAssetUrl(src, address);
+  const [failed, setFailed] = useState(false);
+
+  if (url && failed) {
+    // The reference was to this node, but the figure did not load - a moved or
+    // deleted file, or a node that went down mid-read. Degrade to a note rather
+    // than the browser's broken-image glyph, which says nothing.
+    return (
+      <span className="my-2 block text-[0.82rem] text-ink-faint">
+        {alt ? `${alt} — ` : ""}figure could not be loaded from this node.
+      </span>
+    );
+  }
 
   if (!url) {
     return (
@@ -457,6 +469,7 @@ function NodeFigure({
         <video
           src={url}
           controls
+          onError={() => setFailed(true)}
           className="w-full rounded-lg border border-rule"
         />
       ) : (
@@ -470,6 +483,7 @@ function NodeFigure({
           src={url}
           alt={alt ?? ""}
           loading="lazy"
+          onError={() => setFailed(true)}
           className="w-full rounded-lg border border-rule"
         />
       )}

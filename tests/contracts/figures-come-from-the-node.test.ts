@@ -81,3 +81,14 @@ describe("the node serves media, and only media, from its own directory", () => 
     expect(around).toMatch(/no-store/);
   });
 });
+
+describe("a figure that does not load degrades to a note", () => {
+  it("handles a load failure rather than leaving a broken-image glyph", () => {
+    // No jsdom in this project's test environment, so the graceful path is
+    // verified in the browser; this guards that the handler cannot be dropped
+    // silently - a same-node figure that 404s must fall back, not show the
+    // browser's broken-image icon.
+    expect(reader).toMatch(/onError=\{/);
+    expect(reader).toMatch(/could not be loaded/i);
+  });
+});
