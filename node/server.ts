@@ -7,6 +7,7 @@ import { config } from "dotenv";
 import { parseBody } from "../src/lib/claims/syntax";
 import { FREE_SERVING_CAPACITY } from "../src/lib/stripe/plans";
 import { assetRoot, readAsset, resolveAsset } from "./assets";
+import { resolveContentPaths } from "./config";
 import { readColumnFile, type Column } from "./columns";
 import { foldForScope } from "./fold-facts";
 import { AnnounceRefused, PresenceLoop } from "./presence";
@@ -29,18 +30,11 @@ const PAY_TO = flag("pay-to", process.env.PAY_TO ?? "");
 const SUB = flag("sub", process.env.NODE_SUBJECT ?? "s_localnode_marcus");
 const ADDRESS = flag("address", `http://127.0.0.1:${PORT}`);
 
-const CONTENT_DIR = resolve(
-  flag("content", process.env.CONTENT_DIR ?? join(import.meta.dirname, "content")),
-);
-
-const contentGiven =
-  args.includes("--content") || Boolean(process.env.CONTENT_DIR);
-const DATA_DIR = resolve(
-  flag(
-    "data",
-    process.env.DATA_DIR ??
-      (contentGiven ? CONTENT_DIR : join(import.meta.dirname, "data")),
-  ),
+const { contentDir: CONTENT_DIR, dataDir: DATA_DIR } = resolveContentPaths(
+  args,
+  { CONTENT_DIR: process.env.CONTENT_DIR, DATA_DIR: process.env.DATA_DIR },
+  import.meta.dirname,
+  process.cwd(),
 );
 const HAS_DATASET = existsSync(join(DATA_DIR, "gap_report.json"));
 const ASSET_ROOT = assetRoot(CONTENT_DIR);
@@ -54,6 +48,9 @@ const TOO_LARGE = Symbol("payload-too-large");
 
 
 function readColumns(): Column[] {
+  // A bare node points at a content directory that need not exist - an empty
+  // node is the architecture, not an error. Missing dir means no columns.
+  if (!existsSync(CONTENT_DIR)) return [];
   return readdirSync(CONTENT_DIR)
     .filter((file) => file.endsWith(".md"))
     .map((file) =>

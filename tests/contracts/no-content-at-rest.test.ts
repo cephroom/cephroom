@@ -129,7 +129,7 @@ describe("Contract 2: the platform ships no column bodies of its own", () => {
     );
     expect(
       columns.length,
-      "node/content/ holds the demo columns a fresh clone serves with no arguments. Empty means `npm run node:serve` now announces nothing, and /contribute says otherwise.",
+      "node/content/ holds the example columns served by `npm run node:serve -- --demo` for local development. A bare node serves nothing (that is the architecture); this only checks the opt-in demo corpus still exists in the repo.",
     ).toBeGreaterThan(0);
   });
 });

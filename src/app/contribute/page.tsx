@@ -46,10 +46,12 @@ export default async function ContributePage() {
       <div className="prose mt-10">
         <h2>Start a node</h2>
         <p>
-          Clone the repository and run the node it ships. With no arguments it
-          serves the demo content — the receptorome-ki dataset and a handful of
-          example columns — so you can see the whole loop working before you
-          point it anywhere.
+          Clone the repository and run the node it ships. A bare node{" "}
+          <em>serves nothing</em> — the platform is empty until someone points a
+          node at their own work, and an empty site is the design, not a missing
+          step. To watch the whole loop before you have columns of your own, add{" "}
+          <code>--demo</code>, which serves the example corpus that lives in the
+          repository for exactly that.
         </p>
       </div>
 
@@ -60,7 +62,8 @@ export default async function ContributePage() {
         tabIndex={0}
       >
         {`git clone <this repo> && cd cephroom && npm install
-npm run node:serve                       # serves the demo content`}
+npm run node:serve                       # serves nothing until you point it at content
+npm run node:serve -- --demo             # serves the example corpus, to see the loop`}
       </pre>
 
       <div className="prose mt-8">

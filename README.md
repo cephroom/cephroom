@@ -42,15 +42,17 @@ served, which is the architecture rather than a missing seed step.
 
 ## Serve the demo content
 
-In a second terminal:
+A bare node serves nothing — the platform is empty until a contributor points a
+node at their own work, and an empty site is the architecture, not a missing
+step. To see the whole loop before you have columns of your own, run the example
+corpus that ships in the repository behind an explicit flag:
 
 ```bash
-npm run node:serve
+npm run node:serve -- --demo
 ```
 
-With no arguments this serves the demo that ships in the repository — six
-columns and two datasets, from `node/content/` and `node/data/` — announces them
-to the platform, and heartbeats to keep the lease alive. Reload
+That serves six columns and two datasets from `node/content/` and `node/data/`,
+announces them, and heartbeats to keep the lease alive. Reload
 <http://localhost:3000/read> and they are there. `Ctrl-C` withdraws, and the
 platform forgets immediately; there is nothing to clean up, because the
 announcement was the only record.
@@ -151,7 +153,7 @@ grep-based guard that silently stops matching is worse than no guard.
 src/app/          the platform: pages and API routes
 src/lib/          claims, keys, signaling, tokens, zk, stripe
 node/             a contributor's node — their process, their disk
-node/content/     the demo columns a fresh clone serves
+node/content/     the demo columns, served only with --demo
 scripts/          the CLI and key generation
 simulated-counterparties/   stands in for Stripe in development
 tests/contracts/  the eleven contracts, as tests
