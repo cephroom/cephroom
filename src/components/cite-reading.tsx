@@ -69,15 +69,14 @@ export function CiteReading({ citation }: { citation: Citation }) {
 
           <div
             className="mt-4 inline-flex rounded-md border border-field-border p-0.5 text-[0.8rem]"
-            role="tablist"
+            role="group"
             aria-label="Citation format"
           >
             {(["plain", "bibtex"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
-                role="tab"
-                aria-selected={format === f}
+                aria-pressed={format === f}
                 onClick={() => setFormat(f)}
                 className={`rounded px-3 py-1 font-medium transition-colors ${
                   format === f
