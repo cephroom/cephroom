@@ -31,12 +31,20 @@ import { z } from "zod";
  */
 export const PAY_TO_MAX = 300;
 
+/**
+ * An item, as a node announces it.
+ *
+ * There is no `access`. A column had one — public, member or lab — and the
+ * node withheld most of it from readers whose key did not measure up. That
+ * sold a consumer "contributors will treat you better" while the contributor
+ * got nothing for it. An older node still sending the field is not an error:
+ * zod drops it, and it simply no longer means anything.
+ */
 export const manifestItemSchema = z.object({
   id: z.string().min(1).max(200),
   title: z.string().min(1).max(300),
   kind: z.enum(["column", "dataset"]),
   tags: z.array(z.string().max(60)).max(20).default([]),
-  access: z.enum(["public", "member", "lab"]).optional(),
   summary: z.string().max(600).optional(),
   openProposals: z.number().int().min(0).max(100000).optional(),
 });

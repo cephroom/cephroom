@@ -42,12 +42,12 @@ beforeAll(async () => {
   process.env.AUTH_SUBJECT_SECRET ??= "anonymous-access-test-secret";
 });
 
-describe("the anonymous key carries a tier and no person", () => {
+describe("the anonymous key carries a discovery plan and no person", () => {
   it("has no subject claim at all", async () => {
     const { mintAnonymousKey } = await import("@/lib/keys/tokens");
     const { decodeJwt } = await import("jose");
 
-    const key = await mintAnonymousKey({ tier: "member" });
+    const key = await mintAnonymousKey({ discovery: "query" });
     const payload = decodeJwt(key);
 
     // Not "a subject that looks anonymous" — no `sub` claim in the token.
@@ -60,39 +60,39 @@ describe("the anonymous key carries a tier and no person", () => {
   it("verifies, and yields a null subject rather than being rejected", async () => {
     const { mintAnonymousKey, verifyAccessKey } = await import("@/lib/keys/tokens");
 
-    const verified = await verifyAccessKey(await mintAnonymousKey({ tier: "lab" }));
+    const verified = await verifyAccessKey(await mintAnonymousKey({ discovery: "query" }));
     expect(verified).not.toBeNull();
     expect(verified!.sub).toBeNull();
-    expect(verified!.tier).toBe("lab");
+    expect(verified!.discovery).toBe("query");
   });
 
   it("cannot propose, because a proposal has to be attributable", async () => {
     const { mintAnonymousKey, verifyAccessKey } = await import("@/lib/keys/tokens");
 
     const verified = await verifyAccessKey(
-      await mintAnonymousKey({ tier: "member" }),
+      await mintAnonymousKey({ discovery: "query" }),
     );
-    // Read what you paid for; sign what you write. An anonymous proposal
-    // would land on a contributor's disk with nobody attached to it.
+    // Search anonymously; sign what you write. An anonymous proposal would
+    // land on a contributor's disk with nobody attached to it.
     expect(verified!.scp).not.toContain("write:propose");
-    expect(verified!.scp).toContain("read:member");
+    expect(verified!.scp).toEqual([]);
   });
 
   it("carries no name, no customer, and nothing else besides", async () => {
     const { mintAnonymousKey } = await import("@/lib/keys/tokens");
     const { decodeJwt } = await import("jose");
 
-    const payload = decodeJwt(await mintAnonymousKey({ tier: "member" }));
+    const payload = decodeJwt(await mintAnonymousKey({ discovery: "query" }));
     // Asserted exhaustively: a field added here is a field a node can use to
     // tell two anonymous reads apart, which is the whole property.
     expect(Object.keys(payload).sort()).toEqual([
       "anon",
       "aud",
+      "discovery",
       "exp",
       "iat",
       "iss",
       "scp",
-      "tier",
     ]);
   });
 
@@ -101,7 +101,7 @@ describe("the anonymous key carries a tier and no person", () => {
       await import("@/lib/keys/tokens");
     const { decodeJwt } = await import("jose");
 
-    const payload = decodeJwt(await mintAnonymousKey({ tier: "member" }));
+    const payload = decodeJwt(await mintAnonymousKey({ discovery: "query" }));
     const life = payload.exp! - payload.iat!;
     expect(life).toBe(NODE_KEY_TTL_SECONDS);
     expect(life).toBeLessThan(ACCESS_TTL_SECONDS);
@@ -120,7 +120,7 @@ describe("the anonymous key carries a tier and no person", () => {
       "base64",
     ).toString("utf8");
 
-    const neither = await new SignJWT({ tier: "lab", scp: ["read:lab"] })
+    const neither = await new SignJWT({ discovery: "sweep", scp: [] })
       .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
       .setIssuer(tokens.ISSUER)
       .setAudience(tokens.ACCESS_AUDIENCE)
@@ -150,7 +150,7 @@ describe("the redemption request carries nothing that identifies the reader", ()
     const body = redeem
       .split("\n")
       .find((line) => line.trimStart().startsWith("body:"));
-    // Not the epoch, not the tier, not how many are left — each would narrow
+    // Not the epoch, not the plan, not how many are left — each would narrow
     // the anonymity set for no gain, since the token already proves all of it.
     expect(body, "spendToken sends no request body").toBeDefined();
     expect(body).toContain("JSON.stringify({ token })");
@@ -207,7 +207,7 @@ describe("a redeemed token cannot be redeemed again", () => {
     expect(new Set(refusals).size).toBe(1);
   });
 
-  it("mints against the tier the token proves, never one the caller asked for", () => {
+  it("mints against the plan the token proves, never one the caller asked for", () => {
     // The request body is a token and nothing else; the tier comes from which
     // key verified it. A tier taken from the body would let a member ask for
     // lab access with a valid member token.

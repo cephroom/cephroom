@@ -34,23 +34,23 @@ beforeAll(async () => {
 
 describe("a genuine key round-trips", () => {
   it("verifies a freshly minted access key", async () => {
-    const token = await tokens.mintAccessKey({ sub: "s_reader", tier: "member" });
+    const token = await tokens.mintAccessKey({ sub: "s_reader", discovery: "query" });
     const key = await tokens.verifyAccessKey(token);
     expect(key?.sub).toBe("s_reader");
-    expect(key?.tier).toBe("member");
-    expect(key?.scp).toContain("read:member");
+    expect(key?.discovery).toBe("query");
+    expect(key?.scp).toContain("write:propose");
   });
 });
 
 describe("forgery and tampering are rejected", () => {
   it("rejects a key whose payload was edited after signing", async () => {
-    const token = await tokens.mintAccessKey({ sub: "s_reader", tier: "reader" });
+    const token = await tokens.mintAccessKey({ sub: "s_reader", discovery: "query" });
     const [header, payload, signature] = token.split(".");
 
     const decoded = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8"),
     );
-    decoded.tier = "lab"; // the escalation an attacker would want
+    decoded.discovery = "sweep"; // the escalation an attacker would want
     const tampered = [
       header,
       Buffer.from(JSON.stringify(decoded)).toString("base64url"),
@@ -61,7 +61,7 @@ describe("forgery and tampering are rejected", () => {
   });
 
   it("rejects a key signed by someone else's private key", async () => {
-    const forged = await new SignJWT({ tier: "lab", scp: ["read:lab"] })
+    const forged = await new SignJWT({ discovery: "sweep", scp: [] })
       .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
       .setIssuer(tokens.ISSUER)
       .setAudience(tokens.ACCESS_AUDIENCE)
@@ -86,8 +86,8 @@ describe("forgery and tampering are rejected", () => {
     const payload = Buffer.from(
       JSON.stringify({
         sub: "s_attacker",
-        tier: "lab",
-        scp: ["read:lab"],
+        discovery: "sweep",
+        scp: [],
         iss: tokens.ISSUER,
         aud: tokens.ACCESS_AUDIENCE,
         exp: Math.floor(Date.now() / 1000) + 900,
@@ -105,7 +105,7 @@ describe("forgery and tampering are rejected", () => {
 
 describe("expiry and audience are enforced", () => {
   it("rejects an expired access key", async () => {
-    const expired = await new SignJWT({ tier: "member", scp: ["read:member"] })
+    const expired = await new SignJWT({ discovery: "query", scp: [] })
       .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
       .setIssuer(tokens.ISSUER)
       .setAudience(tokens.ACCESS_AUDIENCE)
@@ -129,7 +129,7 @@ describe("expiry and audience are enforced", () => {
   });
 
   it("does not accept an access key where a refresh key is required", async () => {
-    const access = await tokens.mintAccessKey({ sub: "s_reader", tier: "reader" });
+    const access = await tokens.mintAccessKey({ sub: "s_reader", discovery: "query" });
     expect(await tokens.verifyRefreshKey(access)).toBeNull();
   });
 });
@@ -138,7 +138,6 @@ describe("the node key is an access-audience key, and nothing more", () => {
   it("verifies and carries the tier's scopes", async () => {
     const nodeKey = await tokens.mintNodeKey({
       sub: "s_lab",
-      tier: "lab",
       audience: "s_contributor",
       sessionSecondsLeft: 900,
     });
@@ -150,7 +149,7 @@ describe("the node key is an access-audience key, and nothing more", () => {
     // tests/contracts/readers-are-not-correlatable.test.ts.
     expect(key?.sub).not.toBe("s_lab");
     expect(key?.sub?.startsWith("n_")).toBe(true);
-    expect(key?.scp).toContain("read:lab");
+    expect(key?.scp).toContain("write:propose");
     // Not `serve:node`. That scope left `scopesForTier` in cycle 3: it was
     // granted to Lab alone, never checked anywhere, and its only effect was
     // to imply that publishing is a paid feature — which Contract 2 says it
@@ -162,7 +161,7 @@ describe("the node key is an access-audience key, and nothing more", () => {
     // The long-lived key a contributor pastes into NODE_KEY. It must not be a
     // reader session: a leaked 30-day serve key that could read every paid
     // column is a far larger blast radius than "announce under this subject".
-    const serve = await tokens.mintServeKey({ sub: "s_pub", tier: "member" });
+    const serve = await tokens.mintServeKey({ sub: "s_pub" });
 
     // Rejected by the reader-session verifier — this is what closes the hole.
     expect(await tokens.verifyAccessKey(serve)).toBeNull();
@@ -173,7 +172,7 @@ describe("the node key is an access-audience key, and nothing more", () => {
     expect(announced).not.toHaveProperty("tier");
 
     // And an access key is not a serve key — the audiences do not cross.
-    const access = await tokens.mintAccessKey({ sub: "s_pub", tier: "member" });
+    const access = await tokens.mintAccessKey({ sub: "s_pub", discovery: "query" });
     expect(await tokens.verifyServeKey(access)).toBeNull();
   });
 });

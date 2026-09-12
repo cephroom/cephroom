@@ -70,7 +70,6 @@ beforeAll(async () => {
   const tokens = await import("@/lib/keys/tokens");
   proposeKey = await tokens.mintNodeKey({
     sub: "s_a_reader",
-    tier: "member",
     audience: NODE_SUB,
     sessionSecondsLeft: 900,
   });

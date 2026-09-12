@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { noStore } from "@/lib/api/shape";
 
-import type { Tier } from "@/lib/access";
+import type { DiscoveryTier } from "@/lib/access";
 import {
   accessCookie,
   ACCESS_COOKIE,
@@ -29,13 +29,13 @@ export async function POST(request: Request) {
     ?.slice(REFRESH_COOKIE.length + 1);
 
   if (!token) {
-    return noStore(NextResponse.json({ tier: "reader", signedIn: false }));
+    return noStore(NextResponse.json({ discovery: "browse", signedIn: false }));
   }
 
   const key = await verifyRefreshKey(token);
   if (!key) {
     const response = noStore(
-      NextResponse.json({ tier: "reader", signedIn: false }),
+      NextResponse.json({ discovery: "browse", signedIn: false }),
     );
     for (const cookie of clearedCookies()) response.cookies.set(cookie);
     return response;
@@ -49,11 +49,13 @@ export async function POST(request: Request) {
     ?.split("; ")
     .find((part) => part.startsWith(`${ACCESS_COOKIE}=`))
     ?.slice(ACCESS_COOKIE.length + 1);
-  const current = existing ? (await verifyAccessKey(existing))?.tier ?? null : null;
+  const current = existing
+    ? ((await verifyAccessKey(existing))?.discovery ?? null)
+    : null;
 
-  let fromStripe: Tier | null = null;
+  let fromStripe: DiscoveryTier | null = null;
   try {
-    fromStripe = (await entitlementFor(key.sub)).tier;
+    fromStripe = (await entitlementFor(key.sub)).discovery;
   } catch {
     // Not "Stripe said no" — "Stripe said nothing". Treated as the same fact,
     // this demoted paying subscribers during any outage; see
@@ -61,10 +63,10 @@ export async function POST(request: Request) {
     fromStripe = null;
   }
 
-  const tier = tierOnRenewal({ fromStripe, current });
+  const discovery = tierOnRenewal({ fromStripe, current });
 
-  const response = noStore(NextResponse.json({ tier, signedIn: true }));
-  response.cookies.set(accessCookie(await mintAccessKey({ sub: key.sub, tier })));
+  const response = noStore(NextResponse.json({ discovery, signedIn: true }));
+  response.cookies.set(accessCookie(await mintAccessKey({ sub: key.sub, discovery })));
   response.cookies.set(refreshCookie(await mintRefreshKey({ sub: key.sub })));
   return response;
 }

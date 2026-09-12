@@ -4,7 +4,7 @@ import { Wordmark } from "@/components/brand";
 import { KeyMenu } from "@/components/key-menu";
 import { MobileNav } from "@/components/mobile-nav";
 import { SessionResume } from "@/components/session-resume";
-import { TIER_LABEL } from "@/lib/access";
+import { DISCOVERY_LABEL } from "@/lib/access";
 import { canResumeSession, getViewer } from "@/lib/auth/session";
 
 const NAV = [
@@ -46,8 +46,8 @@ export async function SiteHeader() {
           {viewer.sub ? (
             <KeyMenu
               subject={viewer.sub}
-              tier={viewer.tier}
-              tierLabel={TIER_LABEL[viewer.tier]}
+              discovery={viewer.discovery}
+              planLabel={DISCOVERY_LABEL[viewer.discovery]}
               expiresIn={viewer.expiresIn}
             />
           ) : (

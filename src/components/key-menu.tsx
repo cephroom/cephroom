@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import type { Tier } from "@/lib/access";
+import type { DiscoveryTier } from "@/lib/access";
 
 /**
  * The signed-in control, which shows a key rather than a person.
@@ -17,13 +17,13 @@ import type { Tier } from "@/lib/access";
  */
 export function KeyMenu({
   subject,
-  tier,
-  tierLabel,
+  discovery,
+  planLabel,
   expiresIn,
 }: {
   subject: string;
-  tier: Tier;
-  tierLabel: string;
+  discovery: DiscoveryTier;
+  planLabel: string;
   expiresIn: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -85,10 +85,10 @@ export function KeyMenu({
         className="flex items-center gap-2 rounded-full border border-rule py-1 pl-1 pr-2.5 transition-colors hover:border-field-border"
       >
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[0.72rem] font-semibold text-accent-ink">
-          {tierLabel.charAt(0)}
+          {planLabel.charAt(0)}
         </span>
         <span className="hidden text-[0.8rem] text-ink-muted sm:block">
-          {tierLabel}
+          {planLabel}
         </span>
         <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 text-ink-faint" aria-hidden>
           <path
@@ -110,10 +110,10 @@ export function KeyMenu({
           <p className="text-[0.85rem] font-medium">Your key</p>
           <p
             className={`mt-1 text-[0.72rem] font-medium ${
-              tier === "reader" ? "text-ink-faint" : "text-accent"
+              discovery === "browse" ? "text-ink-faint" : "text-accent"
             }`}
           >
-            {tierLabel} key
+            {planLabel} key
           </p>
           <p className="mt-1.5 truncate font-mono text-[0.68rem] text-ink-faint">
             {subject}
@@ -126,7 +126,7 @@ export function KeyMenu({
 
         <MenuLink href="/account">Your key and billing</MenuLink>
         <MenuLink href="/contribute">Run a node</MenuLink>
-        {tier === "reader" && (
+        {discovery === "browse" && (
           <MenuLink href="/pricing" accent>
             Upgrade
           </MenuLink>

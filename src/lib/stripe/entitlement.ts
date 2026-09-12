@@ -1,23 +1,30 @@
-import type { Tier } from "@/lib/access";
-import { governingSubscription, tierFromSubscriptions } from "@/lib/access";
+import type { DiscoveryTier, ServingTier } from "@/lib/access";
+import { discoveryFromSubscriptions, servingFromSubscriptions } from "@/lib/access";
 
 import { gateway } from "./gateway";
+import type { SubscriptionView } from "./types";
 
 
+/**
+ * What the two subscriptions add up to for one subject.
+ *
+ * Both are reported because one customer may hold either, both, or neither,
+ * and the two say nothing about each other. A contributor on Stacks with no
+ * discovery plan browses like anybody else; a consumer on Sweep who serves
+ * nothing has the free serving capacity they never use.
+ */
 export interface Entitlement {
-  tier: Tier;
+  discovery: DiscoveryTier;
+  serving: ServingTier;
   customerId: string | null;
-  status: string | null;
-  currentPeriodEnd: number | null;
-  cancelAtPeriodEnd: boolean;
+  subscriptions: SubscriptionView[];
 }
 
 export const NO_ENTITLEMENT: Entitlement = {
-  tier: "reader",
+  discovery: "browse",
+  serving: "desk",
   customerId: null,
-  status: null,
-  currentPeriodEnd: null,
-  cancelAtPeriodEnd: false,
+  subscriptions: [],
 };
 
 export async function entitlementFor(sub: string): Promise<Entitlement> {
@@ -31,24 +38,10 @@ export async function entitlementForCustomer(
 ): Promise<Entitlement> {
   const subscriptions = await (await gateway()).listSubscriptions(customerId);
 
-  const tier = tierFromSubscriptions(
-    subscriptions.map((subscription) => ({
-      status: subscription.status,
-      tier: subscription.tier,
-    })),
-  );
-
-  // The subscription that is actually granting access, for display. Not
-  // simply the first at that tier: a customer who resubscribed after
-  // cancelling holds both, and describing the dead one tells a paying reader
-  // their subscription has ended.
-  const governing = governingSubscription(subscriptions, tier);
-
   return {
-    tier,
+    discovery: discoveryFromSubscriptions(subscriptions),
+    serving: servingFromSubscriptions(subscriptions),
     customerId,
-    status: governing?.status ?? null,
-    currentPeriodEnd: governing?.currentPeriodEnd ?? null,
-    cancelAtPeriodEnd: governing?.cancelAtPeriodEnd ?? false,
+    subscriptions,
   };
 }

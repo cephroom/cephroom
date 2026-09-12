@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 
-import { planForPrice } from "./plans";
+import { isDiscoveryTier, isServingTier, planForPrice } from "./plans";
 import {
   SUBJECT_METADATA_KEY,
   SUBJECT_METADATA_KEYS,
@@ -36,7 +36,9 @@ function toView(subscription: Stripe.Subscription): SubscriptionView | null {
 
   return {
     id: subscription.id,
-    tier: match.plan,
+    plan: match.plan,
+    discovery: isDiscoveryTier(match.plan) ? match.plan : null,
+    serving: isServingTier(match.plan) ? match.plan : null,
     interval: match.interval,
     status: subscription.status,
     currentPeriodEnd: periodEnd(subscription),

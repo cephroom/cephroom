@@ -1,130 +1,151 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  discoveryFromSubscriptions,
   governingSubscription,
-  isEntitling,
-  tierAllows,
-  tierFromSubscriptions,
+  isPaying,
+  servingFromSubscriptions,
 } from "./access";
 
-const sub = (status: string, tier: "member" | "lab" = "member") => ({
-  status,
-  tier,
-});
-
-describe("isEntitling", () => {
-  it.each<[string, boolean]>([
-    ["active", true],
-    ["trialing", true],
-    // Stripe is still retrying a declined card. Keeping access here is the
-    // deliberate choice - see the note in lib/access.
-    ["past_due", true],
-    ["unpaid", false],
-    ["canceled", false],
-    ["incomplete", false],
-    ["incomplete_expired", false],
-    ["paused", false],
-  ])("%s -> %s", (status, expected) => {
-    expect(isEntitling(status)).toBe(expected);
-  });
-});
-
-describe("tierFromSubscriptions", () => {
-  it("is reader with nothing", () => {
-    expect(tierFromSubscriptions([])).toBe("reader");
-  });
-
-  it("grants the tier while the subscription is entitling", () => {
-    expect(tierFromSubscriptions([sub("active", "lab")])).toBe("lab");
-    expect(tierFromSubscriptions([sub("past_due")])).toBe("member");
-  });
-
-  it("drops to reader once it is not", () => {
-    expect(tierFromSubscriptions([sub("canceled", "lab")])).toBe("reader");
-    expect(tierFromSubscriptions([sub("unpaid")])).toBe("reader");
-  });
-
-  it("picks the highest live tier", () => {
-    expect(
-      tierFromSubscriptions([sub("active", "member"), sub("active", "lab")]),
-    ).toBe("lab");
-  });
-
-  it("ignores a lapsed higher tier", () => {
-    // Stripe keeps the cancelled row. An upgrade that left one behind must
-    // not keep granting the old tier.
-    expect(
-      tierFromSubscriptions([sub("canceled", "lab"), sub("active", "member")]),
-    ).toBe("member");
-  });
-});
-
-describe("tierAllows", () => {
-  it("lets anyone read a public column", () => {
-    expect(tierAllows("reader", "public")).toBe(true);
-    expect(tierAllows("member", "public")).toBe(true);
-  });
-
-  it("gates member columns", () => {
-    expect(tierAllows("reader", "member")).toBe(false);
-    expect(tierAllows("member", "member")).toBe(true);
-    expect(tierAllows("lab", "member")).toBe(true);
-  });
-
-  it("gates lab columns above member", () => {
-    expect(tierAllows("member", "lab")).toBe(false);
-    expect(tierAllows("lab", "lab")).toBe(true);
-  });
-});
-
 /**
- * Which subscription is the one talking.
+ * What a subscription means, now that there are two of them.
  *
- * Found by taking the reduced rate through checkout as a reader who had
- * cancelled a Member subscription earlier. The customer then had two Member
- * subscriptions — one `canceled`, one `active` — and the account page picked
- * the first that matched the tier, which was the dead one. A paying
- * subscriber was shown "Cancelled · This subscription has ended" directly
- * above a live period end date.
+ * This file used to test `tierAllows` — whether a consumer's tier let them
+ * read somebody else's column. That question is gone, and so is the function:
+ * a consumer's plan buys reach across the platform's own discovery, a
+ * contributor's buys room in the platform's own listing, and neither is
+ * visible to the other side.
  *
- * The rule: among subscriptions at the tier that is actually granting access,
- * one that entitles beats one that does not.
+ * What survives unchanged is the judgement about Stripe statuses, which was
+ * always the interesting part, and the rule for picking which of several
+ * subscriptions to describe.
  */
-describe("governingSubscription", () => {
-  const cancelled = { status: "canceled", tier: "member" as const, id: "dead" };
-  const active = { status: "active", tier: "member" as const, id: "live" };
-  const lab = { status: "active", tier: "lab" as const, id: "lab" };
 
-  it("prefers a live subscription over a dead one at the same tier", () => {
-    expect(governingSubscription([cancelled, active], "member")?.id).toBe(
-      "live",
-    );
+const sub = (
+  fields: Partial<{
+    id: string;
+    status: string;
+    discovery: "browse" | "query" | "sweep" | null;
+    serving: "desk" | "shelf" | "stacks" | null;
+  }> = {},
+) => ({
+  id: fields.id ?? "sub_1",
+  status: fields.status ?? "active",
+  discovery: fields.discovery ?? null,
+  serving: fields.serving ?? null,
+});
+
+describe("which statuses count as paying", () => {
+  it("counts active and trialing", () => {
+    expect(isPaying("active")).toBe(true);
+    expect(isPaying("trialing")).toBe(true);
   });
 
-  it("does not depend on the order Stripe listed them in", () => {
-    expect(governingSubscription([active, cancelled], "member")?.id).toBe(
-      "live",
-    );
+  it("counts past_due, because Stripe is still trying", () => {
+    // A failed card is not a decision. Cutting somebody off mid-dunning
+    // punishes them for their bank's fraud heuristics; Stripe retries for
+    // days and most of these recover.
+    expect(isPaying("past_due")).toBe(true);
   });
 
-  it("picks the subscription at the tier that is granting access", () => {
-    expect(governingSubscription([active, lab], "lab")?.id).toBe("lab");
+  it("does not count unpaid, where the retries ran out", () => {
+    expect(isPaying("unpaid")).toBe(false);
   });
 
-  it("falls back to whatever exists when nothing entitles", () => {
-    // A reader whose only subscription has lapsed still needs the account
-    // page to say something about it, so it is shown rather than hidden.
-    expect(governingSubscription([cancelled], "reader")?.id).toBe("dead");
+  it("does not count anything else", () => {
+    for (const status of ["canceled", "incomplete", "incomplete_expired", "paused"]) {
+      expect(isPaying(status), status).toBe(false);
+    }
+  });
+});
+
+describe("the discovery plan a customer is on", () => {
+  it("is the free one when they have no subscription", () => {
+    expect(discoveryFromSubscriptions([])).toBe("browse");
   });
 
-  it("is null when there is nothing at all", () => {
-    expect(governingSubscription([], "reader")).toBeNull();
+  it("is the strongest live one when they have several", () => {
+    expect(
+      discoveryFromSubscriptions([
+        sub({ discovery: "query" }),
+        sub({ discovery: "sweep" }),
+      ]),
+    ).toBe("sweep");
   });
 
-  it("treats past_due as live, because it keeps access", () => {
-    const pastDue = { status: "past_due", tier: "member" as const, id: "retry" };
-    expect(governingSubscription([cancelled, pastDue], "member")?.id).toBe(
-      "retry",
-    );
+  it("ignores one that is not being paid for", () => {
+    expect(
+      discoveryFromSubscriptions([
+        sub({ discovery: "sweep", status: "canceled" }),
+        sub({ discovery: "query" }),
+      ]),
+    ).toBe("query");
+  });
+
+  it("ignores a serving subscription entirely", () => {
+    // The whole point of the split. A contributor on Stacks browses like
+    // anybody else unless they also bought discovery.
+    expect(discoveryFromSubscriptions([sub({ serving: "stacks" })])).toBe("browse");
+  });
+});
+
+describe("the serving plan a contributor is on", () => {
+  it("is the free one when they have no subscription", () => {
+    expect(servingFromSubscriptions([])).toBe("desk");
+  });
+
+  it("is the strongest live one", () => {
+    expect(
+      servingFromSubscriptions([sub({ serving: "shelf" }), sub({ serving: "stacks" })]),
+    ).toBe("stacks");
+  });
+
+  it("ignores a discovery subscription entirely", () => {
+    // The mirror of the above, and the reason both are tested: a consumer on
+    // Sweep gets no extra room to serve, because those are different products.
+    expect(servingFromSubscriptions([sub({ discovery: "sweep" })])).toBe("desk");
+  });
+
+  it("falls back to free when the only serving plan lapsed", () => {
+    expect(
+      servingFromSubscriptions([sub({ serving: "stacks", status: "unpaid" })]),
+    ).toBe("desk");
+  });
+});
+
+describe("which subscription to describe on the account page", () => {
+  it("prefers a live one over a dead one", () => {
+    // A customer who resubscribed after cancelling holds both. Describing the
+    // dead one tells a paying customer their subscription has ended.
+    const dead = sub({ id: "old", status: "canceled", discovery: "query" });
+    const live = sub({ id: "new", status: "active", discovery: "query" });
+    expect(
+      governingSubscription([dead, live], (s) => s.discovery !== null)?.id,
+    ).toBe("new");
+  });
+
+  it("falls back to a dead one rather than showing nothing", () => {
+    // Somebody who cancelled should still see what they had, and when it ends.
+    const dead = sub({ id: "old", status: "canceled", discovery: "query" });
+    expect(
+      governingSubscription([dead], (s) => s.discovery !== null)?.id,
+    ).toBe("old");
+  });
+
+  it("returns null when nothing matches", () => {
+    expect(
+      governingSubscription([sub({ serving: "shelf" })], (s) => s.discovery !== null),
+    ).toBeNull();
+  });
+
+  it("never crosses the two catalogues", () => {
+    const serving = sub({ id: "serve", serving: "shelf" });
+    const discovery = sub({ id: "discover", discovery: "query" });
+    expect(
+      governingSubscription([serving, discovery], (s) => s.serving !== null)?.id,
+    ).toBe("serve");
+    expect(
+      governingSubscription([serving, discovery], (s) => s.discovery !== null)?.id,
+    ).toBe("discover");
   });
 });

@@ -49,7 +49,6 @@ export default async function ReadItemPage({
         address={located.presence.address}
         servedBy={located.presence.displayName}
         datasetId={id}
-        canExplore={viewer.tier !== "reader"}
         highlight={highlight}
       />
     );
@@ -58,7 +57,6 @@ export default async function ReadItemPage({
   const nodeKey = viewer.sub
     ? await mintNodeKey({
         sub: viewer.sub,
-        tier: viewer.tier,
         // Scoped to this contributor. They see a pseudonym that is stable for
         // them and meaningless to every other node.
         audience: located.presence.sub,
@@ -75,7 +73,6 @@ export default async function ReadItemPage({
       servedBy={located.presence.displayName}
       payTo={located.presence.payTo ?? null}
       nodeKey={nodeKey}
-      tier={viewer.tier}
       signedIn={Boolean(viewer.sub)}
     />
   );

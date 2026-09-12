@@ -1,7 +1,13 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { PLANS, planForPrice, priceForId } from "@/lib/stripe/plans";
+import {
+  isDiscoveryTier,
+  isServingTier,
+  planById,
+  planForPrice,
+  priceForId,
+} from "@/lib/stripe/plans";
 import {
   SUBJECT_METADATA_KEY,
   subjectFromMetadata,
@@ -74,7 +80,9 @@ function toView(subscription: Subscription): SubscriptionView | null {
   if (!match) return null;
   return {
     id: subscription.id,
-    tier: match.plan,
+    plan: match.plan,
+    discovery: isDiscoveryTier(match.plan) ? match.plan : null,
+    serving: isServingTier(match.plan) ? match.plan : null,
     interval: match.interval,
     status: subscription.status,
     currentPeriodEnd: subscription.currentPeriodEnd,
@@ -102,8 +110,12 @@ export function planFor(sessionId: string) {
   const byId = priceForId(session.request.priceId);
   if (byId) return { session, plan: byId.plan, price: byId.price };
 
-  const plan = PLANS[session.request.plan];
-  return { session, plan, price: plan.prices[session.request.interval] };
+  // A free plan has no price and cannot be checked out, so a session naming
+  // one is malformed rather than something to guess at.
+  const plan = planById(session.request.plan);
+  const price = plan?.prices?.[session.request.interval];
+  if (!plan || !price) return null;
+  return { session, plan, price };
 }
 
 export function completeCheckout(sessionId: string): void {

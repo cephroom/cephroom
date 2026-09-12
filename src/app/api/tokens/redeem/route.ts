@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     {
-      key: await mintAnonymousKey({ tier: result.tier }),
+      key: await mintAnonymousKey({ discovery: result.tier }),
       tier: result.tier,
       expiresIn: NODE_KEY_TTL_SECONDS,
     },

@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { registry } from "@/lib/signaling/registry";
+import {
+  formatPrice,
+  SERVING_CAPACITY,
+  SERVING_ORDER,
+  SERVING_PLANS,
+} from "@/lib/stripe/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +31,15 @@ export default async function ContributePage() {
           disk and serves them to readers directly; the platform is told an id,
           a title and an address, in memory, for as long as you keep serving.
           Close the process and your work leaves the site.
+        </p>
+        <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
+          <strong className="font-semibold text-ink">
+            Serving is free and stays free.
+          </strong>{" "}
+          No account is needed to serve at all, and nothing you publish is
+          ever gated by what a reader has paid us — whoever finds your work
+          gets all of it. What you charge for it, if anything, is arranged
+          between you and them and we are not told.
         </p>
       </header>
 
@@ -184,6 +199,60 @@ npm run node:serve                       # serves the demo content`}
           serving it after you have stopped standing behind it.
         </p>
       </div>
+
+      <div id="plans" className="prose mt-14 scroll-mt-20">
+        <h2>If you need more room</h2>
+        <p>
+          One subscription exists on this side, and it buys exactly one thing:
+          how many items you can have listed at once. Not reach, not ranking,
+          not readers — the listing gives every contributor an equal share, and
+          a plan changes the size of your share, nothing else.
+        </p>
+        <p>
+          The free plan announces{" "}
+          {SERVING_CAPACITY.desk}{" "}
+          items. A researcher serving their own columns and the datasets behind
+          them is well inside that and will never meet it. It is there for
+          groups and institutions with a whole collection online.
+        </p>
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {SERVING_ORDER.map((id) => {
+          const plan = SERVING_PLANS[id];
+          return (
+            <article
+              key={id}
+              className="flex flex-col rounded-xl border border-rule bg-paper-raised p-5"
+            >
+              <h3 className="font-serif text-[1.1rem] font-semibold">
+                {plan.name}
+              </h3>
+              <p className="mt-1 text-[0.83rem] leading-relaxed text-ink-muted">
+                {plan.tagline}
+              </p>
+              <p className="mt-4 font-mono text-[1.4rem] leading-none tnum">
+                {plan.prices ? formatPrice(plan.prices.month.unitAmount) : "$0"}
+                <span className="ml-1 font-sans text-[0.78rem] font-normal text-ink-faint">
+                  {plan.prices ? "/mo" : " — free"}
+                </span>
+              </p>
+              <ul className="mt-4 flex-1 space-y-1.5 text-[0.83rem] text-ink-muted">
+                {plan.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+            </article>
+          );
+        })}
+      </div>
+
+      <p className="mt-5 max-w-[62ch] text-[0.86rem] leading-relaxed text-ink-faint">
+        Readers pay us separately, for searching. None of it reaches you, and
+        none of it obliges you to treat one reader differently from another —
+        there is no way for us to tell you which is which, and nothing in your
+        node to act on if there were.
+      </p>
 
       <section className="mt-10 rounded-xl border border-rule bg-paper-sunken p-5">
         <h2 className="font-serif text-[1.15rem] font-semibold">

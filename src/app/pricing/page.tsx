@@ -5,6 +5,11 @@ import { PricingTable } from "@/components/pricing-table";
 import { getViewer } from "@/lib/auth/session";
 import { startCheckout } from "@/lib/stripe/actions";
 import { usingRealStripe } from "@/lib/stripe/gateway";
+import {
+  DISCOVERY_ORDER,
+  DISCOVERY_PLANS,
+  DISCOVERY_RANK,
+} from "@/lib/stripe/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +69,14 @@ export default async function PricingPage({
       )}
 
       <PricingTable
-        currentTier={viewer.tier}
+        plans={DISCOVERY_ORDER.map((id) => DISCOVERY_PLANS[id])}
+        current={viewer.discovery}
+        rank={DISCOVERY_RANK}
+        featuredId="query"
+        freeNote={{
+          current: "Your current plan",
+          included: "Included in your plan",
+        }}
         signedIn={Boolean(viewer.sub)}
         checkoutAction={startCheckout}
         from={params.from ?? "/pricing"}
@@ -124,7 +136,7 @@ export default async function PricingPage({
             can be extracted from us.
           </Faq>
           <Faq q="What happens if the site goes down?">
-            Nothing happens to anyone's work. It was never here. Contributors
+            Nothing happens to anyone&rsquo;s work. It was never here. Contributors
             keep serving; only discovery stops.
           </Faq>
         </dl>

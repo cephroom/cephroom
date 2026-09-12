@@ -56,7 +56,6 @@ describe("a node key is capped by what is left of the session", () => {
   it("lives its full span when the session has plenty left", async () => {
     const key = await tokens.mintNodeKey({
       sub: "s_reader",
-      tier: "lab",
       audience: "s_node",
       sessionSecondsLeft: tokens.ACCESS_TTL_SECONDS,
     });
@@ -68,7 +67,6 @@ describe("a node key is capped by what is left of the session", () => {
     // buy 120 seconds of node access at the old tier.
     const key = await tokens.mintNodeKey({
       sub: "s_reader",
-      tier: "lab",
       audience: "s_node",
       sessionSecondsLeft: 1,
     });
@@ -79,7 +77,6 @@ describe("a node key is capped by what is left of the session", () => {
     for (const left of [0, 1, 30, 119, 120, 121, 600, 900]) {
       const key = await tokens.mintNodeKey({
         sub: "s_reader",
-        tier: "member",
         audience: "s_node",
         sessionSecondsLeft: left,
       });
@@ -93,7 +90,6 @@ describe("a node key is capped by what is left of the session", () => {
     // the same thing they would get with no key at all.
     const key = await tokens.mintNodeKey({
       sub: "s_reader",
-      tier: "lab",
       audience: "s_node",
       sessionSecondsLeft: 0,
     });

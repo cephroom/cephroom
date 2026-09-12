@@ -5,8 +5,8 @@ import { join, resolve } from "node:path";
 import { config } from "dotenv";
 
 import { parseBody } from "../src/lib/claims/syntax";
-import { tierAllows, type Access } from "../src/lib/access";
-import { gateColumnBody } from "./column-gate";
+import { FREE_SERVING_CAPACITY } from "../src/lib/stripe/plans";
+import { readColumnFile, type Column } from "./columns";
 import { foldForScope } from "./fold-facts";
 import { PresenceLoop } from "./presence";
 import { ProposalStore, proposalRootFor } from "./proposals";
@@ -62,47 +62,14 @@ const OVERSHOOT_DRAIN = 4;
 const TOO_LARGE = Symbol("payload-too-large");
 
 
-interface Column {
-  id: string;
-  title: string;
-  subtitle: string;
-  access: Access;
-  tags: string[];
-  repo?: string;
-  commit?: string;
-  body: string;
-}
-
 function readColumns(): Column[] {
   return readdirSync(CONTENT_DIR)
     .filter((file) => file.endsWith(".md"))
-    .map((file) => {
-      const raw = readFileSync(join(CONTENT_DIR, file), "utf8");
-      const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
-      if (!match) throw new Error(`${file} has no front matter.`);
-
-      const meta: Record<string, string> = {};
-      for (const line of match[1].split(/\r?\n/)) {
-        const sep = line.indexOf(":");
-        if (sep === -1) continue;
-        meta[line.slice(0, sep).trim()] = line.slice(sep + 1).trim();
-      }
-
-      return {
-        id: meta.slug,
-        title: meta.title,
-        subtitle: meta.subtitle ?? "",
-        access: (meta.access as Access) ?? "public",
-        tags: (meta.tags ?? "")
-          .split(",")
-          .map((tag) => tag.trim().toLowerCase())
-          .filter(Boolean),
-        repo: meta.repo,
-        commit: meta.commit,
-        body: match[2].trim(),
-      };
-    });
+    .map((file) =>
+      readColumnFile(readFileSync(join(CONTENT_DIR, file), "utf8"), file),
+    );
 }
+
 
 function readDataset() {
   const matrix = (file: string) => {
@@ -447,12 +414,8 @@ const server = createServer(async (request, response) => {
       : undefined;
     if (!column) return send(404, { error: "not served here" });
 
-    const tier = await tierFromRequest(request.headers.authorization);
-    if (!tierAllows(tier, column.access)) {
-      return send(403, {
-        error: "Reading proposals needs the same membership as reading the column.",
-      });
-    }
+    // Open, like the column it belongs to. A proposal is a public review
+    // thread on public work; there is no membership for it to sit behind.
     return send(200, { proposals: proposals.list(columnId) });
   }
 
@@ -460,7 +423,8 @@ const server = createServer(async (request, response) => {
     const key = await keyFromRequest(request.headers.authorization);
     if (!key?.scopes.includes("write:propose")) {
       return send(403, {
-        error: "Proposing needs a key with write:propose. Membership grants it.",
+        error:
+          "Proposing needs a signed-in key, so the author has somebody to answer. Signing in is free.",
       });
     }
 
@@ -473,14 +437,6 @@ const server = createServer(async (request, response) => {
     const columnId = String(payload?.columnId ?? "");
     const column = columns.find((candidate) => candidate.id === columnId);
     if (!column) return send(404, { error: "not served here" });
-
-    // Proposing an edit means editing the source, which means being entitled
-    // to read it. A member cannot propose to a lab column they cannot open.
-    if (!tierAllows(key.tier, column.access)) {
-      return send(403, {
-        error: "Proposing needs the same membership as reading the column.",
-      });
-    }
 
     const fromSub = key.sub;
     if (!fromSub) {
@@ -529,21 +485,16 @@ const server = createServer(async (request, response) => {
     const column = columns.find((candidate) => candidate.id === id);
     if (!column) return send(404, { error: "not served here" });
 
-    // The node enforces access itself, using the platform's public key. The
-    // platform is not in this request path at all, so it could not enforce
-    // anything even if it wanted to.
-    const tier = await tierFromRequest(request.headers.authorization);
-    const entitled = tierAllows(tier, column.access);
-
-    // The node enforces the paywall in one pure function so a test can hold
-    // the line: a non-entitled reader gets a preview and never the source.
-    const gated = gateColumnBody(column.body, entitled);
+    // Served whole, to whoever asks. There is nothing to check: a reader's
+    // key carries no tier, and a column has no access level for one to be
+    // measured against. What this contributor charges for, if anything, is
+    // arranged directly with the reader and the platform is not told.
+    const parsed = parseBody(column.body);
 
     return send(200, {
       id: column.id,
       title: column.title,
       subtitle: column.subtitle,
-      access: column.access,
       repo: column.repo ?? null,
       commit: column.commit ?? null,
       author: DISPLAY_NAME,
@@ -553,7 +504,10 @@ const server = createServer(async (request, response) => {
       // node. The reader compares this with the contributor they went looking
       // for; see src/lib/signaling/serving.ts.
       servedBySub: SUB,
-      ...gated,
+      prose: parsed.prose,
+      source: column.body,
+      claims: parsed.claims,
+      errors: parsed.errors,
       servedAt: new Date().toISOString(),
     });
   }
@@ -568,7 +522,6 @@ function manifest() {
       title: column.title,
       kind: "column" as const,
       tags: column.tags,
-      access: column.access,
       summary: column.subtitle,
       openProposals: proposals.countOpen(column.id),
     })),
@@ -577,7 +530,6 @@ function manifest() {
       title: served.name,
       kind: "dataset" as const,
       tags: datasetTags(served.id),
-      access: "public" as const,
       summary: served.description,
     })),
   ];
@@ -593,10 +545,6 @@ function datasetTags(id: string): string[] {
 async function keyFromRequest(header: string | undefined) {
   if (!header?.toLowerCase().startsWith("bearer ")) return null;
   return verifyKeyWithPlatform(PLATFORM, header.slice(7).trim(), SUB);
-}
-
-async function tierFromRequest(header: string | undefined) {
-  return (await keyFromRequest(header))?.tier ?? ("reader" as const);
 }
 
 async function readJson(
@@ -657,7 +605,11 @@ async function serveKey(): Promise<string> {
   // The byline travels on the announcement body, where the contributor
   // chose it, rather than inside the key. A key states a subject and a
   // capability; it is not the place to carry a name.
-  return mintServeKey({ sub: SUB, tier: "reader" });
+  //
+  // The free capacity, because a locally-minted key has no subscription
+  // behind it. A contributor who wants to serve more signs in and pastes the
+  // key their plan issues.
+  return mintServeKey({ sub: SUB, capacity: FREE_SERVING_CAPACITY });
 }
 
 /**

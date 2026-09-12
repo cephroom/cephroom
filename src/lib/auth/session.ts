@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import type { Tier } from "@/lib/access";
+import type { DiscoveryTier } from "@/lib/access";
 import {
   ACCESS_TTL_SECONDS,
   REFRESH_TTL_SECONDS,
@@ -17,7 +17,7 @@ const LEGACY_COOKIES = ["receptorome_key", "receptorome_renew"];
 /**
  * Everything the platform knows about whoever is asking.
  *
- * A subject, a tier, and when the key expires. There is nothing else to know,
+ * A subject, their discovery plan, and when the key expires. Nothing else,
  * because there is nothing else in the key and nowhere to look it up. The
  * display name and the Stripe customer id used to be here; both were read
  * straight back out of the credential, which made them feel like facts the
@@ -25,14 +25,14 @@ const LEGACY_COOKIES = ["receptorome_key", "receptorome_renew"];
  */
 export interface Viewer {
   sub: string | null;
-  tier: Tier;
+  discovery: DiscoveryTier;
   key: AccessKey | null;
   expiresIn: number;
 }
 
 export const ANONYMOUS: Viewer = {
   sub: null,
-  tier: "reader",
+  discovery: "browse",
   key: null,
   expiresIn: 0,
 };
@@ -46,7 +46,7 @@ export async function getViewer(): Promise<Viewer> {
 
   return {
     sub: key.sub,
-    tier: key.tier,
+    discovery: key.discovery ?? "browse",
     key,
     expiresIn: Math.max(0, key.exp - Math.floor(Date.now() / 1000)),
   };

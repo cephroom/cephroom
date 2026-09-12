@@ -37,7 +37,6 @@ export async function GET(request: Request) {
       title: entry.item.title,
       kind: entry.item.kind,
       tags: entry.item.tags,
-      access: entry.item.access ?? "public",
       summary: entry.item.summary ?? null,
       openProposals: entry.item.openProposals ?? 0,
       fetch: {

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import type { DiscoveryTier } from "@/lib/access";
+
 import { noStore } from "@/lib/api/shape";
 
 import { FLOW_COOKIE } from "@/app/api/auth/start/route";
@@ -76,11 +78,11 @@ export async function GET(
   // Only the tier is taken. The customer id used to be read here too and
   // stamped into the key; it is re-derived from the subject wherever billing
   // actually needs it, so nothing has to carry it around.
-  let tier: "reader" | "member" | "lab" = "reader";
+  let discovery: DiscoveryTier = "browse";
   try {
-    tier = (await entitlementFor(sub)).tier;
+    discovery = (await entitlementFor(sub)).discovery;
   } catch {
-    tier = "reader";
+    discovery = "browse";
   }
 
   const response = noStore(
@@ -88,7 +90,7 @@ export async function GET(
   );
 
   response.cookies.set(
-    accessCookie(await mintAccessKey({ sub, tier })),
+    accessCookie(await mintAccessKey({ sub, discovery })),
   );
   response.cookies.set(refreshCookie(await mintRefreshKey({ sub })));
   response.cookies.set({ name: FLOW_COOKIE, value: "", path: "/", maxAge: 0 });

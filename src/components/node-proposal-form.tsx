@@ -12,13 +12,11 @@ export function NodeProposalForm({
   columnId,
   address,
   nodeKey,
-  canPropose,
 }: {
   sub: string;
   columnId: string;
   address: string;
   nodeKey: string;
-  canPropose: boolean;
 }) {
   const [original, setOriginal] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -100,29 +98,6 @@ export function NodeProposalForm({
     }
   }
 
-  if (!canPropose) {
-    return (
-      <div className="mt-8 rounded-xl border border-rule bg-paper-raised p-6">
-        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-accent">
-          Member feature
-        </p>
-        <h2 className="mt-2 font-serif text-[1.3rem] font-semibold">
-          Proposing needs a key with write:propose
-        </h2>
-        <p className="mt-2 max-w-[54ch] text-[0.92rem] leading-relaxed text-ink-muted">
-          The author&rsquo;s node checks the scope on your key before it accepts
-          anything — we are not in that decision, so we could not grant it for
-          you even if we wanted to.
-        </p>
-        <Link
-          href="/pricing"
-          className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
-        >
-          See plans
-        </Link>
-      </div>
-    );
-  }
 
   if (state.kind === "sent") {
     return (

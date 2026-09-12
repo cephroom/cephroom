@@ -50,15 +50,7 @@ const TONE = {
   },
 } as const;
 
-export function ClaimChip({
-  claim,
-  canInspect,
-  withheld = false,
-}: {
-  claim: ClaimView | undefined;
-  canInspect: boolean;
-  withheld?: boolean;
-}) {
+export function ClaimChip({ claim }: { claim: ClaimView | undefined }) {
   const [open, setOpen] = useState(false);
   const [shift, setShift] = useState(0);
   const panelId = useId();
@@ -97,20 +89,6 @@ export function ClaimChip({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  if (withheld) {
-    return (
-      <Link
-        href="/pricing"
-        className="claim-locked inline-flex items-baseline gap-1.5 rounded bg-counter-wash px-1.5 py-px font-mono text-[0.86em] text-counter transition-opacity hover:opacity-75"
-        title="Withheld — this number is part of the paid column"
-      >
-        <span aria-hidden className="tracking-[0.1em]">▚▚</span>
-        <span className="sr-only">Number withheld. </span>
-        <span className="text-[0.92em]">subscribers</span>
-      </Link>
-    );
-  }
 
   if (!claim) {
     return (
@@ -158,7 +136,9 @@ export function ClaimChip({
           <code className="text-[0.72rem] text-ink-faint">{claim.key}</code>
         </span>
 
-        {canInspect ? (
+        {
+          // Shown to everyone. Withholding the evidence behind a number
+          // was the strangest paywall in a publication about checking them.
           <>
             <span className="mb-2.5 block rounded-md border border-rule bg-paper-sunken p-2 font-mono text-[0.72rem] leading-relaxed text-ink-muted">
               {claim.query.metric}({claim.query.subject} ×{" "}
@@ -211,20 +191,7 @@ export function ClaimChip({
               Open in dataset explorer →
             </Link>
           </>
-        ) : (
-          <>
-            <span className="block text-ink-muted">
-              The claim inspector shows the query behind this number, the
-              measurement count supporting it, and its drift since publication.
-            </span>
-            <Link
-              href="/pricing"
-              className="mt-2.5 inline-block text-[0.78rem] font-medium text-accent hover:underline"
-            >
-              Included with Member →
-            </Link>
-          </>
-        )}
+        }
       </span>
     </span>
   );

@@ -1,6 +1,6 @@
 import { publicVerif, TokenChallenge, TOKEN_TYPES, Token } from "@cloudflare/privacypass-ts";
 
-import type { Tier } from "@/lib/access";
+import type { DiscoveryTier } from "@/lib/access";
 
 const { Client, Issuer, Origin, BlindRSAMode, getPublicKeyBytes } = publicVerif;
 
@@ -9,7 +9,14 @@ export const EPOCH_SECONDS = 60 * 60;
 
 export const LIVE_EPOCHS = 2;
 
-export const TOKEN_TIERS = ["member", "lab"] as const;
+/**
+ * The discovery plans a token can be issued against.
+ *
+ * `browse` is free and needs no token: there is nothing to sever, because
+ * there is no subscription to unlink the activity from. A token exists to
+ * separate *paying* from *searching*, so only the paid plans have one.
+ */
+export const TOKEN_TIERS = ["query", "sweep"] as const;
 export type TokenTier = (typeof TOKEN_TIERS)[number];
 
 export const ISSUER_NAME = "cephroom";
@@ -231,6 +238,6 @@ export async function finalizeBatch(
   return tokens;
 }
 
-export function tokenTierFor(tier: Tier): TokenTier | null {
-  return tier === "member" || tier === "lab" ? tier : null;
+export function tokenTierFor(tier: DiscoveryTier): TokenTier | null {
+  return tier === "query" || tier === "sweep" ? tier : null;
 }

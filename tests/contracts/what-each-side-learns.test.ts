@@ -51,38 +51,38 @@ describe("what a contributor learns about a reader", () => {
     const claims = decodeJwt(
       await tokens.mintNodeKey({
         sub: "s_reader",
-        tier: "lab",
         audience: "s_nodeA_marcus",
         sessionSecondsLeft: 900,
       }),
     );
     expect(Object.keys(claims).sort()).toEqual(
-      ["aud", "exp", "iat", "iss", "nod", "scp", "sub", "tier"].sort(),
+      ["aud", "exp", "iat", "iss", "nod", "scp", "sub"].sort(),
     );
   });
 
-  it("learns the reader's tier, and nothing finer about the arrangement", async () => {
-    // Not a leak: it is the authorisation. A node decides what to serve, so
-    // it has to be told what was paid for. What it is not told is anything
-    // else about the subscription — no price, no plan id, no interval, no
-    // renewal date, no payment status, no customer. A contributor can see
-    // that somebody is a Lab reader and cannot see that they are three days
-    // from cancelling.
+  it("learns nothing whatever about what the reader has paid for", async () => {
+    // This used to say "learns the reader's tier, and nothing finer", because
+    // a node decided what to serve and had to be told what was bought. It
+    // decides nothing now: a column is served whole to whoever asks, so the
+    // tier went with the decision it existed for. What a consumer pays us for
+    // is discovery, which happens entirely on our side of the connection.
     const claims = decodeJwt(
       await tokens.mintNodeKey({
         sub: "s_reader",
-        tier: "lab",
         audience: "s_nodeA_marcus",
         sessionSecondsLeft: 900,
       }),
     );
 
-    expect(claims.tier).toBe("lab");
+    expect(claims).not.toHaveProperty("tier");
+    expect(claims).not.toHaveProperty("discovery");
     // Checked as claim *keys*, not as substrings of the serialised token —
     // "cus" is a substring of "s_nodeA_marcus", and a test that can be passed
     // or failed by somebody's name is not testing what it says it is.
     const present = Object.keys(claims);
     for (const absent of [
+      "tier",
+      "discovery",
       "price",
       "plan",
       "interval",
@@ -105,13 +105,13 @@ describe("what a contributor learns about a reader", () => {
     // depends on it. A contributor knows "this is the same person as last
     // week" and "these are four different people".
     const first = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node", sessionSecondsLeft: 900 }),
+      await tokens.mintNodeKey({ sub: "s_a", audience: "s_node", sessionSecondsLeft: 900 }),
     ).sub;
     const again = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node", sessionSecondsLeft: 900 }),
+      await tokens.mintNodeKey({ sub: "s_a", audience: "s_node", sessionSecondsLeft: 900 }),
     ).sub;
     const other = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_b", tier: "member", audience: "s_node", sessionSecondsLeft: 900 }),
+      await tokens.mintNodeKey({ sub: "s_b", audience: "s_node", sessionSecondsLeft: 900 }),
     ).sub;
 
     expect(first).toBe(again);
@@ -120,17 +120,17 @@ describe("what a contributor learns about a reader", () => {
 
   it("CANNOT compare notes with another contributor", async () => {
     const atA = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeA", sessionSecondsLeft: 900 }),
+      await tokens.mintNodeKey({ sub: "s_a", audience: "s_nodeA", sessionSecondsLeft: 900 }),
     ).sub;
     const atB = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeB", sessionSecondsLeft: 900 }),
+      await tokens.mintNodeKey({ sub: "s_a", audience: "s_nodeB", sessionSecondsLeft: 900 }),
     ).sub;
     expect(atA).not.toBe(atB);
   });
 
   it("CANNOT recover the platform subject from what it was given", async () => {
     const scoped = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node", sessionSecondsLeft: 900 }),
+      await tokens.mintNodeKey({ sub: "s_a", audience: "s_node", sessionSecondsLeft: 900 }),
     ).sub;
     expect(scoped).not.toContain("s_a");
     expect(String(scoped).startsWith("n_")).toBe(true);
@@ -139,10 +139,10 @@ describe("what a contributor learns about a reader", () => {
   it("learns nothing at all when the reader spends an anonymous token", async () => {
     // The stronger position, available to any subscriber. No subject, so
     // nothing to recognise and nothing to accumulate against.
-    const claims = decodeJwt(await tokens.mintAnonymousKey({ tier: "lab" }));
+    const claims = decodeJwt(await tokens.mintAnonymousKey({ discovery: "query" }));
     expect(claims.sub).toBeUndefined();
     expect(Object.keys(claims).sort()).toEqual(
-      ["anon", "aud", "exp", "iat", "iss", "scp", "tier"].sort(),
+      ["anon", "aud", "discovery", "exp", "iat", "iss", "scp"].sort(),
     );
   });
 
@@ -218,10 +218,10 @@ describe("a hostile insider learns nothing an honest one does not", () => {
     // The strongest position a reader can take, and it has to survive an
     // adversary looking specifically for a difference. Two anonymous keys at
     // the same tier differ only in their signature.
-    const one = decodeJwt(await tokens.mintAnonymousKey({ tier: "member" }));
-    const two = decodeJwt(await tokens.mintAnonymousKey({ tier: "member" }));
+    const one = decodeJwt(await tokens.mintAnonymousKey({ discovery: "query" }));
+    const two = decodeJwt(await tokens.mintAnonymousKey({ discovery: "query" }));
     expect(Object.keys(one).sort()).toEqual(Object.keys(two).sort());
-    expect(one.tier).toBe(two.tier);
+    expect(one.discovery).toBe(two.discovery);
     expect(one.sub).toBeUndefined();
     expect(two.sub).toBeUndefined();
     expect(JSON.stringify(one.scp)).toBe(JSON.stringify(two.scp));
@@ -233,7 +233,6 @@ describe("a hostile insider learns nothing an honest one does not", () => {
     // rival would see.
     const forE = await tokens.mintNodeKey({
       sub: "s_reader",
-      tier: "member",
       audience: "s_nodeE",
       sessionSecondsLeft: 900,
     });
@@ -243,7 +242,6 @@ describe("a hostile insider learns nothing an honest one does not", () => {
   it("cannot exceed its tier by editing the key", async () => {
     const member = await tokens.mintNodeKey({
       sub: "s_reader",
-      tier: "member",
       audience: "s_nodeA",
       sessionSecondsLeft: 900,
     });
@@ -306,10 +304,10 @@ describe("what one reader learns about another", () => {
 
   it("cannot use one to find the same person at another contributor", async () => {
     const here = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeA", sessionSecondsLeft: 900 }),
+      await tokens.mintNodeKey({ sub: "s_a", audience: "s_nodeA", sessionSecondsLeft: 900 }),
     ).sub;
     const there = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeB", sessionSecondsLeft: 900 }),
+      await tokens.mintNodeKey({ sub: "s_a", audience: "s_nodeB", sessionSecondsLeft: 900 }),
     ).sub;
     expect(here).not.toBe(there);
   });

@@ -1,13 +1,17 @@
 import { importSPKI, jwtVerify } from "jose";
 
-import type { Tier } from "../src/lib/access";
-
 
 let cached: { key: CryptoKey; issuer: string; audience: string } | null = null;
 
+/**
+ * What a node learns from a reader's key.
+ *
+ * A subject scoped to this contributor, and what it permits. There is no
+ * tier: a consumer's subscription is about the platform's discovery and is
+ * nobody else's business, and a column is served whole regardless.
+ */
 export interface VerifiedKey {
   sub: string | null;
-  tier: Tier;
   scopes: string[];
 }
 
@@ -41,8 +45,6 @@ export async function verifyKeyWithPlatform(
     const { key, issuer, audience } = await platformKey(platform);
     const { payload } = await jwtVerify(token, key, { issuer, audience });
 
-    const tier = payload.tier as Tier | undefined;
-    if (!tier) return null;
     // A key with no subject is anonymous, not invalid — but only if it says
     // so. One with neither a subject nor the marker is malformed.
     if (!payload.sub && payload.anon !== true) return null;
@@ -55,7 +57,6 @@ export async function verifyKeyWithPlatform(
 
     return {
       sub: payload.sub ?? null,
-      tier,
       scopes: (payload.scp as string[]) ?? [],
     };
   } catch {

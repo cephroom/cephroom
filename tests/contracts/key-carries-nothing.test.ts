@@ -57,12 +57,15 @@ beforeAll(async () => {
 const STRUCTURAL = ["aud", "exp", "iat", "iss"];
 
 describe("every key's claim set is pinned exactly", () => {
-  it("gives the access key a subject, a tier and its scopes — nothing more", async () => {
+  it("gives the access key a subject, a discovery plan and its scopes", async () => {
+    // The discovery plan is on the *session* key only. It is the consumer's
+    // own arrangement with the platform and never leaves it — see the node
+    // key below, which has no plan at all.
     const claims = decodeJwt(
-      await tokens.mintAccessKey({ sub: "s_reader", tier: "member" }),
+      await tokens.mintAccessKey({ sub: "s_reader", discovery: "query" }),
     );
     expect(Object.keys(claims).sort()).toEqual(
-      [...STRUCTURAL, "scp", "sub", "tier"].sort(),
+      [...STRUCTURAL, "discovery", "scp", "sub"].sort(),
     );
   });
 
@@ -74,37 +77,36 @@ describe("every key's claim set is pinned exactly", () => {
   });
 
   it("gives the node key nothing a contributor could identify a reader by", async () => {
-    // This one is presented to a stranger's machine on every read. It proves
-    // a tier, and names a pseudonym scoped to that one contributor. That is
-    // the entire job.
+    // This one is presented to a stranger's machine. It names a pseudonym
+    // scoped to that one contributor and says the holder may be attributed
+    // for a proposal. There is no plan on it: what a consumer pays us for is
+    // discovery, and a contributor has no business knowing.
     const claims = decodeJwt(
       await tokens.mintNodeKey({
         sub: "s_reader",
-        tier: "lab",
         audience: "s_contributor",
         sessionSecondsLeft: 900,
       }),
     );
     expect(Object.keys(claims).sort()).toEqual(
-      [...STRUCTURAL, "nod", "scp", "sub", "tier"].sort(),
+      [...STRUCTURAL, "nod", "scp", "sub"].sort(),
     );
+    expect(claims).not.toHaveProperty("discovery");
     // The reader's own subject is not in there at all.
     expect(JSON.stringify(claims)).not.toContain("s_reader");
   });
 
-  it("gives the serve key a subject and the announce scope", async () => {
-    const claims = decodeJwt(
-      await tokens.mintServeKey({ sub: "s_pub", tier: "member" }),
-    );
+  it("gives the serve key a subject, the announce scope and a capacity", async () => {
+    const claims = decodeJwt(await tokens.mintServeKey({ sub: "s_pub" }));
     expect(Object.keys(claims).sort()).toEqual(
-      [...STRUCTURAL, "scp", "sub", "tier"].sort(),
+      [...STRUCTURAL, "cap", "scp", "sub"].sort(),
     );
   });
 
   it("gives the anonymous key no subject at all", async () => {
-    const claims = decodeJwt(await tokens.mintAnonymousKey({ tier: "member" }));
+    const claims = decodeJwt(await tokens.mintAnonymousKey({ discovery: "query" }));
     expect(Object.keys(claims).sort()).toEqual(
-      [...STRUCTURAL, "anon", "scp", "tier"].sort(),
+      [...STRUCTURAL, "anon", "discovery", "scp"].sort(),
     );
     expect(claims.sub).toBeUndefined();
   });
@@ -122,7 +124,12 @@ describe("no key can be made to carry a name or a customer id", () => {
       tokens.mintAnonymousKey,
     ];
     for (const mint of mints) {
-      const source = mint.toString();
+      // Comments stripped: this asserts there is no *parameter*, and a
+      // comment explaining why there is no parameter should not fail it.
+      const source = mint
+        .toString()
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "");
       expect(source, `${mint.name} still mentions a name`).not.toMatch(/\bname\b/);
       expect(source, `${mint.name} still mentions a customer`).not.toMatch(
         /\bcus\b|customerId/,
@@ -135,7 +142,7 @@ describe("no key can be made to carry a name or a customer id", () => {
     // the token. TypeScript rejects this; a JavaScript caller would not.
     const key = await tokens.mintAccessKey({
       sub: "s_reader",
-      tier: "member",
+      discovery: "query",
       name: "Rosalind Hale",
       cus: "cus_12345",
     } as Parameters<typeof tokens.mintAccessKey>[0]);
@@ -147,15 +154,15 @@ describe("no key can be made to carry a name or a customer id", () => {
 
   it("drops both when verifying, so nothing downstream can read them", async () => {
     const verified = await tokens.verifyAccessKey(
-      await tokens.mintAccessKey({ sub: "s_reader", tier: "member" }),
+      await tokens.mintAccessKey({ sub: "s_reader", discovery: "query" }),
     );
     expect(verified).not.toHaveProperty("name");
     expect(verified).not.toHaveProperty("cus");
 
     const serve = await tokens.verifyServeKey(
-      await tokens.mintServeKey({ sub: "s_pub", tier: "member" }),
+      await tokens.mintServeKey({ sub: "s_pub" }),
     );
-    expect(Object.keys(serve!)).toEqual(["sub"]);
+    expect(Object.keys(serve!).sort()).toEqual(["capacity", "sub"]);
 
     const refresh = await tokens.verifyRefreshKey(
       await tokens.mintRefreshKey({ sub: "s_reader" }),
@@ -169,7 +176,7 @@ describe("the viewer the platform reconstructs is equally thin", () => {
   it("exposes no name and no customer id", async () => {
     const session = await import("@/lib/auth/session");
     expect(Object.keys(session.ANONYMOUS).sort()).toEqual(
-      ["expiresIn", "key", "sub", "tier"].sort(),
+      ["discovery", "expiresIn", "key", "sub"].sort(),
     );
   });
 });

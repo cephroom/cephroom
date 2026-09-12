@@ -23,7 +23,7 @@ import {
  * issuer saw — these fail.
  */
 
-async function keyFor(tier: "member" | "lab"): Promise<Uint8Array> {
+async function keyFor(tier: "query" | "sweep"): Promise<Uint8Array> {
   const keys = await publishedKeys();
   const found = keys.find((key) => key.tier === tier);
   if (!found) throw new Error(`no published key for ${tier}`);
@@ -32,7 +32,7 @@ async function keyFor(tier: "member" | "lab"): Promise<Uint8Array> {
 
 /** One subscriber's whole journey: ask for a batch, get tokens back. */
 async function subscriberGetsTokens(
-  tier: "member" | "lab",
+  tier: "query" | "sweep",
   count: number,
 ): Promise<{ tokens: string[]; seenByPlatform: string[] }> {
   const publicKey = await keyFor(tier);
@@ -53,7 +53,7 @@ async function subscriberGetsTokens(
 
 describe("Layer 1: a redemption cannot be traced to its issuance", () => {
   it("issues tokens the platform has never seen the contents of", async () => {
-    const { tokens, seenByPlatform } = await subscriberGetsTokens("member", 2);
+    const { tokens, seenByPlatform } = await subscriberGetsTokens("query", 2);
 
     // The strong form: no token, and no substantial run of bytes from one,
     // appears anywhere in what crossed the wire during issuance.
@@ -68,8 +68,8 @@ describe("Layer 1: a redemption cannot be traced to its issuance", () => {
 
   it("makes two tokens from one issuance indistinguishable from two from different issuances", async () => {
     // Alice buys a batch. Bob buys a batch. Alice redeems twice; Bob once.
-    const alice = await subscriberGetsTokens("member", 2);
-    const bob = await subscriberGetsTokens("member", 2);
+    const alice = await subscriberGetsTokens("query", 2);
+    const bob = await subscriberGetsTokens("query", 2);
 
     const aliceFirst = await redeem(
       Uint8Array.from(Buffer.from(alice.tokens[0], "base64")),
@@ -111,7 +111,7 @@ describe("Layer 1: a redemption cannot be traced to its issuance", () => {
   });
 
   it("yields no subject, customer, or issuance reference at redemption", async () => {
-    const { tokens } = await subscriberGetsTokens("lab", 1);
+    const { tokens } = await subscriberGetsTokens("sweep", 1);
     const result = await redeem(
       Uint8Array.from(Buffer.from(tokens[0], "base64")),
     );
@@ -122,8 +122,8 @@ describe("Layer 1: a redemption cannot be traced to its issuance", () => {
   });
 
   it("carries the tier, and nothing finer", async () => {
-    const member = await subscriberGetsTokens("member", 1);
-    const lab = await subscriberGetsTokens("lab", 1);
+    const member = await subscriberGetsTokens("query", 1);
+    const lab = await subscriberGetsTokens("sweep", 1);
 
     const asMember = await redeem(
       Uint8Array.from(Buffer.from(member.tokens[0], "base64")),
@@ -132,8 +132,8 @@ describe("Layer 1: a redemption cannot be traced to its issuance", () => {
       Uint8Array.from(Buffer.from(lab.tokens[0], "base64")),
     );
 
-    expect(asMember!.tier).toBe("member");
-    expect(asLab!.tier).toBe("lab");
+    expect(asMember!.tier).toBe("query");
+    expect(asLab!.tier).toBe("sweep");
   });
 
   it("uses a fixed redemption context, so a batch cannot be marked", async () => {
@@ -144,8 +144,8 @@ describe("Layer 1: a redemption cannot be traced to its issuance", () => {
     // is observable as: a token from one batch verifies under the same key and
     // yields the same shape as a token from the other, with no per-batch value
     // anywhere in the redemption.
-    const first = await subscriberGetsTokens("member", 1);
-    const second = await subscriberGetsTokens("member", 1);
+    const first = await subscriberGetsTokens("query", 1);
+    const second = await subscriberGetsTokens("query", 1);
 
     const a = await redeem(
       Uint8Array.from(Buffer.from(first.tokens[0], "base64")),
@@ -167,20 +167,20 @@ describe("Layer 1: a redemption cannot be traced to its issuance", () => {
   });
 
   it("refuses a token whose signature has been tampered with", async () => {
-    const { tokens } = await subscriberGetsTokens("member", 1);
+    const { tokens } = await subscriberGetsTokens("query", 1);
     const bytes = Uint8Array.from(Buffer.from(tokens[0], "base64"));
     // Flip a bit in the authenticator, which is the last 256 bytes.
     bytes[bytes.length - 1] ^= 0x01;
     expect(await redeem(bytes)).toBeNull();
   });
 
-  it("does not let a member token buy lab access", async () => {
-    const { tokens } = await subscriberGetsTokens("member", 1);
+  it("does not let a Query token buy Sweep reach", async () => {
+    const { tokens } = await subscriberGetsTokens("query", 1);
     const result = await redeem(
       Uint8Array.from(Buffer.from(tokens[0], "base64")),
     );
-    // The tier is the key that signed it. A member token cannot verify under
-    // the lab key, so there is no way to present it as one.
-    expect(result!.tier).toBe("member");
+    // The tier is the key that signed it. A Query token cannot verify under
+    // the Sweep key, so there is no way to present it as one.
+    expect(result!.tier).toBe("query");
   });
 });

@@ -4,30 +4,47 @@ import Link from "next/link";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import type { Tier } from "@/lib/access";
 import {
   annualSavingMonths,
   formatPrice,
   monthlyEquivalent,
-  PLANS,
-  PLAN_ORDER,
+  type AnyPlanId,
   type BillingInterval,
+  type PlanDefinition,
 } from "@/lib/stripe/plans";
 
-const RANK: Record<Tier, number> = { reader: 0, member: 1, lab: 2 };
-
+/**
+ * One catalogue of plans, rendered.
+ *
+ * Generic over which catalogue, because there are two now and they must not
+ * know about each other. The component is handed the plans, the current one,
+ * and a rank — it has no idea whether it is selling discovery to a consumer
+ * or capacity to a contributor, which is exactly the separation the pages
+ * above it are trying to keep.
+ */
 export function PricingTable({
-  currentTier,
+  plans,
+  current,
+  rank,
   signedIn,
   checkoutAction,
   from,
+  featuredId,
+  freeNote,
 }: {
-  currentTier: Tier;
+  plans: PlanDefinition<AnyPlanId>[];
+  current: string;
+  rank: Record<string, number>;
   signedIn: boolean;
   checkoutAction: (formData: FormData) => Promise<void>;
   from: string;
+  featuredId?: string;
+  /** What the free plan says under its button. */
+  freeNote: { current: string; included: string };
 }) {
   const [interval, setInterval] = useState<BillingInterval>("month");
+  const free = plans.find((plan) => !plan.prices);
+  const paid = plans.filter((plan) => plan.prices);
 
   return (
     <>
@@ -51,38 +68,36 @@ export function PricingTable({
 
       <div className="mt-7 grid gap-5 sm:grid-cols-3">
         <article className="flex flex-col rounded-xl border border-rule bg-paper-raised p-6">
-          <h2 className="font-serif text-[1.25rem] font-semibold">Reader</h2>
-          <p className="mt-1 text-[0.86rem] text-ink-muted">
-            Everything that is open, in full.
-          </p>
+          <h2 className="font-serif text-[1.25rem] font-semibold">{free?.name}</h2>
+          <p className="mt-1 text-[0.86rem] text-ink-muted">{free?.tagline}</p>
           <p className="mt-5 font-mono text-[2rem] leading-none tnum">$0</p>
           <p className="mt-1.5 text-[0.78rem] text-ink-faint">free, no card</p>
 
           <ul className="mt-5 flex-1 space-y-2 text-[0.86rem] text-ink-muted">
-            <Perk>Open columns in full</Perk>
-            <Perk>Every claim value and build badge</Perk>
-            <Perk>Opening section of member columns</Perk>
+            {free?.features.map((feature) => (
+              <Perk key={feature}>{feature}</Perk>
+            ))}
           </ul>
 
           <div className="mt-6">
-            {currentTier === "reader" ? (
+            {free && current === free.id ? (
               <span className="block rounded-md border border-rule px-4 py-2.5 text-center text-[0.86rem] text-ink-faint">
-                {signedIn ? "Your current plan" : "No account needed"}
+                {signedIn ? freeNote.current : "No account needed"}
               </span>
             ) : (
               <span className="block px-4 py-2.5 text-center text-[0.86rem] text-ink-faint">
-                Included in your plan
+                {freeNote.included}
               </span>
             )}
           </div>
         </article>
 
-        {PLAN_ORDER.map((planId) => {
-          const plan = PLANS[planId];
-          const price = plan.prices[interval];
-          const isCurrent = currentTier === planId;
-          const isDowngrade = RANK[currentTier] > RANK[planId];
-          const featured = planId === "member";
+        {paid.map((plan) => {
+          const planId = plan.id;
+          const price = plan.prices![interval];
+          const isCurrent = current === planId;
+          const isDowngrade = (rank[current] ?? 0) > (rank[planId] ?? 0);
+          const featured = planId === featuredId;
 
           return (
             <article
@@ -93,7 +108,7 @@ export function PricingTable({
             >
               {featured && (
                 <span className="absolute -top-2.5 left-6 rounded-full bg-accent px-2.5 py-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.06em] text-accent-ink">
-                  Most read
+                  Most chosen
                 </span>
               )}
 
@@ -144,9 +159,9 @@ export function PricingTable({
                     <input type="hidden" name="from" value={from} />
                     <CheckoutButton
                       label={
-                        currentTier === "reader"
+                        (rank[current] ?? 0) === 0
                           ? `Subscribe to ${plan.name}`
-                          : `Upgrade to ${plan.name}`
+                          : `Change to ${plan.name}`
                       }
                       featured={featured}
                     />

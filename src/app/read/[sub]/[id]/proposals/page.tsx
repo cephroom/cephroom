@@ -26,7 +26,6 @@ export default async function ProposalsPage({
   const nodeKey = viewer.sub
     ? await mintNodeKey({
         sub: viewer.sub,
-        tier: viewer.tier,
         audience: sub,
         sessionSecondsLeft: viewer.expiresIn,
       })

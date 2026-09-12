@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   try {
     const entitlement = await entitlementFor(sub);
     response.cookies.set(
-      accessCookie(await mintAccessKey({ sub, tier: entitlement.tier })),
+      accessCookie(await mintAccessKey({ sub, discovery: entitlement.discovery })),
     );
   } catch {
     // Stripe unreachable. Leave the existing key alone; it renews on its own

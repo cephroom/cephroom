@@ -8,7 +8,8 @@ import {
   type JWTPayload,
 } from "jose";
 
-import type { Tier } from "@/lib/access";
+import type { DiscoveryTier } from "@/lib/access";
+import { FREE_SERVING_CAPACITY, SERVING_CAPACITY } from "@/lib/stripe/plans";
 
 
 export const ACCESS_TTL_SECONDS = 15 * 60;
@@ -19,32 +20,38 @@ export const ACCESS_AUDIENCE = "cephroom:access";
 export const REFRESH_AUDIENCE = "cephroom:refresh";
 export const SERVE_AUDIENCE = "cephroom:serve";
 
-export type Scope =
-  | "read:public"
-  | "read:member"
-  | "read:lab"
-  | "write:propose"
-  | "serve:node";
+/**
+ * What a key permits.
+ *
+ * The read scopes are gone. There is nothing to grant: a column is served
+ * whole to whoever asks, and a contributor's node has no tier to measure a
+ * reader against. What remains is the two things a key still has to say —
+ * that its holder may be attributed for something they write, and that they
+ * may announce a node under their subject.
+ */
+export type Scope = "write:propose" | "serve:node";
+
+export const SCOPES: readonly Scope[] = ["write:propose", "serve:node"] as const;
 
 /**
  * What a key says.
  *
- * A pseudonymous subject, a tier, and what that tier permits. Nothing
- * descriptive, because a key is presented to parties the platform does not
- * control — a contributor's node sees one on every read — and anything in it
- * is something they learn.
+ * A pseudonymous subject and what it permits. Nothing descriptive, because a
+ * key is presented to parties the platform does not control, and anything in
+ * it is something they learn.
  *
- * It carried two more fields until recently. The Google display name, which
- * meant reading a column told a stranger your real name; and the Stripe
- * customer id, which was a cache of Stripe's own records keyed by identity,
- * in a credential, which is the fourth of the places Contract 1 says the
- * platform does not mirror them. Both are gone and neither is re-derivable
- * from what is left, which is the point.
+ * It has lost three fields. The Google display name, which meant reading a
+ * column told a stranger your real name; the Stripe customer id, which was a
+ * cache of Stripe's records inside a credential; and now the tier, because a
+ * consumer's subscription is about the platform's discovery and is nobody
+ * else's business. A contributor's node sees a subject and a scope, and there
+ * is nothing else there to read.
  */
 export interface AccessKey {
   sub: string | null;
-  tier: Tier;
   scp: Scope[];
+  /** Present only on a session key, never on one handed to a node. */
+  discovery?: DiscoveryTier;
   iat: number;
   exp: number;
 }
@@ -55,13 +62,16 @@ export interface RefreshKey {
   exp: number;
 }
 
-export function scopesForTier(tier: Tier): Scope[] {
-  const scopes: Scope[] = ["read:public"];
-  if (tier === "member" || tier === "lab") {
-    scopes.push("read:member", "write:propose");
-  }
-  if (tier === "lab") scopes.push("read:lab");
-  return scopes;
+/**
+ * What any signed-in party may do.
+ *
+ * Proposing is free. It always should have been: a proposal is work the
+ * reader does *for* the contributor, and charging for the privilege of
+ * offering it was backwards. What it needs is attribution, not payment —
+ * somebody for the contributor to answer.
+ */
+export function scopesForSignedIn(): Scope[] {
+  return ["write:propose"];
 }
 
 
@@ -139,11 +149,12 @@ export function publicKeyPem(): string {
 
 export async function mintAccessKey(input: {
   sub: string;
-  tier: Tier;
+  /** The consumer's own discovery plan. Never leaves the platform. */
+  discovery: DiscoveryTier;
 }): Promise<string> {
   return new SignJWT({
-    tier: input.tier,
-    scp: scopesForTier(input.tier),
+    scp: scopesForSignedIn(),
+    discovery: input.discovery,
   })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
@@ -168,17 +179,11 @@ export const NODE_KEY_TTL_SECONDS = 120;
  */
 export async function mintNodeKey(input: {
   sub: string;
-  tier: Tier;
   audience: string;
   /**
-   * Seconds left on the session key this is derived from.
-   *
-   * Required, not optional: a caller that forgot it would silently restore
-   * the behaviour this closes. A node key used to live a flat two minutes
-   * regardless, so one minted in the last second of a session carried the old
-   * tier for a further two — making the site's promise that "a cancellation
-   * reaches you within fifteen minutes" wrong by two minutes, and letting a
-   * derived credential outlive the one that authorised it.
+   * Seconds left on the session key this is derived from. Required, not
+   * optional: a caller that forgot it would silently restore a derived
+   * credential outliving the one that authorised it.
    */
   sessionSecondsLeft: number;
 }): Promise<string> {
@@ -187,30 +192,34 @@ export async function mintNodeKey(input: {
     Math.min(NODE_KEY_TTL_SECONDS, Math.floor(input.sessionSecondsLeft)),
   );
 
-  return new SignJWT({
-    tier: input.tier,
-    scp: scopesForTier(input.tier),
-    nod: input.audience,
-  })
+  // No tier, and no read scope. A contributor's node is handed a pseudonym
+  // scoped to them and permission to be attributed for a proposal, and that
+  // is the whole of it. There is nothing here for a paywall to read because
+  // there is no paywall to read it.
+  return new SignJWT({ scp: scopesForSignedIn(), nod: input.audience })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
     .setAudience(ACCESS_AUDIENCE)
     .setSubject(nodeScopedSubject(input.sub, input.audience))
     .setIssuedAt()
-    // A zero here mints an already-expired key, which is the right answer:
-    // the reader gets the public preview, exactly as they would with no key.
     .setExpirationTime(`${life}s`)
     .sign(await signingKey());
 }
 
+/**
+ * A key that carries a discovery plan and no subject.
+ *
+ * Layer 1 severed who-paid from who-reads. Reading is no longer gated, so
+ * what it severs now is who-paid from *who-searches* — a subscriber's queries
+ * would otherwise reach the platform with their cookie attached, and querying
+ * is the one activity the platform can still see. The tokens are more useful
+ * here than they were against a paywall, not less: a paywall was one bit
+ * about a person, and a search history is a research programme.
+ */
 export async function mintAnonymousKey(input: {
-  tier: Tier;
+  discovery: DiscoveryTier;
 }): Promise<string> {
-  const readOnly = scopesForTier(input.tier).filter(
-    (scope) => scope !== "write:propose",
-  );
-
-  return new SignJWT({ tier: input.tier, scp: readOnly, anon: true })
+  return new SignJWT({ discovery: input.discovery, scp: [], anon: true })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
     .setAudience(ACCESS_AUDIENCE)
@@ -225,15 +234,16 @@ export const SERVE_KEY_TTL_DAYS = 30;
 
 export async function mintServeKey(input: {
   sub: string;
-  tier: Tier;
+  /** How many items this contributor's plan lets them announce at once. */
+  capacity?: number;
 }): Promise<string> {
   return new SignJWT({
-    tier: input.tier,
-    // No read scopes. The only capability a serve key carries is announcing a
-    // node under its subject; it is not a reader session and must never be
-    // usable as one. The tier rides along only so the account page can show
-    // whose key it is.
+    // The only capability a serve key carries is announcing a node under its
+    // subject; it is not a reader session and must never be usable as one.
     scp: ["serve:node"] satisfies Scope[],
+    // Capacity rather than a plan name, because capacity is the thing the
+    // registry actually applies. A contributor on the free plan has one too.
+    cap: input.capacity ?? FREE_SERVING_CAPACITY,
   })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
@@ -265,9 +275,6 @@ export async function verifyAccessKey(
   // would be a malformed key rather than a deliberate one.
   if (!payload || (!payload.sub && payload.anon !== true)) return null;
 
-  const tier = payload.tier as Tier | undefined;
-  if (tier !== "reader" && tier !== "member" && tier !== "lab") return null;
-
   // A key bound to a contributor is only a key at that contributor. An
   // anonymous key carries no binding and travels anywhere, which costs
   // nothing because it names nobody.
@@ -284,8 +291,8 @@ export async function verifyAccessKey(
 
   return {
     sub: payload.sub ?? null,
-    tier,
     scp: (payload.scp as Scope[]) ?? [],
+    discovery: payload.discovery as DiscoveryTier | undefined,
     iat: payload.iat!,
     exp: payload.exp!,
   };
@@ -293,10 +300,17 @@ export async function verifyAccessKey(
 
 export async function verifyServeKey(
   token: string,
-): Promise<{ sub: string } | null> {
+): Promise<{ sub: string; capacity: number } | null> {
   const payload = await verify(token, SERVE_AUDIENCE);
   if (!payload?.sub) return null;
-  return { sub: payload.sub };
+  const capacity = payload.cap;
+  return {
+    sub: payload.sub,
+    capacity:
+      typeof capacity === "number" && Number.isSafeInteger(capacity) && capacity > 0
+        ? Math.min(capacity, SERVING_CAPACITY.stacks)
+        : FREE_SERVING_CAPACITY,
+  };
 }
 
 export async function verifyRefreshKey(

@@ -1,9 +1,25 @@
-import type { BillingInterval, PlanId } from "./plans";
+import type {
+  AnyPlanId,
+  BillingInterval,
+  DiscoveryTier,
+  ServingTier,
+} from "./plans";
 
 
+/**
+ * One subscription as Stripe holds it.
+ *
+ * A subscription now belongs to exactly one of the two catalogues, and says
+ * which by carrying the tier for that side and null for the other. They are
+ * unrelated products that happen to be billed by the same counterparty: a
+ * consumer's discovery plan and a contributor's serving plan can coexist on
+ * one customer without either implying anything about the other.
+ */
 export interface SubscriptionView {
   id: string;
-  tier: "member" | "lab";
+  plan: AnyPlanId;
+  discovery: DiscoveryTier | null;
+  serving: ServingTier | null;
   interval: BillingInterval;
   status: string;
   currentPeriodEnd: number | null;
@@ -15,7 +31,7 @@ export interface CheckoutRequest {
   sub: string;
   customerId: string | null;
   priceId: string;
-  plan: PlanId;
+  plan: AnyPlanId;
   interval: BillingInterval;
   successUrl: string;
   cancelUrl: string;

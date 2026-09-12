@@ -66,14 +66,12 @@ export function DatasetReader({
   address,
   servedBy,
   datasetId,
-  canExplore,
   highlight = null,
 }: {
   sub: string;
   address: string;
   servedBy: string;
   datasetId: string;
-  canExplore: boolean;
   highlight?: { subject: string; object: string } | null;
 }) {
   const [dataset, setDataset] = useState<Dataset | null>(null);
@@ -293,35 +291,16 @@ export function DatasetReader({
           ))}
         </nav>
 
-        {canExplore ? (
-          <DatasetMatrix
-            subjects={subjects}
-            objects={objects}
-            highlight={highlight}
-            cells={cells}
-            unit={metric.unit}
-          />
-        ) : (
-          <div className="mt-5 rounded-xl border border-rule bg-paper-raised p-6">
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-accent">
-              Member feature
-            </p>
-            <h3 className="mt-2 font-serif text-[1.3rem] font-semibold">
-              The full matrix, with the evidence behind every cell
-            </h3>
-            <p className="mt-2 max-w-[54ch] text-[0.92rem] leading-relaxed text-ink-muted">
-              {subjects.length} targets × {objects.length} compounds, each cell
-              showing its value alongside the number of measurements and
-              distinct papers behind it.
-            </p>
-            <Link
-              href="/pricing"
-              className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
-            >
-              See plans — from $9/month
-            </Link>
-          </div>
-        )}
+        {/* Shown to everyone. A dataset is what every claim is checked
+            against, and checking is the whole product — withholding the
+            matrix withheld the evidence rather than the article. */}
+        <DatasetMatrix
+          subjects={subjects}
+          objects={objects}
+          highlight={highlight}
+          cells={cells}
+          unit={metric.unit}
+        />
 
         {empty.length > 0 && (
           <p className="mt-4 text-[0.83rem] leading-relaxed text-ink-muted">

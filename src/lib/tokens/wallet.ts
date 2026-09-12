@@ -5,13 +5,14 @@ import {
   BATCH_SIZE,
   finalizeBatch,
   type PublishedKey,
+  type TokenTier,
 } from "./issuer";
 
 
 const STORAGE_KEY = "cephroom.tokens.v1";
 
 interface Wallet {
-  tier: "member" | "lab";
+  tier: TokenTier;
   tokens: string[];
   epoch: number;
 }
@@ -100,7 +101,7 @@ export async function stockUp(): Promise<
 
     const issued = (await response.json()) as {
       epoch: number;
-      tier: "member" | "lab";
+      tier: TokenTier;
       responses: string[];
     };
 
@@ -115,7 +116,7 @@ export async function stockUp(): Promise<
 }
 
 export async function spendToken(): Promise<
-  { key: string; tier: "member" | "lab" } | null
+  { key: string; tier: TokenTier } | null
 > {
   const wallet = read();
   if (!wallet || wallet.tokens.length === 0) return null;
@@ -136,10 +137,7 @@ export async function spendToken(): Promise<
     });
 
     if (!response.ok) return null;
-    const body = (await response.json()) as {
-      key: string;
-      tier: "member" | "lab";
-    };
+    const body = (await response.json()) as { key: string; tier: TokenTier };
     return { key: body.key, tier: body.tier };
   } catch {
     return null;

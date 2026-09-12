@@ -1,6 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { generateKeyPairSync, randomBytes } from "node:crypto";
+
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { IssuanceGate, ISSUANCE_CONCURRENCY } from "@/lib/tokens/issuance-gate";
+
+beforeAll(() => {
+  const pair = generateKeyPairSync("ed25519");
+  process.env.CEPHROOM_SIGNING_KEY = Buffer.from(
+    pair.privateKey.export({ type: "pkcs8", format: "pem" }) as string,
+  ).toString("base64");
+  process.env.CEPHROOM_PUBLIC_KEY = Buffer.from(
+    pair.publicKey.export({ type: "spki", format: "pem" }) as string,
+  ).toString("base64");
+  process.env.AUTH_SUBJECT_SECRET ??= randomBytes(32).toString("hex");
+});
 
 /**
  * The platform's cost per subscriber has a ceiling.
@@ -19,6 +32,21 @@ import { IssuanceGate, ISSUANCE_CONCURRENCY } from "@/lib/tokens/issuance-gate";
  * because the bottleneck is the platform's own CPU. One subscriber can
  * occupy the signing path indefinitely, and spend 574 Stripe calls an hour
  * doing it, which competes with sign-in and billing for the same rate limit.
+ *
+ * **What happened to the exposure since.** The unbounded half — "one
+ * subscription supplies unlimited concurrent anonymous readers" — was closed
+ * by the architecture rather than by any mitigation here. A key no longer
+ * unlocks anybody's content: a column is served whole to whoever asks, and a
+ * contributor's node has no tier to check. So a farmed token grants no access
+ * to anyone's work, because there is no access to grant. What a token buys
+ * now is *discovery reach on the platform's own surface*, which is a resource
+ * the platform actually owns and can bound, and which the gate below bounds.
+ *
+ * That is worth being precise about: it was not fixed, it was removed. None
+ * of the three impossible mitigations became possible — a per-subscriber
+ * counter is still person-linkable state, a balance still contradicts
+ * Contract 10, linking issuance to redemption still destroys Layer 1. The
+ * thing being protected simply stopped being somebody else's labour.
  *
  * What this gate does and does not fix, stated plainly, because the
  * difference matters:
@@ -107,6 +135,33 @@ describe("the issuance gate bounds work, not people", () => {
     // And low enough to actually bound the signing path, which measured
     // ~6.3s of platform time per batch.
     expect(ISSUANCE_CONCURRENCY).toBeLessThanOrEqual(4);
+  });
+});
+
+describe("the exposure this gate could not close was removed instead", () => {
+  it("issues tokens against discovery plans, not against anyone's content", async () => {
+    // The old token said "this bearer is a Member" and a contributor's node
+    // honoured it. A farmed token therefore handed out somebody else's work.
+    // It now names a plan for the platform's own search, which is ours to
+    // give away and ours to bound.
+    const { TOKEN_TIERS } = await import("@/lib/tokens/issuer");
+    const { DISCOVERY_PLANS } = await import("@/lib/stripe/plans");
+    for (const tier of TOKEN_TIERS) {
+      expect(Object.keys(DISCOVERY_PLANS)).toContain(tier);
+    }
+  });
+
+  it("mints an anonymous key that unlocks nothing on any node", async () => {
+    const { mintAnonymousKey, verifyAccessKey } = await import(
+      "@/lib/keys/tokens"
+    );
+    const verified = await verifyAccessKey(
+      await mintAnonymousKey({ discovery: "sweep" }),
+    );
+    // No read scope, because there is no such scope. Whatever a farmer hands
+    // out, it is not access to a contributor's machine.
+    expect(verified!.scp).toEqual([]);
+    expect(JSON.stringify(verified)).not.toMatch(/read:/);
   });
 });
 

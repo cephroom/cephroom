@@ -1,4 +1,4 @@
-import type { Tier } from "@/lib/access";
+import type { DiscoveryTier } from "@/lib/access";
 
 /**
  * What tier a renewal should stamp, including when Stripe did not answer.
@@ -26,10 +26,10 @@ import type { Tier } from "@/lib/access";
  */
 export function tierOnRenewal(input: {
   /** What Stripe reported, or null if it could not be reached. */
-  fromStripe: Tier | null;
-  /** The tier the reader currently holds, or null if they hold nothing. */
-  current: Tier | null;
-}): Tier {
+  fromStripe: DiscoveryTier | null;
+  /** The plan the consumer currently holds, or null if they hold none. */
+  current: DiscoveryTier | null;
+}): DiscoveryTier {
   if (input.fromStripe !== null) return input.fromStripe;
-  return input.current ?? "reader";
+  return input.current ?? "browse";
 }

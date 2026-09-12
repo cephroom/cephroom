@@ -12,11 +12,6 @@ export const metadata: Metadata = {
     "Everything being served right now. Cephroom has no archive — discovery is presence.",
 };
 
-const ACCESS_CHIP: Record<string, string | null> = {
-  public: null,
-  member: "Member",
-  lab: "Lab",
-};
 
 export default async function ReadPage({
   searchParams,
@@ -91,7 +86,6 @@ export default async function ReadPage({
             <section className="mt-2">
               <ul className="grid gap-x-10 sm:grid-cols-2">
                 {columns.map(({ presence, item }) => {
-                  const chip = ACCESS_CHIP[item.access ?? "public"];
                   return (
                     <li
                       key={`${presence.sub}-${item.id}`}
@@ -111,11 +105,6 @@ export default async function ReadPage({
                           </span>
                           <span aria-hidden>·</span>
                           <span>serving live</span>
-                          {chip && (
-                            <span className="rounded-full border border-rule-strong px-1.5 py-px text-[0.68rem] font-medium uppercase tracking-[0.06em] text-ink-muted">
-                              {chip}
-                            </span>
-                          )}
                         </div>
 
                         <h2 className="font-serif text-[1.32rem] font-semibold leading-snug tracking-[-0.015em] decoration-accent/40 underline-offset-4 group-hover:underline">

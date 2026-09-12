@@ -4,7 +4,13 @@ import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ROOT, stripCommentsAndStrings, walk } from "./scan";
-import { PLANS, PLAN_ORDER, formatPrice } from "@/lib/stripe/plans";
+import {
+  DISCOVERY_PLANS,
+  DISCOVERY_ORDER,
+  SERVING_PLANS,
+  SERVING_ORDER,
+  formatPrice,
+} from "@/lib/stripe/plans";
 
 /**
  * Money is an integer count of the smallest currency unit. Always.
@@ -35,8 +41,13 @@ const MONEY_MODULES = ["src/lib/stripe/plans.ts"];
 
 describe("every amount the platform holds is an integer of minor units", () => {
   it("prices every plan and interval in whole minor units", () => {
-    for (const planId of PLAN_ORDER) {
-      const plan = PLANS[planId];
+    const everyPlan = [
+      ...DISCOVERY_ORDER.map((id) => DISCOVERY_PLANS[id]),
+      ...SERVING_ORDER.map((id) => SERVING_PLANS[id]),
+    ];
+    for (const plan of everyPlan) {
+      const planId = plan.id;
+      if (!plan.prices) continue;
       for (const interval of ["month", "year"] as const) {
         const amount = plan.prices[interval].unitAmount;
         expect(Number.isSafeInteger(amount), `${planId}/${interval} is ${amount}`).toBe(
@@ -54,13 +65,13 @@ describe("every amount the platform holds is an integer of minor units", () => {
     const { monthlyEquivalent, annualSavingMonths } = await import(
       "@/lib/stripe/plans"
     );
-    for (const planId of PLAN_ORDER) {
+    for (const planId of DISCOVERY_ORDER) {
       // A monthly equivalent is a division, and the one place a fraction could
       // escape into a number that is later treated as money. It is rounded to
       // a whole minor unit before it becomes anything, and it is a string by
       // the time it leaves.
-      expect(typeof monthlyEquivalent(PLANS[planId])).toBe("string");
-      expect(Number.isSafeInteger(annualSavingMonths(PLANS[planId]))).toBe(true);
+      expect(typeof monthlyEquivalent(DISCOVERY_PLANS[planId])).toBe("string");
+      expect(Number.isSafeInteger(annualSavingMonths(DISCOVERY_PLANS[planId]))).toBe(true);
     }
   });
 

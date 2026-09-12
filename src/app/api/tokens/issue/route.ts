@@ -37,12 +37,15 @@ async function issue(request: Request) {
   }
 
   // Live from Stripe, not from the key, so a cancellation within the key's
-  // fifteen minutes cannot buy an hour of anonymous tokens on top.
+  // fifteen minutes cannot buy an hour of anonymous discovery on top.
   const entitlement = await entitlementFor(viewer.sub);
-  const tier = tokenTierFor(entitlement.tier);
+  const tier = tokenTierFor(entitlement.discovery);
   if (!tier) {
     return NextResponse.json(
-      { error: "Anonymous reading tokens come with a membership." },
+      {
+        error:
+          "Anonymous discovery tokens come with a paid discovery plan. Browsing is free and needs none.",
+      },
       { status: 403, headers: { "cache-control": "no-store" } },
     );
   }

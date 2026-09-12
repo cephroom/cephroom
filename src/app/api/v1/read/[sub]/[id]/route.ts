@@ -46,7 +46,6 @@ export async function GET(
         title: item.title,
         kind: item.kind,
         tags: item.tags,
-        access: item.access ?? "public",
         summary: item.summary ?? null,
         openProposals: item.openProposals ?? 0,
       },
@@ -62,8 +61,8 @@ export async function GET(
           "The platform never returns column or dataset bytes. Fetch `fetch.self` directly from the address above.",
         datasetsComeFromTheSameNode:
           "Resolve every claim's dataset from this node, not from whichever node announces that slug. An author vouches for the data they serve; letting a stranger's node answer would let anyone substitute the numbers a claim is checked against.",
-        accessIsDecidedByTheNode:
-          "Send your read key to the node. The platform cannot enforce access and does not try — it is not in the request path.",
+        nothingIsGated:
+          "Fetch it and you get all of it. A node has no tier to check and nothing to withhold; what a contributor charges for is arranged with them directly, and the platform is not told.",
       },
     },
     { headers: HEADERS },

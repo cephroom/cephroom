@@ -8,7 +8,6 @@ export interface ManifestItem {
   title: string;
   kind: ItemKind;
   tags: string[];
-  access?: "public" | "member" | "lab";
   summary?: string;
   openProposals?: number;
 }

@@ -7,8 +7,6 @@ import remarkGfm from "remark-gfm";
 
 import { CheckBadge } from "@/components/check-badge";
 import { ClaimChip, type ClaimView } from "@/components/claim-chip";
-import { Paywall } from "@/components/paywall";
-import type { Access, Tier } from "@/lib/access";
 import { type ParsedClaim } from "@/lib/claims/syntax";
 import {
   resolveClaims,
@@ -28,16 +26,11 @@ interface ServedColumn {
   id: string;
   title: string;
   subtitle: string;
-  access: Access;
   repo: string | null;
   commit: string | null;
   author: string;
-  entitled: boolean;
   prose: string;
-  hiddenBlocks: number;
   claims: ParsedClaim[];
-  withheldClaims?: string[];
-  withheldClaimCount?: number;
   servedAt: string;
 }
 
@@ -58,7 +51,6 @@ export function ColumnReader({
   servedBy,
   payTo,
   nodeKey,
-  tier,
   signedIn,
 }: {
   sub: string;
@@ -67,7 +59,6 @@ export function ColumnReader({
   servedBy: string;
   payTo: string | null;
   nodeKey: string | null;
-  tier: Tier;
   signedIn: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>({ state: "loading" });
@@ -238,11 +229,6 @@ export function ColumnReader({
               <span className="h-1.5 w-1.5 rounded-full bg-verified" aria-hidden />
               served live from {servedBy}&rsquo;s machine
             </span>
-            {column.access !== "public" && (
-              <span className="rounded-full border border-rule-strong px-2 py-px text-[0.68rem] font-medium uppercase tracking-[0.06em]">
-                {column.access}
-              </span>
-            )}
           </div>
         </header>
 
@@ -258,7 +244,7 @@ export function ColumnReader({
             {anonymous && (
               <span
                 className="inline-flex items-center gap-1.5 rounded-full border border-counter/30 bg-counter-wash px-2 py-0.5 text-[0.7rem] font-medium text-counter"
-                title="Fetched with an anonymous access token. The node was shown a tier and no identity."
+                title="Fetched with an anonymous discovery token, so this search is not linked to your subscription."
               >
                 <span aria-hidden>▚</span>
                 read anonymously
@@ -322,11 +308,7 @@ export function ColumnReader({
         <div className="prose mt-10">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkClaims]}
-            components={components(
-              claims,
-              tier !== "reader",
-              new Set(column.withheldClaims ?? []),
-            )}
+            components={components(claims)}
           >
             {column.prose}
           </ReactMarkdown>
@@ -338,9 +320,10 @@ export function ColumnReader({
                 Pay {servedBy} directly
               </h2>
               <p className="mt-1.5 max-w-[54ch] text-[0.88rem] leading-relaxed text-ink-muted">
-                Your membership pays for the broker and the reading tools. It
-                does not pay {servedBy}, and we take no share of anything you
-                send them. This is what they gave as a way to reach them:
+                Nothing you pay us reaches {servedBy}, and we take no share of
+                anything you send them. Reading this was free to you and paid
+                them nothing; if you want them to keep writing, this is what
+                they gave as a way to reach them:
               </p>
               <p className="mt-3 break-all rounded-md border border-rule bg-paper-raised p-3 font-mono text-[0.82rem] text-ink">
                 {payTo}
@@ -354,7 +337,7 @@ export function ColumnReader({
             </section>
           )}
 
-        {column.entitled && (
+        {(
           <section className="mt-14 rounded-xl border border-rule bg-paper-sunken p-5">
             <h2 className="font-serif text-[1.1rem] font-semibold">
               Disagree with this?
@@ -381,36 +364,19 @@ export function ColumnReader({
           </section>
         )}
 
-        {!column.entitled && (
-          <Paywall
-            access={column.access as "member" | "lab"}
-            tier={tier}
-            signedIn={signedIn}
-            hiddenBlocks={column.hiddenBlocks}
-            claimCount={column.withheldClaimCount ?? 0}
-            returnTo={base}
-          />
-        )}
       </article>
     </main>
   );
 }
 
-function components(
-  claims: Map<string, ResolvedClaim>,
-  canInspect: boolean,
-  withheld: Set<string>,
-): Components {
+function components(claims: Map<string, ResolvedClaim>): Components {
   const map = {
     claim: ({ node }: { node?: { properties?: Record<string, unknown> } }) => {
       const key = String(node?.properties?.claimkey ?? "");
-      return (
-        <ClaimChip
-          claim={claims.get(key)}
-          canInspect={canInspect}
-          withheld={withheld.has(key)}
-        />
-      );
+      // Every claim is inspectable by anyone. The evidence behind a number was
+      // the last thing still being withheld by tier, which was the strangest
+      // place for a paywall in a publication about checking numbers.
+      return <ClaimChip claim={claims.get(key)} />;
     },
     table: ({ children }: { children?: React.ReactNode }) => (
       <div className="scroll-x">

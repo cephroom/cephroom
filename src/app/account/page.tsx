@@ -7,7 +7,11 @@ import { ServeKey } from "@/components/serve-key";
 import { SubmitButton } from "@/components/submit-button";
 import { CliKey } from "@/components/cli-key";
 import { TokenWallet } from "@/components/token-wallet";
-import { governingSubscription, TIER_LABEL } from "@/lib/access";
+import {
+  DISCOVERY_LABEL,
+  governingSubscription,
+  SERVING_LABEL,
+} from "@/lib/access";
 import { getViewer } from "@/lib/auth/session";
 import {
   cancelSubscription,
@@ -16,7 +20,7 @@ import {
 } from "@/lib/stripe/actions";
 import { entitlementFor } from "@/lib/stripe/entitlement";
 import { gateway, usingRealStripe } from "@/lib/stripe/gateway";
-import { formatPrice, PLANS, priceForId } from "@/lib/stripe/plans";
+import { formatPrice, priceForId } from "@/lib/stripe/plans";
 import type { SubscriptionView } from "@/lib/stripe/types";
 
 export const dynamic = "force-dynamic";
@@ -58,12 +62,7 @@ const TONE_CLASS = {
   bad: "border-broken/30 bg-broken-wash text-broken",
 } as const;
 
-export default async function AccountPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ checkout?: string }>;
-}) {
-  const params = await searchParams;
+export default async function AccountPage() {
   const viewer = await getViewer();
   if (!viewer.sub) redirect("/signin?next=/account");
 
@@ -86,15 +85,18 @@ export default async function AccountPage({
     subscriptions = [];
   }
 
-  const governing = governingSubscription(subscriptions, fresh.tier);
-  const status = governing ? STATUS_COPY[governing.status] : null;
-  // By price id. Rebuilding from plan + interval reports the list price
-  // rather than the one they are on, so a reduced-rate subscriber was told
-  // they pay $9 a month.
-  const price = governing
-    ? (priceForId(governing.priceId)?.price ??
-      PLANS[governing.tier].prices[governing.interval])
-    : null;
+  // Two subscriptions, shown side by side and described separately, because
+  // they are unrelated products. A contributor on Stacks with no discovery
+  // plan browses like anybody else; neither card implies anything about the
+  // other side of the network.
+  const discoverySub = governingSubscription(
+    subscriptions,
+    (subscription) => subscription.discovery !== null,
+  );
+  const servingSub = governingSubscription(
+    subscriptions,
+    (subscription) => subscription.serving !== null,
+  );
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-12 sm:py-16">
@@ -105,107 +107,33 @@ export default async function AccountPage({
         {fresh.sub}
       </p>
 
-      {}
+      <Plan
+        kind="Discovery"
+        heading={DISCOVERY_LABEL[fresh.discovery]}
+        blurb="What you can search across the live network. It buys nothing from any contributor — what they serve, they serve to everybody."
+        subscription={discoverySub}
+        isFree={fresh.discovery === "browse"}
+        chooseHref="/pricing"
+      />
+
+      <Plan
+        kind="Serving"
+        heading={servingSub?.serving ? SERVING_LABEL[servingSub.serving] : SERVING_LABEL.desk}
+        blurb="How much you can have listed at once. Serving itself is free; this is only about volume."
+        subscription={servingSub}
+        isFree={!servingSub?.serving}
+        chooseHref="/contribute#plans"
+      />
+
       <section className="mt-8 rounded-xl border border-rule bg-paper-raised p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-ink-faint">
-              Current tier
-            </p>
-            <h2 className="mt-1.5 font-serif text-[1.5rem] font-semibold">
-              {TIER_LABEL[fresh.tier]}
-            </h2>
-            {price && fresh.tier !== "reader" && (
-              <p className="mt-1 text-[0.88rem] text-ink-muted">
-                {formatPrice(price.unitAmount)} per {governing!.interval}
-              </p>
-            )}
-          </div>
-          {status && (
-            <span
-              className={`rounded-full border px-2.5 py-1 text-[0.75rem] font-medium ${TONE_CLASS[status.tone]}`}
-            >
-              {status.label}
-            </span>
-          )}
-        </div>
-
-        {status && (
-          <p className="mt-4 max-w-[60ch] text-[0.88rem] leading-relaxed text-ink-muted">
-            {status.detail}
-          </p>
-        )}
-
-        <dl className="mt-5 grid gap-x-8 gap-y-3 border-t border-rule pt-5 text-[0.85rem] sm:grid-cols-2">
+        <dl className="grid gap-x-8 gap-y-3 text-[0.85rem] sm:grid-cols-2">
           <Row label="Subject" value={fresh.sub!} mono />
           <Row
             label="Key expires in"
             value={`${Math.max(0, Math.round(fresh.expiresIn / 60))} min`}
           />
-          {governing?.currentPeriodEnd && (
-            <Row
-              label={governing.cancelAtPeriodEnd ? "Access ends" : "Renews on"}
-              value={new Date(
-                governing.currentPeriodEnd * 1000,
-              ).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            />
-          )}
           {customerId && <Row label="Stripe customer" value={customerId} mono />}
         </dl>
-
-        <div className="mt-6 flex flex-wrap gap-3">
-          {fresh.tier === "reader" || !governing ? (
-            <Link
-              href="/pricing"
-              className="rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
-            >
-              Choose a plan
-            </Link>
-          ) : (
-            <>
-              <form action={openBillingPortal}>
-                <SubmitButton
-                  label="Update payment method"
-                  pendingLabel="Opening…"
-                  variant="outline"
-                />
-              </form>
-              <form
-                action={
-                  governing.cancelAtPeriodEnd
-                    ? resumeSubscription
-                    : cancelSubscription
-                }
-              >
-                <input
-                  type="hidden"
-                  name="subscriptionId"
-                  value={governing.id}
-                />
-                <SubmitButton
-                  label={
-                    governing.cancelAtPeriodEnd
-                      ? "Resume subscription"
-                      : "Cancel subscription"
-                  }
-                  pendingLabel="Working…"
-                  variant={governing.cancelAtPeriodEnd ? "primary" : "quiet"}
-                />
-              </form>
-            </>
-          )}
-        </div>
-
-        {governing?.cancelAtPeriodEnd && fresh.tier !== "reader" && (
-          <p className="mt-4 rounded-lg border border-drifted/30 bg-drifted-wash px-3.5 py-2.5 text-[0.84rem] leading-relaxed text-drifted">
-            Cancellation scheduled. You keep full access until the end of the
-            period you have already paid for. Nothing else will be charged.
-          </p>
-        )}
       </section>
 
       {}
@@ -252,7 +180,7 @@ export default async function AccountPage({
           when your browser spends one we cannot tell whose it was.
         </p>
         <div className="mt-4">
-          <TokenWallet entitled={fresh.tier !== "reader"} />
+          <TokenWallet entitled={fresh.discovery !== "browse"} />
         </div>
       </section>
 
@@ -293,10 +221,10 @@ export default async function AccountPage({
         </Link>
       </section>
 
-      {!usingRealStripe() && governing && (
+      {!usingRealStripe() && subscriptions.length > 0 && (
         <SimulatedBillingControls
-          subscriptionId={governing.id}
-          status={governing.status}
+          subscriptionId={subscriptions[0].id}
+          status={subscriptions[0].status}
         />
       )}
     </main>
@@ -319,5 +247,133 @@ function Row({
         {value}
       </dd>
     </div>
+  );
+}
+
+/**
+ * One subscription, described on its own terms.
+ *
+ * Two of these render on this page and neither refers to the other. That is
+ * the point: a discovery plan and a serving plan are unrelated products, and
+ * a page that summed them into a single "your tier" would be re-creating the
+ * thing this model removed.
+ */
+function Plan({
+  kind,
+  heading,
+  blurb,
+  subscription,
+  isFree,
+  chooseHref,
+}: {
+  kind: string;
+  heading: string;
+  blurb: string;
+  subscription: SubscriptionView | null;
+  isFree: boolean;
+  chooseHref: string;
+}) {
+  const status = subscription ? STATUS_COPY[subscription.status] : null;
+  // By price id. Rebuilding from plan + interval reports the list price
+  // rather than the one they are on, so a reduced-rate subscriber was told
+  // they pay full price.
+  const price = subscription ? priceForId(subscription.priceId)?.price : null;
+
+  return (
+    <section className="mt-8 rounded-xl border border-rule bg-paper-raised p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-ink-faint">
+            {kind}
+          </p>
+          <h2 className="mt-1.5 font-serif text-[1.5rem] font-semibold">
+            {heading}
+          </h2>
+          {price && !isFree && (
+            <p className="mt-1 text-[0.88rem] text-ink-muted">
+              {formatPrice(price.unitAmount)} per {subscription!.interval}
+            </p>
+          )}
+          {isFree && (
+            <p className="mt-1 text-[0.88rem] text-ink-muted">Free</p>
+          )}
+        </div>
+        {status && (
+          <span
+            className={`rounded-full border px-2.5 py-1 text-[0.75rem] font-medium ${TONE_CLASS[status.tone]}`}
+          >
+            {status.label}
+          </span>
+        )}
+      </div>
+
+      <p className="mt-3 max-w-[60ch] text-[0.88rem] leading-relaxed text-ink-muted">
+        {blurb}
+      </p>
+
+      {status && (
+        <p className="mt-3 max-w-[60ch] text-[0.88rem] leading-relaxed text-ink-muted">
+          {status.detail}
+        </p>
+      )}
+
+      {subscription?.currentPeriodEnd && (
+        <dl className="mt-5 grid gap-x-8 gap-y-3 border-t border-rule pt-5 text-[0.85rem] sm:grid-cols-2">
+          <Row
+            label={subscription.cancelAtPeriodEnd ? "Ends" : "Renews on"}
+            value={new Date(
+              subscription.currentPeriodEnd * 1000,
+            ).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          />
+        </dl>
+      )}
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        {isFree || !subscription ? (
+          <Link
+            href={chooseHref}
+            className="rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
+          >
+            See plans
+          </Link>
+        ) : (
+          <>
+            <form action={openBillingPortal}>
+              <SubmitButton
+                label="Update payment method"
+                pendingLabel="Opening…"
+                variant="outline"
+              />
+            </form>
+            <form
+              action={
+                subscription.cancelAtPeriodEnd
+                  ? resumeSubscription
+                  : cancelSubscription
+              }
+            >
+              <input
+                type="hidden"
+                name="subscriptionId"
+                value={subscription.id}
+              />
+              <SubmitButton
+                label={
+                  subscription.cancelAtPeriodEnd
+                    ? "Resume this plan"
+                    : "Cancel this plan"
+                }
+                pendingLabel="Working…"
+                variant="quiet"
+              />
+            </form>
+          </>
+        )}
+      </div>
+    </section>
   );
 }

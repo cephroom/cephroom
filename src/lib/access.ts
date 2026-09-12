@@ -1,64 +1,93 @@
+import {
+  DISCOVERY_RANK,
+  SERVING_RANK,
+  type DiscoveryTier,
+  type ServingTier,
+} from "@/lib/stripe/plans";
 
-export type Tier = "reader" | "member" | "lab";
-export type Access = "public" | "member" | "lab";
+/**
+ * What a subscription means, now that there are two of them and they are
+ * about different things.
+ *
+ * This module used to hold a single ladder — reader, member, lab — and a
+ * function called `tierAllows` that decided whether somebody could read
+ * somebody else's column. That question no longer exists. A consumer's plan
+ * buys reach across the platform's own discovery; a contributor's plan buys
+ * room in the platform's own listing. Neither side's plan is visible to the
+ * other, and nothing here can gate a column, because nothing gates a column.
+ */
 
-const RANK: Record<Tier, number> = { reader: 0, member: 1, lab: 2 };
-const REQUIRED: Record<Access, Tier> = {
-  public: "reader",
-  member: "member",
-  lab: "lab",
-};
+export type { DiscoveryTier, ServingTier };
 
+/**
+ * Which Stripe statuses count as paying.
+ *
+ * `past_due` is deliberately included: Stripe is still retrying, and cutting
+ * somebody off mid-dunning punishes a failed card rather than a decision.
+ * `unpaid` is where the retries have been exhausted, and is excluded.
+ */
 export const ENTITLING_STATUSES: ReadonlySet<string> = new Set([
   "active",
   "trialing",
   "past_due",
 ]);
 
-export function isEntitling(status: string): boolean {
+export function isPaying(status: string): boolean {
   return ENTITLING_STATUSES.has(status);
 }
 
-export function tierAllows(tier: Tier, access: Access): boolean {
-  return RANK[tier] >= RANK[REQUIRED[access]];
+export function discoveryRank(tier: DiscoveryTier): number {
+  return DISCOVERY_RANK[tier];
 }
 
-export function tierRank(tier: Tier): number {
-  return RANK[tier];
+export function servingRank(tier: ServingTier): number {
+  return SERVING_RANK[tier];
 }
 
-export function tierFromSubscriptions(
-  subscriptions: { status: string; tier: "member" | "lab" }[],
-): Tier {
-  return subscriptions.reduce<Tier>((best, subscription) => {
-    if (!isEntitling(subscription.status)) return best;
-    return RANK[subscription.tier] > RANK[best] ? subscription.tier : best;
-  }, "reader");
+/** The strongest discovery plan among a customer's live subscriptions. */
+export function discoveryFromSubscriptions(
+  subscriptions: { status: string; discovery?: DiscoveryTier | null }[],
+): DiscoveryTier {
+  return subscriptions.reduce<DiscoveryTier>((best, subscription) => {
+    if (!isPaying(subscription.status)) return best;
+    const tier = subscription.discovery;
+    if (!tier) return best;
+    return DISCOVERY_RANK[tier] > DISCOVERY_RANK[best] ? tier : best;
+  }, "browse");
 }
 
-export function governingSubscription<
-  T extends { status: string; tier: "member" | "lab" },
->(subscriptions: T[], tier: Tier): T | null {
-  const atTier = subscriptions.filter(
-    (subscription) => subscription.tier === tier,
-  );
+/** The strongest serving plan among a customer's live subscriptions. */
+export function servingFromSubscriptions(
+  subscriptions: { status: string; serving?: ServingTier | null }[],
+): ServingTier {
+  return subscriptions.reduce<ServingTier>((best, subscription) => {
+    if (!isPaying(subscription.status)) return best;
+    const tier = subscription.serving;
+    if (!tier) return best;
+    return SERVING_RANK[tier] > SERVING_RANK[best] ? tier : best;
+  }, "desk");
+}
+
+export function governingSubscription<T extends { status: string }>(
+  subscriptions: T[],
+  matches: (subscription: T) => boolean,
+): T | null {
+  const relevant = subscriptions.filter(matches);
   return (
-    atTier.find((subscription) => isEntitling(subscription.status)) ??
-    atTier[0] ??
-    subscriptions.find((subscription) => isEntitling(subscription.status)) ??
-    subscriptions[0] ??
+    relevant.find((subscription) => isPaying(subscription.status)) ??
+    relevant[0] ??
     null
   );
 }
 
-export const TIER_LABEL: Record<Tier, string> = {
-  reader: "Reader",
-  member: "Member",
-  lab: "Lab",
+export const DISCOVERY_LABEL: Record<DiscoveryTier, string> = {
+  browse: "Browse",
+  query: "Query",
+  sweep: "Sweep",
 };
 
-export const ACCESS_LABEL: Record<Access, string> = {
-  public: "Free to read",
-  member: "Member",
-  lab: "Lab",
+export const SERVING_LABEL: Record<ServingTier, string> = {
+  desk: "Desk",
+  shelf: "Shelf",
+  stacks: "Stacks",
 };

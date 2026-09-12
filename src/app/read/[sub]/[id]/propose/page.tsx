@@ -47,7 +47,6 @@ export default async function ProposePage({
 
   const nodeKey = await mintNodeKey({
     sub: viewer.sub,
-    tier: viewer.tier,
     audience: sub,
     sessionSecondsLeft: viewer.expiresIn,
   });
@@ -78,7 +77,6 @@ export default async function ProposePage({
         columnId={id}
         address={located.presence.address}
         nodeKey={nodeKey}
-        canPropose={viewer.tier !== "reader"}
       />
     </main>
   );
