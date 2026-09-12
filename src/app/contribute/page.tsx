@@ -116,6 +116,24 @@ npm run node:serve                       # serves the demo content`}
           subject and a network address in RAM, and an operator could observe
           that.
         </p>
+        <p>
+          <strong>And so can anyone else.</strong>{" "}
+          That table is the public listing —{" "}
+          <code className="font-mono text-[0.82rem]">/api/v1/live</code>{" "}
+          answers it to any stranger with no key and no sign-in, because a
+          reader who cannot find you cannot read you. What follows is not
+          obvious and is worth saying out loud: anybody can ask it on a timer.
+          Nothing here keeps a history, but a poller can keep their own, and
+          what they get is a record of when your machine is on and off. If you
+          serve from the laptop you carry around, that is a record of when you
+          are at your desk.
+        </p>
+        <p>
+          There is no version of discovery that avoids it, so it is not
+          presented as solved. What you can do about it is put the node
+          somewhere that is always on, or accept that your working hours are
+          visible to whoever cares to watch over time.
+        </p>
 
         <h2 className="mt-14 font-serif text-[1.35rem] font-semibold tracking-[-0.02em]">
         Getting paid

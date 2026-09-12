@@ -225,6 +225,61 @@ describe("what one reader learns about another", () => {
   });
 });
 
+describe("what a stranger learns about a contributor, without signing in", () => {
+  /**
+   * Measured with a hostile consumer: `/api/v1/live` needs no key, has no
+   * rate limit, and returns every contributor's address. Three polls in a
+   * second, five contributors each time.
+   *
+   * That is discovery working — a reader has to be able to find who is
+   * serving, and the address is the point of the endpoint. But it means
+   * anybody can poll it on a timer and build a presence timeline for every
+   * contributor: when their machine is on, when it goes off, how long for.
+   * For somebody serving from their own laptop that is a record of when they
+   * are at their desk, held by whoever bothered to collect it.
+   *
+   * It cannot be closed without closing discovery, so it is disclosed. The
+   * gap this covers is that /contribute disclosed the *operator's* view —
+   * "the platform holds the association between your subject and a network
+   * address in RAM, and an operator could observe that" — and stopped there,
+   * while the public view is strictly larger and available to anyone.
+   */
+  it("tells contributors that presence is public, not merely operator-visible", () => {
+    const contribute = readFileSync(
+      join(ROOT, "src", "app", "contribute", "page.tsx"),
+      "utf8",
+    ).replace(/\s+/g, " ");
+
+    expect(contribute).toMatch(/anyone can|any stranger|without signing in|no key/i);
+    // And that it is repeatable, which is what turns an address into a
+    // timeline.
+    expect(contribute).toMatch(/when your machine|timeline|on and off|watch over time/i);
+  });
+
+  it("still discloses the operator's view as well", () => {
+    const contribute = readFileSync(
+      join(ROOT, "src", "app", "contribute", "page.tsx"),
+      "utf8",
+    ).replace(/\s+/g, " ");
+    expect(contribute).toMatch(/an operator could observe/i);
+  });
+
+  it("offers no history of its own to make that easier", async () => {
+    // The platform must not be the one keeping the timeline. A poller builds
+    // their own; that is their record, not ours.
+    const { stripCommentsOnly: strip } = await import("./scan");
+    const live = strip(
+      readFileSync(
+        join(ROOT, "src", "app", "api", "v1", "live", "route.ts"),
+        "utf8",
+      ),
+    );
+    for (const p of ["since", "before", "after", "cursor", "all", "history"]) {
+      expect(live).not.toContain(`searchParams.get("${p}")`);
+    }
+  });
+});
+
 describe("what the platform learns watching everybody at once", () => {
   it("holds only presence, and only while it is current", () => {
     const registry = stripCommentsOnly(
