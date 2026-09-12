@@ -74,9 +74,21 @@ const TONE = {
 export function ClaimChip({
   claim,
   canInspect,
+  withheld = false,
 }: {
   claim: ClaimView | undefined;
   canInspect: boolean;
+  /**
+   * The node named this claim in the preview prose but did not send its
+   * value, because the reader has not paid for it.
+   *
+   * Rendered as a lock in the counterpart hue, never as a broken claim. The
+   * two states look nothing alike on purpose: "you cannot see this" and
+   * "this number stopped being true" are different facts, and conflating them
+   * would both make a healthy paid column look defective and hide genuine
+   * breakage behind the paywall.
+   */
+  withheld?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [shift, setShift] = useState(0);
@@ -116,6 +128,20 @@ export function ClaimChip({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  if (withheld) {
+    return (
+      <Link
+        href="/pricing"
+        className="claim-locked inline-flex items-baseline gap-1.5 rounded bg-counter-wash px-1.5 py-px font-mono text-[0.86em] text-counter transition-opacity hover:opacity-75"
+        title="Withheld — this number is part of the paid column"
+      >
+        <span aria-hidden className="tracking-[0.1em]">▚▚</span>
+        <span className="sr-only">Number withheld. </span>
+        <span className="text-[0.92em]">subscribers</span>
+      </Link>
+    );
+  }
 
   if (!claim) {
     return (

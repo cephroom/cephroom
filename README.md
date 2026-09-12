@@ -120,7 +120,7 @@ npm run node:serve           # a contributor's node, on :4600
 ```
 
 Open <http://localhost:3000/read>. The node ships five columns and the
-cephroom dataset as example content; point it at your own directory and it
+receptorome-ki dataset as example content; point it at your own directory and it
 serves that instead.
 
 Stop the node and reload — the work disappears from the site. That is the

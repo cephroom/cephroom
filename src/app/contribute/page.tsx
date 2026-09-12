@@ -32,7 +32,7 @@ export default async function ContributePage() {
         <h2>Start a node</h2>
         <p>
           Clone the repository and run the node it ships. With no arguments it
-          serves the demo content — the cephroom dataset and a handful of
+          serves the demo content — the receptorome-ki dataset and a handful of
           example columns — so you can see the whole loop working before you
           point it anywhere.
         </p>

@@ -40,6 +40,17 @@ interface ServedColumn {
   prose: string;
   hiddenBlocks: number;
   claims: ParsedClaim[];
+  /**
+   * Claims the preview names but whose values the node withheld.
+   *
+   * These must render as locked rather than as broken. A number you have not
+   * paid for and a number whose query stopped resolving are different facts,
+   * and showing both in broken red would make a working paid column look
+   * defective — and would hide real breakage behind the paywall.
+   */
+  withheldClaims?: string[];
+  /** How many claims in the whole column the reader cannot see. */
+  withheldClaimCount?: number;
   servedAt: string;
 }
 
@@ -288,7 +299,11 @@ export function ColumnReader({
         <div className="prose mt-10">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkClaims]}
-            components={components(claims, tier !== "reader")}
+            components={components(
+              claims,
+              tier !== "reader",
+              new Set(column.withheldClaims ?? []),
+            )}
           >
             {column.prose}
           </ReactMarkdown>
@@ -327,7 +342,7 @@ export function ColumnReader({
             tier={tier}
             signedIn={signedIn}
             hiddenBlocks={column.hiddenBlocks}
-            claimCount={claims.size}
+            claimCount={column.withheldClaimCount ?? 0}
             returnTo={base}
           />
         )}
@@ -484,11 +499,18 @@ function resolveClaims(
 function components(
   claims: Map<string, ClaimView>,
   canInspect: boolean,
+  withheld: Set<string>,
 ): Components {
   const map = {
     claim: ({ node }: { node?: { properties?: Record<string, unknown> } }) => {
       const key = String(node?.properties?.claimkey ?? "");
-      return <ClaimChip claim={claims.get(key)} canInspect={canInspect} />;
+      return (
+        <ClaimChip
+          claim={claims.get(key)}
+          canInspect={canInspect}
+          withheld={withheld.has(key)}
+        />
+      );
     },
     table: ({ children }: { children?: React.ReactNode }) => (
       <div className="scroll-x">

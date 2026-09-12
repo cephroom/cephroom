@@ -23,6 +23,8 @@ export function Paywall({
   tier: Tier;
   signedIn: boolean;
   hiddenBlocks: number;
+  /** Claims the reader cannot currently see — what they would gain, not what
+   *  they already have. */
   claimCount: number;
   returnTo: string;
 }) {
@@ -48,8 +50,10 @@ export function Paywall({
         </h2>
 
         <p className="mt-2.5 max-w-[52ch] text-[0.92rem] leading-relaxed text-ink-muted">
-          {hiddenBlocks} more sections and {claimCount} checked claims with
-          their full provenance, for as long as the author is serving it.
+          {hiddenBlocks} more {hiddenBlocks === 1 ? "section" : "sections"} and{" "}
+          {claimCount} withheld {claimCount === 1 ? "number" : "numbers"}, each
+          re-checked against the dataset in your browser, for as long as the
+          author is serving it.
         </p>
 
         <ul className="mt-5 space-y-2 text-[0.88rem] text-ink-muted">

@@ -375,6 +375,18 @@ body {
   font-family: var(--font-sans);
 }
 
+/* A withheld claim, inside prose.
+   `.prose a` is (0,1,1) and beats a `text-counter` utility (0,1,0), so the
+   lock rendered in the accent orange with a link underline — which is the one
+   colour it must not be, since orange is the interactive hue and this is the
+   opposite of interactive. Stated explicitly rather than fought with
+   utilities. */
+.prose a.claim-locked,
+.prose a.claim-locked:hover {
+  color: var(--counter);
+  text-decoration: none;
+}
+
 /* Wide content must scroll inside itself, never the page. */
 .prose .scroll-x {
   overflow-x: auto;
