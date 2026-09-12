@@ -173,3 +173,106 @@ support it the node would have to emit a fact for censored-only cells carrying
 the counts without a median, which is a fact-model change (every fact has a
 numeric value today). Worth doing, but it is a real change, not a tweak, so it
 waits rather than shipping half-done.
+
+---
+
+## 2026-09-12 (cycle 2) — Species is not a caveat, it is part of the number
+
+### What the literature says
+
+Read two papers on how binding affinities behave across species and across
+databases.
+
+**Proudman et al., *Pharmacology Research & Perspectives* (PMC8882856)** —
+affinity of antipsychotics and related ligands at human α2A/α2B/α2C
+adrenoceptors, with explicit species comparison:
+
+- Species differences reach **30-fold** — yohimbine and rauwolscine bind
+  human/pig α2A far tighter than rat/guinea pig.
+- They **flip direction by ligand**: prazosin runs the other way, 15–20× 
+  *higher* at rat/mouse than at human/rabbit/dog.
+- Human α2-adrenoceptors resemble pig, dog and rabbit more than they resemble
+  rat, mouse and guinea pig — the common lab species are the distant ones.
+- Even holding species fixed, reported prazosin affinity at human α2A spans
+  **50-fold** (300 nM to 16000 nM), and buffer choice alone moves a
+  radioligand's affinity 4–5×.
+
+**Kuhne et al., histamine receptor comparison of the PDSP Ki DB against
+IUPHAR/BPS (PMC13494103)** — two curated databases over the same receptors:
+
+- pKi deviations between the two reach **3.4 units** at hH1R and hH4R.
+- Native tissue versus recombinant preparation deviates by up to **4.16 pKi
+  units**, and the worst example they name is **olanzapine at hH1R**.
+- Their warning is the sharpest sentence in either paper: *"apparent 'missing
+  data' may partly reflect differences in database design"* rather than true
+  absence.
+
+The load-bearing consequence: **a species difference is not a bias that can be
+corrected, because it has no consistent sign.** There is no factor to divide
+out. The only honest handling is to state which organism a number came from
+and let the reader see it.
+
+### What the dataset says
+
+Checked this against ChEMBL_37 as served (80 cells). `gap_report.json` already
+carries `median_nm` (pooled over every organism) and `median_nm_human`
+alongside each other, plus an `organism_verdict` per cell:
+
+| organism_verdict | cells |
+| --- | --- |
+| `human_present` | 74 |
+| `no_data` | 3 |
+| `non_human_only` | 2 |
+| `unknown_organism_only` | 1 |
+
+**40 of 80 cells — exactly half — have a pooled median that differs from the
+human-only median**, by up to 2.51× (CHRM1 × chlorpromazine, 50.18 nM pooled
+vs 125.89 nM human). The direction flips cell to cell, exactly as the α2A
+paper describes.
+
+### The finding that matters: it changes an argument we ship
+
+`histamine-sedation.md` argues that ranking antipsychotics by H1 affinity
+alone predicts **clinical sedation in patients** better than the multi-receptor
+models that replaced it. The ranking *is* the argument. Recomputed at human
+scope:
+
+```
+pooled: clozapine < chlorpromazine < olanzapine < quetiapine < ...
+human : clozapine < olanzapine < chlorpromazine < quetiapine < ...
+```
+
+Chlorpromazine and olanzapine **swap**. A column about a human clinical
+outcome is ranked on medians that pool rat and human measurements, and the
+ordering is not robust to the distinction.
+
+(The honest other half: chlorpromazine's human-only median rests on a single
+measurement, `n_human_point = 1`. Human scope is not automatically the better
+number — it is a *different* number with a different evidence count, and the
+author has to be able to say which one they mean and show what stands behind
+it. That is an argument for making scope visible and claimable, not for
+switching the default.)
+
+### The product gap this exposes
+
+Three things, all on the author's disk already, none of them reachable:
+
+1. **There is no `median_ki_nm` at human scope.** The node emits
+   `median_ki_nm`/`all`, `median_pki`/`all` and `median_pki`/`human`. An
+   author who wants a human-only affinity **in nanomolar** — the unit every
+   column actually writes in — cannot express it. Their only human option is
+   pKi, a log unit that reads unnaturally in prose. So the path of least
+   resistance is the species-pooled number.
+
+2. **`scope` defaults to `all`.** Every claim in all five shipped columns is
+   `scope: all` — not because anyone chose pooling, but because it is what you
+   get by not typing the line.
+
+3. **`organism_verdict` is never served.** A cell that is `non_human_only`
+   (HTR2B × haloperidol) renders exactly like a cell with 45 human
+   measurements. Nothing on the page distinguishes them, and no claim can
+   assert the difference. This is gap #2 from the previous cycle's ranked
+   list, and the literature above is what promotes it from "nice" to
+   "the page is currently able to mislead".
+
+Building all three this cycle.
