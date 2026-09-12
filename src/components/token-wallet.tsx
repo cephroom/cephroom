@@ -3,21 +3,27 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { clearWallet, stockUp, walletCount } from "@/lib/tokens/wallet";
+import {
+  clearWallet,
+  stockUp,
+  walletHealth,
+  type WalletHealth,
+} from "@/lib/tokens/wallet";
 
-/**
- * `issuing` is whether the viewer's discovery plan issues tokens at all. The
- * free plan does not, because a consumer with no subscription has nothing for
- * their searching to be linked to — there is no protection to sell them.
- */
 export function TokenWallet({ issuing }: { issuing: boolean }) {
-  const [count, setCount] = useState<number | null>(null);
+  const [health, setHealth] = useState<WalletHealth | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Read on mount rather than during render: localStorage does not exist on
-  // the server, and reading it in render would produce a hydration mismatch.
-  useEffect(() => setCount(walletCount()), []);
+  useEffect(() => {
+    let live = true;
+    walletHealth().then((next) => {
+      if (live) setHealth(next);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   if (!issuing) {
     return (
@@ -37,12 +43,34 @@ export function TokenWallet({ issuing }: { issuing: boolean }) {
   return (
     <div>
       <p className="text-[0.88rem] leading-relaxed text-ink-muted">
-        {count === null
+        {health === null
           ? "Checking this browser…"
-          : count === 0
+          : health.holding === 0
             ? "This browser is holding no tokens, so your searches are reaching us with your ordinary key — which means we could, in principle, put a month of them next to your name."
-            : `This browser is holding ${count} token${count === 1 ? "" : "s"}. Each one spends a search at the reach your plan bought, carrying no identity at all.`}
+            : health.stale
+              ? null
+              : `This browser is holding ${health.usable} token${health.usable === 1 ? "" : "s"}. Each one spends a search at the reach your plan bought, carrying no identity at all.`}
       </p>
+
+      {health?.stale && (
+        <div
+          role="status"
+          className="mt-2 rounded-lg border border-broken/40 bg-broken-wash p-4"
+        >
+          <p className="text-[0.88rem] font-medium text-broken">
+            The {health.holding} token{health.holding === 1 ? "" : "s"} this
+            browser is holding cannot be spent.
+          </p>
+          <p className="mt-2 text-[0.85rem] leading-relaxed text-ink-muted">
+            They were signed by an issuer key that is no longer published. The
+            signing keys live in memory and rotate hourly, so a restart here
+            retires them — we cannot keep them without storing something, and we
+            would rather tell you than let your searches quietly go back to
+            arriving with your subscription attached. Until you take a fresh
+            batch, that is what is happening.
+          </p>
+        </div>
+      )}
 
       {error && (
         <p role="status" className="mt-2 text-[0.83rem] text-broken">
@@ -58,21 +86,25 @@ export function TokenWallet({ issuing }: { issuing: boolean }) {
             setBusy(true);
             setError(null);
             const result = await stockUp();
-            if (result.ok) setCount(walletCount());
+            if (result.ok) setHealth(await walletHealth());
             else setError(result.error);
             setBusy(false);
           }}
           className="rounded-md bg-accent px-4 py-2 text-[0.86rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
-          {busy ? "Getting tokens…" : "Get anonymous search tokens"}
+          {busy
+            ? "Getting tokens…"
+            : health?.stale
+              ? "Get a fresh batch"
+              : "Get anonymous search tokens"}
         </button>
 
-        {count !== null && count > 0 && (
+        {health !== null && health.holding > 0 && (
           <button
             type="button"
             onClick={() => {
               clearWallet();
-              setCount(0);
+              setHealth({ holding: 0, usable: 0, stale: false });
             }}
             className="rounded-md border border-field-border px-4 py-2 text-[0.84rem] font-medium transition-colors hover:border-ink-faint"
           >

@@ -257,6 +257,25 @@ export default function PrivacyPage() {
             reveals nothing about who.
           </li>
           <li>
+            <strong>
+              A batch of tokens can die under you, and the fallback is
+              identified.
+            </strong>{" "}
+            The signing keys live in memory and rotate hourly, so restarting
+            this server retires every token anybody is holding. We will not
+            persist them — a stored issuer key is storage, and the contract that
+            forbids it is the one doing the work here. What we changed is that
+            your browser now carries the fingerprint of the key its batch was
+            signed under and checks it before spending, so a dead batch is
+            thrown away and said out loud instead of being counted as stock.
+            What we did <em>not</em>{" "}
+            fix: when a batch is dead your search still
+            goes out with your ordinary key, because the alternative is not
+            searching. You are told, on the result and on your key page, after
+            the query has gone. Narrowing that means asking before the search
+            rather than reporting after it, and that is not built.
+          </li>
+          <li>
             <strong>We cannot revoke anything.</strong>{" "}
             No blocklist, because a
             blocklist is state. A stolen key is good until it expires — fifteen

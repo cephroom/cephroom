@@ -4,6 +4,7 @@ import {
   buildRequests,
   BATCH_SIZE,
   finalizeBatch,
+  keyFingerprint,
   type PublishedKey,
   type TokenTier,
 } from "./issuer";
@@ -15,7 +16,21 @@ interface Wallet {
   tier: TokenTier;
   tokens: string[];
   epoch: number;
+  issuer?: string;
 }
+
+export interface WalletHealth {
+  holding: number;
+  usable: number;
+  stale: boolean;
+}
+
+export type SpendOutcome =
+  | { kind: "spent"; key: string; tier: TokenTier }
+  | { kind: "empty" }
+  | { kind: "stale" }
+  | { kind: "refused" }
+  | { kind: "unreachable" };
 
 function read(): Wallet | null {
   try {
@@ -25,9 +40,6 @@ function read(): Wallet | null {
     if (!Array.isArray(parsed.tokens)) return null;
     return parsed;
   } catch {
-    // Private windows, blocked site data, a corrupted value. A wallet that
-    // cannot be read is a wallet that is empty, and the reader falls back to
-    // their ordinary key.
     return null;
   }
 }
@@ -40,8 +52,6 @@ function write(wallet: Wallet | null): void {
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(wallet));
   } catch {
-    // Out of quota, or storage denied. Tokens held only for this page view;
-    // the reader loses nothing but the next round trip.
   }
 }
 
@@ -53,22 +63,57 @@ export function clearWallet(): void {
   write(null);
 }
 
+async function publishedKeys(): Promise<PublishedKey[]> {
+  const response = await fetch("/api/tokens/keys");
+  const body = (await response.json()) as { keys: PublishedKey[] };
+  return body.keys;
+}
+
+async function liveFingerprints(): Promise<Set<string>> {
+  const keys = await publishedKeys();
+  const out = new Set<string>();
+  for (const key of keys) out.add(await keyFingerprint(key.publicKey));
+  return out;
+}
+
+async function isStale(wallet: Wallet): Promise<boolean> {
+  if (!wallet.issuer) return true;
+  const live = await liveFingerprints();
+  return !live.has(wallet.issuer);
+}
+
+export async function walletHealth(): Promise<WalletHealth> {
+  const wallet = read();
+  const holding = wallet?.tokens.length ?? 0;
+  if (!wallet || holding === 0) {
+    return { holding: 0, usable: 0, stale: false };
+  }
+
+  let stale: boolean;
+  try {
+    stale = await isStale(wallet);
+  } catch {
+    return { holding, usable: holding, stale: false };
+  }
+
+  return { holding, usable: stale ? 0 : holding, stale };
+}
+
 export async function stockUp(): Promise<
   { ok: true; count: number } | { ok: false; error: string }
 > {
-  const directory = await fetch("/api/tokens/keys").then(
-    (response) => response.json() as Promise<{ keys: PublishedKey[] }>,
-  );
+  let keys: PublishedKey[];
+  try {
+    keys = await publishedKeys();
+  } catch {
+    return { ok: false, error: "Could not reach the issuer directory." };
+  }
 
-  // The newest key for whichever plan the issuer will sign for. The client
-  // does not state its own plan here — it asks, and the issuer decides.
-  const newest = [...directory.keys].sort((a, b) => b.epoch - a.epoch);
-  const candidate = newest[0];
-  if (!candidate) return { ok: false, error: "No issuer keys are published." };
+  const newest = [...keys].sort((a, b) => b.epoch - a.epoch);
+  if (newest.length === 0) {
+    return { ok: false, error: "No issuer keys are published." };
+  }
 
-  // Try each plan's newest key, best first: the issuer signs with the
-  // discovery plan the caller actually holds, so a request blinded against
-  // the Sweep key is refused for somebody on Query, and the other way round.
   for (const key of newest) {
     const publicKeyBytes = Uint8Array.from(
       atob(key.publicKey)
@@ -91,8 +136,6 @@ export async function stockUp(): Promise<
       const body = (await response.json().catch(() => null)) as {
         error?: string;
       } | null;
-      // 403 means "not a subscriber" and is final; anything else, try the
-      // next key before giving up.
       if (response.status === 403) {
         return { ok: false, error: body?.error ?? "Not a subscriber." };
       }
@@ -108,38 +151,57 @@ export async function stockUp(): Promise<
     if (issued.tier !== key.tier) continue;
 
     const tokens = await finalizeBatch(clients, issued.responses);
-    write({ tier: issued.tier, tokens, epoch: issued.epoch });
+    write({
+      tier: issued.tier,
+      tokens,
+      epoch: issued.epoch,
+      issuer: await keyFingerprint(key.publicKey),
+    });
     return { ok: true, count: tokens.length };
   }
 
   return { ok: false, error: "No key would sign for this account." };
 }
 
-export async function spendToken(): Promise<
-  { key: string; tier: TokenTier } | null
-> {
+export async function spendToken(): Promise<SpendOutcome> {
   const wallet = read();
-  if (!wallet || wallet.tokens.length === 0) return null;
-
-  const [token, ...rest] = wallet.tokens;
-  write({ ...wallet, tokens: rest });
+  if (!wallet || wallet.tokens.length === 0) return { kind: "empty" };
 
   try {
-    const response = await fetch("/api/tokens/redeem", {
+    if (await isStale(wallet)) {
+      write(null);
+      return { kind: "stale" };
+    }
+  } catch {
+    return { kind: "unreachable" };
+  }
+
+  const [token, ...rest] = wallet.tokens;
+
+  let response: Response;
+  try {
+    response = await fetch("/api/tokens/redeem", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      // Deliberately no credentials. `omit` rather than the default, so the
-      // session cookie is not attached even though it would be same-site —
-      // the endpoint ignores it, and not sending it means it is not there to
-      // be logged by anything in front of the app either.
       credentials: "omit",
       body: JSON.stringify({ token }),
     });
-
-    if (!response.ok) return null;
-    const body = (await response.json()) as { key: string; tier: TokenTier };
-    return { key: body.key, tier: body.tier };
   } catch {
-    return null;
+    return { kind: "unreachable" };
   }
+
+  if (!response.ok) {
+    write({ ...wallet, tokens: rest });
+    return { kind: "refused" };
+  }
+
+  let body: { key: string; tier: TokenTier };
+  try {
+    body = (await response.json()) as { key: string; tier: TokenTier };
+  } catch {
+    return { kind: "unreachable" };
+  }
+
+  write({ ...wallet, tokens: rest });
+  return { kind: "spent", key: body.key, tier: body.tier };
 }

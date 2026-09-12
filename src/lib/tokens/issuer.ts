@@ -9,13 +9,6 @@ export const EPOCH_SECONDS = 60 * 60;
 
 export const LIVE_EPOCHS = 2;
 
-/**
- * The discovery plans a token can be issued against.
- *
- * `browse` is free and needs no token: there is nothing to sever, because
- * there is no subscription to unlink the activity from. A token exists to
- * separate *paying* from *searching*, so only the paid plans have one.
- */
 export const TOKEN_TIERS = ["query", "sweep"] as const;
 export type TokenTier = (typeof TOKEN_TIERS)[number];
 
@@ -64,9 +57,6 @@ async function epochKey(tier: TokenTier, epoch: number): Promise<EpochKey> {
   const existing = cache.get(id);
   if (existing) return existing;
 
-  // Cache the promise rather than the result, so two concurrent issuances in
-  // the same epoch cannot generate two different keypairs and leave half the
-  // outstanding tokens unverifiable.
   const generating = (async () => {
     const { privateKey, publicKey } = await Issuer.generateKey(
       BlindRSAMode.PSS,
@@ -83,10 +73,6 @@ async function epochKey(tier: TokenTier, epoch: number): Promise<EpochKey> {
 
   cache.set(id, generating);
 
-  // Retire keys whose epoch has fallen out of the window. Dropping the key is
-  // what makes the matching nullifier bucket safe to drop: a token signed by a
-  // key that no longer exists cannot be replayed, so nothing needs to remember
-  // that it was spent.
   const oldest = epoch - LIVE_EPOCHS + 1;
   for (const cached of [...cache.keys()]) {
     const cachedEpoch = Number.parseInt(cached.split(":")[1] ?? "", 10);
@@ -188,6 +174,17 @@ export async function redeem(
   return null;
 }
 
+export const ISSUER_FINGERPRINT_CHARS = 32;
+
+export async function keyFingerprint(publicKeyBase64: string): Promise<string> {
+  const bytes = Uint8Array.from(Buffer.from(publicKeyBase64, "base64"));
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    bytes as unknown as BufferSource,
+  );
+  return Buffer.from(digest).toString("hex").slice(0, ISSUER_FINGERPRINT_CHARS);
+}
+
 export async function nullifierFor(token: Token): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
@@ -204,9 +201,6 @@ export async function buildRequests(
   const challenge = new TokenChallenge(
     TOKEN_TYPES.BLIND_RSA.value,
     ISSUER_NAME,
-    // A zero redemption context. A per-issuance random context would let the
-    // platform mark a batch and recognise it at redemption, which is the
-    // linkage this whole design exists to remove.
     new Uint8Array(32),
     ORIGIN_INFO,
   );

@@ -3,23 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { spendToken } from "@/lib/tokens/wallet";
+import { spendToken, type SpendOutcome } from "@/lib/tokens/wallet";
 
-/**
- * Searching is the one thing a reader does that happens on the platform's own
- * surface, so it is the one thing an anonymous token is worth spending on.
- *
- * The plain form still works with scripting off: it navigates to
- * `/read?q=...`, which sends the query and the session cookie together and is
- * exactly the linkage the tokens exist to break. With scripting on, this takes
- * over — the query goes to `/api/v1/live` with a token as the bearer, no
- * cookie, and never enters the URL. Same results either way; the difference is
- * whether anything here could put the query next to a name.
- *
- * A reader with no tokens gets the same search over the same presence at the
- * free reach. Nothing is withheld from them: a token buys the unlinkability,
- * and a plan buys how far the query reaches.
- */
 
 interface LiveResult {
   sub: string;
@@ -44,7 +29,12 @@ interface LiveAnswer {
 type State =
   | { phase: "server" }
   | { phase: "searching" }
-  | { phase: "answered"; query: string; answer: LiveAnswer; anonymous: boolean }
+  | {
+      phase: "answered";
+      query: string;
+      answer: LiveAnswer;
+      spend: SpendOutcome["kind"];
+    }
   | { phase: "failed"; detail: string };
 
 export function LiveSearch({
@@ -61,15 +51,12 @@ export function LiveSearch({
     event.preventDefault();
     setState({ phase: "searching" });
 
-    // Spent before the request, so that if redemption fails the search still
-    // happens — at the free reach, with the cookie, which is worse but is not
-    // a blank page.
     const spent = await spendToken();
 
     try {
       const response = await fetch(
         `/api/v1/live?q=${encodeURIComponent(query)}`,
-        spent
+        spent.kind === "spent"
           ? {
               headers: { authorization: `Bearer ${spent.key}` },
               credentials: "omit",
@@ -83,7 +70,7 @@ export function LiveSearch({
         phase: "answered",
         query,
         answer: (await response.json()) as LiveAnswer,
-        anonymous: Boolean(spent),
+        spend: spent.kind,
       });
     } catch (caught) {
       setState({
@@ -130,21 +117,34 @@ export function LiveSearch({
         <Answer
           query={state.query}
           answer={state.answer}
-          anonymous={state.anonymous}
+          spend={state.spend}
         />
       )}
     </div>
   );
 }
 
+const SPEND_NOTE: Record<SpendOutcome["kind"], string> = {
+  spent:
+    "Searched with an anonymous token and no cookie, so this query is not attached to your subscription.",
+  empty:
+    "Searched with your ordinary key, because this browser is holding no tokens. A token would have detached this query from your subscription.",
+  stale:
+    "Searched with your ordinary key. The tokens this browser held were signed by an issuer key that is no longer published, so they have been thrown away — this query IS attached to your subscription. Get a fresh batch from your key page.",
+  refused:
+    "Searched with your ordinary key. The token this browser spent was refused, so this query IS attached to your subscription. Get a fresh batch from your key page.",
+  unreachable:
+    "Searched with your ordinary key, because the token could not be redeemed just now. This query IS attached to your subscription; the token was kept.",
+};
+
 function Answer({
   query,
   answer,
-  anonymous,
+  spend,
 }: {
   query: string;
   answer: LiveAnswer;
-  anonymous: boolean;
+  spend: SpendOutcome["kind"];
 }) {
   const columns = answer.results.filter((result) => result.kind === "column");
   const datasets = answer.results.filter((result) => result.kind === "dataset");
@@ -157,10 +157,15 @@ function Answer({
         <Stat label="Datasets matched" value={String(datasets.length)} />
       </dl>
 
-      <p className="mt-4 max-w-[62ch] text-[0.78rem] leading-relaxed text-ink-faint">
-        {anonymous
-          ? "Searched with an anonymous token and no cookie, so this query is not attached to your subscription."
-          : "Searched with your ordinary key. A token would have detached this query from your subscription."}
+      <p
+        className={`mt-4 max-w-[62ch] text-[0.78rem] leading-relaxed ${
+          spend === "stale" || spend === "refused"
+            ? "text-broken"
+            : "text-ink-faint"
+        }`}
+        role={spend === "stale" || spend === "refused" ? "status" : undefined}
+      >
+        {SPEND_NOTE[spend]}
         {answer.truncated
           ? ` ${answer.matching} matched; ${answer.reach.plan} returns ${answer.reach.results}.`
           : ""}

@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import { publicVerif, TokenChallenge, TOKEN_TYPES } from "@cloudflare/privacypass-ts";
 
+import { keyFingerprint } from "../src/lib/tokens/issuer";
 import { resolveClaims, type Dataset } from "../src/lib/claims/resolve";
 import { servingMismatch } from "../src/lib/signaling/serving";
 import { parseBody } from "../src/lib/claims/syntax";
@@ -18,6 +19,7 @@ const CREDENTIALS = join(HOME, "credentials.json");
 interface Stored {
   renewalKey?: string;
   tokens?: string[];
+  issuer?: string;
 }
 
 function load(): Stored {
@@ -44,8 +46,6 @@ async function accessKey(): Promise<string | null> {
   });
   if (!response.ok) return null;
 
-  // The access key comes back as a Set-Cookie, because the browser is the
-  // primary client and this endpoint serves both.
   const setCookie = response.headers.get("set-cookie") ?? "";
   const match = setCookie.match(/cephroom_key=([^;]+)/);
   return match ? match[1] : null;
@@ -108,28 +108,79 @@ async function stockUp(): Promise<number> {
       tokens.push(Buffer.from(token.serialize()).toString("base64"));
     }
 
-    save({ ...load(), tokens });
+    save({
+      ...load(),
+      tokens,
+      issuer: await keyFingerprint(published.publicKey),
+    });
     return tokens.length;
   }
 
   throw new Error("No issuer key would sign for this account.");
 }
 
-async function readKey(): Promise<string | null> {
+type SpendResult =
+  | { kind: "spent"; key: string }
+  | { kind: "empty" }
+  | { kind: "stale" }
+  | { kind: "refused" }
+  | { kind: "unreachable" };
+
+async function liveIssuerFingerprints(): Promise<Set<string>> {
+  const directory = (await (await fetch(`${BASE}/api/tokens/keys`)).json()) as {
+    keys: { publicKey: string }[];
+  };
+  const out = new Set<string>();
+  for (const key of directory.keys) out.add(await keyFingerprint(key.publicKey));
+  return out;
+}
+
+async function readKey(): Promise<SpendResult> {
   const stored = load();
-  if (!stored.tokens || stored.tokens.length === 0) return null;
+  if (!stored.tokens || stored.tokens.length === 0) return { kind: "empty" };
+
+  try {
+    const live = await liveIssuerFingerprints();
+    if (!stored.issuer || !live.has(stored.issuer)) {
+      save({ ...stored, tokens: [], issuer: undefined });
+      return { kind: "stale" };
+    }
+  } catch {
+    return { kind: "unreachable" };
+  }
 
   const [token, ...rest] = stored.tokens;
-  save({ ...stored, tokens: rest });
 
-  const response = await fetch(`${BASE}/api/tokens/redeem`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ token }),
-  });
-  if (!response.ok) return null;
-  return ((await response.json()) as { key: string }).key;
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}/api/tokens/redeem`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+  } catch {
+    return { kind: "unreachable" };
+  }
+
+  if (!response.ok) {
+    save({ ...stored, tokens: rest });
+    return { kind: "refused" };
+  }
+
+  save({ ...stored, tokens: rest });
+  return { kind: "spent", key: ((await response.json()) as { key: string }).key };
 }
+
+const SPEND_NOTE: Record<Exclude<SpendResult["kind"], "spent">, string> = {
+  empty:
+    "no anonymous token spent — this search reached the platform with your ordinary key. Run `tokens` to stock up.",
+  stale:
+    "the tokens stored here were signed by an issuer key the platform no longer publishes, so they have been discarded. This search WAS attached to your subscription. Run `tokens` for a fresh batch.",
+  refused:
+    "the token was refused, so this search WAS attached to your subscription. Run `tokens` for a fresh batch.",
+  unreachable:
+    "the token could not be redeemed just now, so this search WAS attached to your subscription. The token was kept.",
+};
 
 
 async function cmdLogin(argument?: string): Promise<void> {
@@ -177,14 +228,13 @@ async function cmdLive(query?: string): Promise<void> {
   const url = new URL(`${BASE}/api/v1/live`);
   if (query) url.searchParams.set("q", query);
 
-  // Searching is the one thing that happens on the platform's own surface, so
-  // it is the one thing worth spending a token on: the query runs at the
-  // reach the plan bought, with nothing tying it to the subscription. Without
-  // a token it still runs, at the free reach.
-  const key = await readKey();
+  const spend = await readKey();
   const body = (await (
     await fetch(url, {
-      headers: key ? { authorization: `Bearer ${key}` } : {},
+      headers:
+        spend.kind === "spent"
+          ? { authorization: `Bearer ${spend.key}` }
+          : {},
     })
   ).json()) as {
     count: number;
@@ -211,12 +261,15 @@ async function cmdLive(query?: string): Promise<void> {
     console.log(`          ${item.servedBy} · ${item.sub} · ${item.tags.join(", ")}\n`);
   }
 
-  // Said plainly rather than left as a short list somebody reads as a quiet
-  // network: this is the plan's reach, not everything being served.
   if (body.truncated) {
     console.log(
       `${body.matching} matched. ${body.reach.plan} returns ${body.reach.results}; crawl up to ${body.reach.concurrentNodes} nodes at once.`,
     );
+  }
+
+  if (spend.kind !== "spent") {
+    console.error(`
+note: ${SPEND_NOTE[spend.kind]}`);
   }
 }
 
@@ -236,9 +289,6 @@ async function cmdRead(sub?: string, id?: string): Promise<void> {
     item: { id: string; title: string; kind: string };
   };
 
-  // Nothing is sent to the node. It serves a column to whoever asks and has
-  // nothing to check, so a key here would buy nothing and hand a contributor
-  // one more thing about the reader than they needed.
   const column = (await (
     await fetch(`${address}/column/${encodeURIComponent(item.id)}`)
   ).json()) as {
@@ -248,10 +298,6 @@ async function cmdRead(sub?: string, id?: string): Promise<void> {
     claims: Parameters<typeof resolveClaims>[0];
   };
 
-  // The registry hands out an address that somebody announced, and nothing
-  // there ties the address to the subject announcing it — one contributor can
-  // list another's node. Checked here, before the datasets are pulled from the
-  // same machine, because those are what every claim is checked against.
   const impostor = servingMismatch(sub, column.servedBySub);
   if (impostor) {
     throw new Error(
@@ -260,8 +306,6 @@ Nothing from ${address} is shown. The platform is not in this request and cannot
     );
   }
 
-  // Datasets come from the same node, never from whichever node announces the
-  // slug — an author vouches for the data they serve.
   const datasets = new Map<string, Dataset>();
   for (const slug of new Set(column.claims.map((claim) => claim.datasetSlug))) {
     const response = await fetch(
@@ -291,8 +335,6 @@ Nothing from ${address} is shown. The platform is not in this request and cannot
     if (claim.note) console.log(`      ${claim.note}`);
   }
 
-  // Exit non-zero when something is wrong, so this composes into CI the way
-  // the whole premise of the platform suggests it should.
   if (run.conclusion === "broken" || run.conclusion === "drifted") {
     process.exitCode = 1;
   }
@@ -347,12 +389,5 @@ if (!command || !commands[command]) {
 
 commands[command](...rest).catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : String(error));
-  // `process.exitCode`, not `process.exit()`. Every error path worth having
-  // here runs after a network call, and exiting outright tears the process
-  // down while the sockets `fetch` opened are still closing — on Windows
-  // libuv aborts, and the code that reaches the caller is 127 rather than 1.
-  // A script wrapping this tool could not tell a refusal from a missing
-  // binary, and the refusal it could not read was the one protecting a reader
-  // from a node that is not who it claimed to be.
   process.exitCode = 1;
 });
