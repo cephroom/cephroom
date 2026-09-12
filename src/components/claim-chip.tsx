@@ -171,6 +171,17 @@ export function ClaimChip({
           aria-hidden
           className={`inline-block h-[5px] w-[5px] shrink-0 translate-y-[-2px] rounded-full ${tone.dot}`}
         />
+        {/*
+          The verdict, for anyone not reading the colour.
+          It used to live only in `title`, which is not reliably announced and
+          never reaches a touch user at all — so the dot was `aria-hidden`, the
+          visible text was the bare number, and a screen reader got "59.45
+          percent, button" with no verdict in it. That is colour-only status,
+          which is the exact failure the accessibility step of the loop exists
+          to catch, and the loop's own notes claimed the chips already carried
+          text. They did not; the summary badge did.
+        */}
+        <span className="sr-only">{tone.label}: </span>
         {claim.display}
       </button>
 
