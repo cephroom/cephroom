@@ -15,6 +15,7 @@ import {
 } from "@/lib/claims/resolve";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { CiteReading } from "@/components/cite-reading";
 import { safeExternalUrl } from "@/lib/safe-url";
 import { servingMismatch } from "@/lib/signaling/serving";
 
@@ -95,6 +96,7 @@ export function ColumnReader({
 }) {
   const [phase, setPhase] = useState<Phase>({ state: "loading" });
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const [readAt, setReadAt] = useState<Date | null>(null);
   const base = `/read/${encodeURIComponent(sub)}/${encodeURIComponent(id)}`;
 
   useEffect(() => {
@@ -134,6 +136,9 @@ export function ColumnReader({
 
         if (cancelled) return;
         setPhase({ state: "ready", column, datasets });
+        // Pinned at the moment content resolved, so a citation dates the read
+        // rather than the click that opened the citation panel later.
+        setReadAt(new Date());
         // Pinned locale: a bare toLocaleTimeString renders in the browser's
         // system locale, which showed Chinese AM/PM markers in an English UI.
         setCheckedAt(
@@ -331,6 +336,23 @@ export function ColumnReader({
             {column.prose}
           </ReactMarkdown>
         </div>
+
+          <CiteReading
+            citation={{
+              title: column.title,
+              author: column.author,
+              address,
+              readAt: readAt ?? new Date(),
+              conclusion,
+              counts,
+              datasets: [...phase.datasets.values()].map((d) => ({
+                id: d.id,
+                release: d.release,
+              })),
+              repo: column.repo,
+              commit: column.commit,
+            }}
+          />
 
           {payTo && (
             <section className="mt-14 rounded-xl border border-counter/30 bg-counter-wash p-5">
