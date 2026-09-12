@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "node:serve": "tsx node/server.ts",
-    "keys:generate": "tsx scripts/generate-keys.ts"
+    "keys:generate": "tsx scripts/generate-keys.ts",
+    "prover:serve": "tsx node/prover.ts"
   },
   "dependencies": {
     "@cloudflare/privacypass-ts": "^0.9.0",
@@ -23,6 +24,7 @@
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "snarkjs": "^0.7.6",
     "stripe": "^18.2.1",
     "unist-util-visit": "^5.1.0",
     "zod": "^3.25.0"

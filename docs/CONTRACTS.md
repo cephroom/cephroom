@@ -264,7 +264,18 @@ the layer exists to create does not exist. Shipping a proof that is not a proof,
 or a circuit without a real ceremony, would be the overclaiming that `/privacy`
 argues against.
 
-What was done instead is smaller and honest: the platform **stopped requesting
+**A third route exists and is now specified.** The platform already depends on
+machines it does not run — a contributor serves their own columns — so proving
+becomes another node type. A user picks a prover, or runs one, and the platform
+verifies without ever seeing the JWT. The protocol, the verifier, the challenge
+binding and the replay spend are built and tested; no circuit artefacts ship and
+no prover can yet prove. The tradeoff is that a prover sees the token, which
+moves trust rather than removing it — acceptable only because the platform
+cannot tell provers apart and never operates one. See docs/PROVER-PROTOCOL.md,
+and `tests/contracts/prover-neutrality.test.ts`, which fails if a prover
+allowlist, a preference, or a proving call ever appears.
+
+What was also done, smaller and honest: the platform **stopped requesting
 the `email` scope** from Google. It never used the address, but asking for it
 meant receiving it. Not asking removes it from the process entirely. This
 narrows what arrives beside the identity; it does not sever the identity, and
