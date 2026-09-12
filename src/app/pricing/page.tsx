@@ -34,16 +34,28 @@ export default async function PricingPage({
           Plans
         </h1>
         <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
-          Membership pays for running the broker and building the reading
-          tools. It does not pay for hosting, because nothing is hosted here,
-          and it does not pay contributors — <strong>paying them is something
-          you do yourself, directly</strong>, and we take no share of it and do
-          not see it happen.
+          A plan here buys one thing:{" "}
+          <strong>how far you can search.</strong>{" "}
+          Everything anyone is serving is readable in full by anybody, on every
+          plan and with no account at all. Nothing you pay us unlocks a word of
+          it, because none of it is ours to lock.
         </p>
         <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
-          Publishing is free and always will be. Running a node costs you
-          nothing here, at any tier, and whatever readers choose to send you is
-          entirely yours — it never touches us.
+          What is ours is finding things. Work lives on contributors&rsquo;
+          own machines, scattered and coming and going; the listing, the
+          search across it and the endpoints to crawl it are what this site
+          actually provides, and that is what is for sale.
+        </p>
+        <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-muted">
+          Two consequences worth knowing before you pay. Your plan is{" "}
+          <strong>not a claim on any contributor</strong>{" "}
+          — they are not told what you are on, cannot treat you differently for
+          it, and owe you nothing. It also does not pay contributors: if you
+          want to support one, that is a separate thing you do directly, and
+          we take no share of it. And search reaches{" "}
+          <strong>only what is online at the moment you ask</strong>. There is
+          no index here, at any price — a node that is switched off is not
+          findable, because nothing about it was kept.
         </p>
       </header>
 
