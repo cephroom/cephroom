@@ -170,6 +170,96 @@ describe("what a contributor learns about a reader", () => {
   });
 });
 
+describe("a hostile insider learns nothing an honest one does not", () => {
+  /**
+   * The adversarial half, run at five contributors and twelve readers with a
+   * hostile party embedded on each side. Both hold legitimate keys and are
+   * entitled to what they have; everything they do looks correct to anything
+   * that only checks signatures.
+   *
+   * Measured with the two of them colluding — the hostile contributor
+   * publishing everything she sees, the hostile reader telling her everything
+   * he knows:
+   *
+   *   Mallory sees 11 pseudonyms
+   *   Marcus  sees 11 pseudonyms
+   *   pseudonyms that match across the two nodes: 0
+   *
+   * A contributor's view is a function of (reader, themselves). Publishing it
+   * gives another contributor a column of values computed under a different
+   * key, so there is nothing to join on. And a reader knowing their own
+   * pairing does not invert the function for anybody else's.
+   */
+  it("gives two contributors nothing in common to join on", async () => {
+    const readers = ["s_r1", "s_r2", "s_r3", "s_r4", "s_r5"];
+    const atOne = new Set<string>();
+    const atTwo = new Set<string>();
+    for (const reader of readers) {
+      atOne.add(tokens.nodeScopedSubject(reader, "s_nodeA"));
+      atTwo.add(tokens.nodeScopedSubject(reader, "s_nodeE"));
+    }
+    expect(atOne.size).toBe(readers.length);
+    expect(atTwo.size).toBe(readers.length);
+    expect([...atOne].filter((v) => atTwo.has(v))).toEqual([]);
+  });
+
+  it("does not let a known pairing unwind any other", () => {
+    // The hostile reader tells the hostile contributor exactly who he is.
+    // That is one row of the table and buys nothing: the derivation is keyed
+    // on a secret neither of them has.
+    const known = tokens.nodeScopedSubject("s_evil", "s_nodeE");
+    expect(known).not.toContain("s_evil");
+    for (const other of ["s_r1", "s_r2", "s_r3"]) {
+      expect(tokens.nodeScopedSubject(other, "s_nodeE")).not.toBe(known);
+    }
+  });
+
+  it("cannot tell one anonymous read from another", async () => {
+    // The strongest position a reader can take, and it has to survive an
+    // adversary looking specifically for a difference. Two anonymous keys at
+    // the same tier differ only in their signature.
+    const one = decodeJwt(await tokens.mintAnonymousKey({ tier: "member" }));
+    const two = decodeJwt(await tokens.mintAnonymousKey({ tier: "member" }));
+    expect(Object.keys(one).sort()).toEqual(Object.keys(two).sort());
+    expect(one.tier).toBe(two.tier);
+    expect(one.sub).toBeUndefined();
+    expect(two.sub).toBeUndefined();
+    expect(JSON.stringify(one.scp)).toBe(JSON.stringify(two.scp));
+  });
+
+  it("cannot spend a reader's key at a contributor it was not meant for", async () => {
+    // The hostile contributor's other route to correlation: take the key a
+    // reader hands her and try it at a rival, to learn the pseudonym that
+    // rival would see.
+    const forE = await tokens.mintNodeKey({
+      sub: "s_reader",
+      tier: "member",
+      audience: "s_nodeE",
+      sessionSecondsLeft: 900,
+    });
+    expect(await tokens.verifyAccessKey(forE, { audience: "s_nodeA" })).toBeNull();
+  });
+
+  it("cannot exceed its tier by editing the key", async () => {
+    const member = await tokens.mintNodeKey({
+      sub: "s_reader",
+      tier: "member",
+      audience: "s_nodeA",
+      sessionSecondsLeft: 900,
+    });
+    const [header, payload, signature] = member.split(".");
+    const edited = JSON.parse(Buffer.from(payload, "base64url").toString());
+    edited.tier = "lab";
+    edited.scp = ["read:public", "read:member", "read:lab"];
+    const forged = [
+      header,
+      Buffer.from(JSON.stringify(edited)).toString("base64url"),
+      signature,
+    ].join(".");
+    expect(await tokens.verifyAccessKey(forged, { audience: "s_nodeA" })).toBeNull();
+  });
+});
+
 describe("what a reader learns about a contributor", () => {
   it("gets only what the contributor announced, plus what their node serves", () => {
     // Everything here is self-declared. The platform adds nothing of its own
