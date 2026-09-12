@@ -276,3 +276,111 @@ Three things, all on the author's disk already, none of them reachable:
    "the page is currently able to mislead".
 
 Building all three this cycle.
+
+---
+
+## 2026-09-12 (cycle 3) — In neuroscience the number is a property of the pipeline, not of the data
+
+The platform's scope widened from pharmacology to the nervous system generally,
+so this cycle's reading went outside binding affinity to ask the same question:
+what makes a number in a neuroscience paper untrustworthy, and can this
+platform's machinery catch it?
+
+### What the literature says
+
+**Botvinik-Nezer et al., *Nature* 582 (2020) — NARPS.** Seventy independent
+teams analysed **one** fMRI dataset against **nine** pre-registered hypotheses.
+
+- **"The proportion of teams reporting a significant effect ranged from 0% to
+  100% across the 9 hypotheses."** For several, roughly half the teams said yes
+  and half said no.
+- **"Correlations between unthresholded statistical maps across teams ranged
+  from r = −0.34 to r = 0.99."** Teams disagreed on the sign of the effect,
+  not merely its size.
+- No two teams chose the same workflow. Seventy teams, seventy pipelines.
+- A meta-analysis across teams did recover a consensus — the disagreement is
+  in the *analysis*, not in the data.
+
+**Mostafa et al., *Front. Syst. Neurosci.* (2025) — motor-imagery decoders,
+offline benchmark versus real-time use.** Ten deep decoders, same task:
+
+- EEG-TCNet: **59.45% offline (±3.33) versus 70.0% online (±5.3)** — the same
+  decoder, eleven points apart, because the protocol changed.
+- MSVTNet ranged **62.23% to 75.56%** across subjects online.
+- Only **two of ten** architectures reached the 70% usability threshold online.
+- "results show shifts in performance ranking between offline and online BCI
+  settings" — the *ordering* of methods is not stable either, which is exactly
+  the failure the D2 column's H1 ranking hit last cycle, one level up.
+
+**Wang et al., *EEG-FM-Bench* (arXiv:2508.17742).** "Current evaluations rely
+on inconsistent protocols that render cross-model comparisons unreliable."
+
+**Chevallier et al. (arXiv:2512.02978), 340,000+ pipeline configurations over
+three open motor-imagery datasets.** Their conclusion is the general form of
+all of the above: "no universal 'one-size-fits-all' method can optimally decode
+EEG motor imagery patterns across all users or datasets", and nonlinear methods
+beat spatial ones *for specific individuals*.
+
+### The thing these four have in common
+
+A binding affinity is a property of a receptor preparation. **A decoding
+accuracy, a cluster-corrected activation, a spectral peak is a property of a
+pipeline applied to data.** Take the same bytes, change the smoothing kernel or
+the window length or the cross-validation split, and the number moves — in
+NARPS's case, far enough to flip the conclusion.
+
+That is not a caveat to be footnoted. It is the same structural point last
+cycle reached about species: a difference with **no consistent sign**, so there
+is no factor to divide out and no default that is quietly correct. The only
+honest handling is to state which analysis produced the number and let the
+reader see it.
+
+### Where this platform is currently able to mislead
+
+The fact model in `node/server.ts` is:
+
+```
+{ subject, object, metric, scope, value, unit,
+  nPoints, nDocs, foldSpread, foldSpreadIqr, nMeasurements, nCensored, pdspFold }
+```
+
+and a claim resolves a fact by `(dataset, metric, subject, object, scope,
+select)`. Three consequences, in increasing order of severity:
+
+1. **`subject` and `object` are just strings**, and the resolution is a key
+   lookup — so the *mechanism* already generalises. (receptor × compound) is
+   not privileged; (dataset × decoder) or (region × band) resolve identically.
+   The pharmacology assumption is in the vocabulary and the examples, not in
+   the machinery. That is much less work than it looked.
+
+2. **`select: fold_spread` asserts disagreement between laboratories.** It
+   exists because a cell with a tight median and a 100× full spread is
+   unresolved rather than settled. This is precisely the quantity NARPS says
+   matters most — except NARPS's spread is across *pipelines*, and there is
+   nowhere to put one.
+
+3. **There is no slot for the analysis.** A fact carries `scope`, which is used
+   for organism. Nothing carries preprocessing, window, split or model. So a
+   claim can state `72.4%` as though it were a property of a dataset, with a
+   green verdict, and be exactly as misleading as ChEMBL's `organism: Homo
+   sapiens` header — a clean two-word fact at the top of the page that is true
+   of the *target* and says nothing about where the measurement happened
+   (docs/COMPETITIVE-NOTES.md, cycle 2).
+
+Point 3 is the gap worth building. A platform whose entire thesis is that a
+number carries its provenance, shipping a fact model with no room for the
+single largest source of variance in its new subject area, would be asserting
+rigour it does not have.
+
+### What is being built this cycle
+
+- A **`method` dimension** on a fact and on a claim: the pipeline that produced
+  the number, resolved like `scope` is. Omitting it does not silently pool —
+  the same mistake `scope: all` made by default.
+- **`select: method_spread`** — the NARPS quantity. The ratio (or point spread)
+  across the methods that produced the same cell, so an author can assert, in
+  prose and checkably, *how much this number depends on how you computed it*.
+- A **non-pharmacology dataset and column** shipped in the node, so the
+  generalisation is demonstrated rather than claimed. A motor-imagery decoding
+  matrix is the right choice: it is the case the literature above measures, and
+  it makes every pharmacology assumption in the UI visible by breaking.

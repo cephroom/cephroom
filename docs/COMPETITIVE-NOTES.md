@@ -238,3 +238,133 @@ error states never degrade to a red string inside an otherwise-normal page.
   organism, never the target's.
 - Reject: accounts-for-analytics, however good the cause. Recorded with its
   real cost — we can never report a reader count to a funder.
+
+---
+
+## 2026-09-12 (cycle 3) — Provenance that nothing depends on does not get filled in
+
+Three visits, all in the widened scope. Two of them are about the same failure
+from opposite ends.
+
+### NeuroVault — 107 metadata fields, 10 filled, and none of them the analysis
+
+Opened collection 4881, `NARPS-2T6S` — a submission from one of the seventy
+teams in the NARPS study, the study whose entire finding is that analytic
+choices change the conclusion. Its Metadata tab shows five rows: Add Date,
+Compact Identifier, Contributors (blank), Related article authors (blank),
+Related article DOI (None). The eighteen maps are listed with no names, typed
+`other`.
+
+Checked the API rather than trusting the tab. The collection schema has
+**107 fields and 10 are filled** — id, urls, owner, name, dates. Every one of
+the 97 empty ones is scientific:
+
+```
+software_package, software_version, smoothing_type, smoothing_fwhm,
+used_smoothing, intersubject_registration_software, autocorrelation_model,
+hemodynamic_response_function, high_pass_filter_method, group_inference_type,
+group_modeling_software, order_of_preprocessing_operations, ...
+```
+
+Roughly sixty of them describe the pipeline, in precisely the detail NARPS
+proved decisive — and the schema had them *years before* NARPS ran. They are
+empty on NARPS's own data.
+
+**This is the most useful thing seen in three cycles of visiting, and the
+lesson is not "NeuroVault should nag harder".** It is that **optional
+provenance is not collected.** A field nothing reads is a field nobody fills.
+The designers anticipated the right questions and made answering them free to
+skip, and the result is a repository of statistical maps you cannot interpret.
+
+- **Adopt, as the governing rule for this cycle's build.** Our claim fields are
+  the structural opposite: `dataset`, `metric`, `subject` and `object` are
+  required, and a claim missing one is a parse error rather than a blank cell —
+  because the number is *produced by* them. Provenance here is load-bearing, so
+  it cannot rot.
+- **And it indicts our own default.** `scope:` defaults to `all`, and cycle 2
+  found every claim in all five shipped columns was `scope: all` — "not because
+  anyone chose pooling, but because it is what you get by not typing the line."
+  That is our own 97 empty fields, at small scale. So the `method:` dimension
+  being added this cycle **must not default.** Where a cell exists under more
+  than one analysis, a claim with no `method:` resolves **broken**, saying "this
+  cell has three methods; name one." That is the NeuroVault failure converted
+  into a parse error, which is the only form of it we can be sure survives.
+
+### OpenNeuro — modality-first facets, versioned DOIs, and a spinner that lies
+
+Cold visit to `/search`, signed out.
+
+- **Facets are modality-first**: MRI, PET, EEG, iEEG, MEG, NIRS, then Dataset
+  Type, Task, Diagnosis, Species, Study Type, Study Domain, Radiotracers.
+  **Adopt the shape.** Our search is a free-text scan over titles and tags; if
+  the subject is now the nervous system rather than one receptor family, the
+  first axis a reader reaches for is *how was this measured*, not what disease
+  it is about. Note what is **not** a facet even here: analysis software or
+  pipeline. The axis NARPS proved matters most is not filterable on the largest
+  open neuroimaging archive. Same hole as NeuroVault, from the other side.
+- **Every result carries a version-pinned DOI** — `doi:10.18112/openneuro.ds008798.v1.0.0`.
+  The version is *inside* the identifier, so a citation names bytes.
+  **Reject, and record the cost again.** Contract 2 means we have no archive
+  and cannot promise a column is there next year. Our identifiers are
+  content-derived, which is the same guarantee about *what* — but says nothing
+  about *whether anyone is serving it*. OpenNeuro's line is the honest
+  comparison: they can promise availability because they are the store. We
+  chose not to be the store. This is the second cycle running that citability
+  is the sharpest thing we give up, and it belongs next to the reader-count
+  cost from GtoPdb.
+- **Cold-load defect worth not copying**: the page renders the heading "Search
+  All Datasets" and, beneath it, **"Showing all available datasets"** over an
+  entirely empty region with a spinner, for several seconds. It asserts a
+  result set before it has one. Checked our `/read`: it is server-rendered, so
+  the count and the list arrive together — but this is exactly the failure to
+  re-check whenever a surface gains a client-side fetch. A loading state must
+  never make a claim about data it has not got.
+- The page also sits behind a full-width click-through affirming you have
+  institutional permission and will not attempt re-identification.
+  **Rejected, with the reasoning stated**: an affirmation nobody records is
+  theatre, and recording who affirmed is a user row. There is no version of
+  this we can build honestly, so we do not build a weaker one that looks like
+  it.
+
+### Papers with Code — the archive argument, from the side that usually wins
+
+Went to fetch the BCI Competition IV-2a leaderboard to see how a benchmark
+presents incomparable numbers. There is no leaderboard. `paperswithcode.com`
+is gone, and **every URL 302s to `huggingface.co/papers/trending`** — checked
+the site root, `/sota`, and a deep leaderboard path; all three, one generic
+destination:
+
+```
+$ curl -sI https://paperswithcode.com/sota/eeg-decoding-on-bci-competition-iv-2a
+HTTP/1.1 302 Found
+Location: https://huggingface.co/papers/trending
+```
+
+Not a 404, not a tombstone, not a redirect to the corresponding content. A
+blanket redirect that silently discards what you asked for and shows you
+something unrelated, so a stale citation resolves to a page that looks alive.
+
+**This is the honest half of the archive argument, and it runs our way for
+once.** The usual objection to Contract 2 is that a centralised store is what
+makes citation durable. Papers with Code *was* that store — thousands of papers
+cite its leaderboards — and its durability was exactly as good as one company's
+willingness to keep paying for it. What replaced it is worse than absence: a
+200 OK on a page that is not what was cited.
+
+- **Adopt as a design constraint we already meet, and say so where a reader
+  can see it.** Our offline page is deliberately uninformative — *this
+  contributor is offline, and nothing about their work is stored here*. That
+  reads like a limitation. Next to a 302-to-trending it reads like the correct
+  behaviour: a dead link that admits it is dead is more useful than a live one
+  that lies. Worth putting that comparison into the copy on /how-it-works,
+  because it is the strongest available defence of the thing readers like least.
+
+### Net this visit
+
+- Adopt: provenance must be load-bearing or it will be blank. `method:` gets no
+  default.
+- Adopt: modality-first facets, now that the subject is the whole nervous
+  system.
+- Adopt: an honest dead end beats a redirect that pretends. Say it in the copy.
+- Reject: version-pinned DOIs (cannot; cost recorded), click-through consent
+  (cannot record it honestly, so will not fake it).
