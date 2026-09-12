@@ -51,6 +51,17 @@ export const LISTING_LIMIT = 200;
  */
 export const LISTING_SPREAD = 20;
 
+/**
+ * The smallest share any contributor gets, however small the page.
+ *
+ * Without a floor the share is `limit / spread`, which is sensible at a page
+ * of two hundred and cruel at fifty: a contributor serving five items had
+ * three of them shown while the page sat two-thirds empty. The cap exists to
+ * stop one contributor filling a page, not to truncate somebody who could
+ * never fill one.
+ */
+export const LISTING_MIN_SHARE = 10;
+
 export function fairShare<T>(
   entries: T[],
   contributorOf: (entry: T) => string,
@@ -78,7 +89,10 @@ export function fairShare<T>(
   // with whoever has the most to say, so a 200-item page stayed mostly one
   // contributor's. A share is the honest reading of "discovery is presence":
   // everyone present gets the same amount of room.
-  const share = Math.max(1, Math.ceil(limit / Math.max(order.length, LISTING_SPREAD)));
+  const share = Math.max(
+    LISTING_MIN_SHARE,
+    Math.ceil(limit / Math.max(order.length, LISTING_SPREAD)),
+  );
 
   const out: T[] = [];
   for (let round = 0; round < share && out.length < limit; round += 1) {

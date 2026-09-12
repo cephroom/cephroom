@@ -62,3 +62,21 @@ export const announcementSchema = z.object({
 });
 
 export type AnnouncementInput = z.infer<typeof announcementSchema>;
+
+/**
+ * Whether an announcement fits the capacity its key was issued with.
+ *
+ * Capacity is what a contributor's plan buys — how many items may be listed
+ * at once — and it is read from the serve key, never from the announcement.
+ * A contributor announcing their own allowance would be announcing their own
+ * subscription.
+ *
+ * The cap on `items` in the schema above is a parser bound, not this: it stops
+ * an absurd body before it is parsed. This is the product rule.
+ */
+export function withinCapacity(
+  announcement: AnnouncementInput,
+  capacity: number,
+): boolean {
+  return announcement.items.length <= capacity;
+}

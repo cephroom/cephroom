@@ -3,25 +3,43 @@ import { NextResponse } from "next/server";
 import { NO_STORE } from "@/lib/api/shape";
 
 import { verifyAccessKey, verifyServeKey } from "@/lib/keys/tokens";
-import { announcementSchema } from "@/lib/signaling/announcement";
+import {
+  announcementSchema,
+  withinCapacity,
+} from "@/lib/signaling/announcement";
 import { LEASE_SECONDS, registry } from "@/lib/signaling/registry";
+import { FREE_SERVING_CAPACITY } from "@/lib/stripe/plans";
 
 export const dynamic = "force-dynamic";
 
 
-async function subject(request: Request): Promise<string | null> {
+/**
+ * Who is announcing, and how much they may announce.
+ *
+ * Both come from the key. A serve key carries the capacity its plan bought;
+ * an ordinary session key carries none, so it gets the free capacity — which
+ * is the point, because serving is free and signing in is enough.
+ */
+async function announcer(
+  request: Request,
+): Promise<{ sub: string; capacity: number } | null> {
   const header = request.headers.get("authorization") ?? "";
   if (!header.toLowerCase().startsWith("bearer ")) return null;
   const token = header.slice(7).trim();
-  const access = await verifyAccessKey(token);
-  if (access?.sub) return access.sub;
+
   const serve = await verifyServeKey(token);
-  return serve?.sub ?? null;
+  if (serve) return serve;
+
+  const access = await verifyAccessKey(token);
+  if (access?.sub) {
+    return { sub: access.sub, capacity: FREE_SERVING_CAPACITY };
+  }
+  return null;
 }
 
 export async function POST(request: Request) {
-  const sub = await subject(request);
-  if (!sub) {
+  const caller = await announcer(request);
+  if (!caller) {
     return NextResponse.json(
       { error: "A valid key is required to announce." },
       { status: 401, headers: NO_STORE },
@@ -36,7 +54,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const handle = registry().announce({ sub, ...parsed.data });
+  if (!withinCapacity(parsed.data, caller.capacity)) {
+    return NextResponse.json(
+      {
+        error: `This key may announce ${caller.capacity} items at once; the announcement has ${parsed.data.items.length}. Serving is free and this is only about volume — see /contribute#plans.`,
+      },
+      { status: 413, headers: NO_STORE },
+    );
+  }
+
+  const handle = registry().announce({ sub: caller.sub, ...parsed.data });
   return NextResponse.json(
     { connectionId: handle.connectionId, leaseSeconds: LEASE_SECONDS },
     { headers: NO_STORE },
@@ -44,7 +71,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const sub = await subject(request);
+  const sub = (await announcer(request))?.sub;
   if (!sub) {
     return NextResponse.json(
       { error: "unauthorized" },
@@ -64,7 +91,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const sub = await subject(request);
+  const sub = (await announcer(request))?.sub;
   if (!sub) {
     return NextResponse.json(
       { error: "unauthorized" },
