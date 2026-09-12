@@ -118,7 +118,13 @@ export function completeCheckout(sessionId: string): void {
 }
 
 export function declineCheckout(sessionId: string): void {
-  settle(sessionId, "past_due");
+  // A first payment that fails leaves the subscription "incomplete", which does
+  // NOT entitle - matching Stripe, and matching contract 6: no money taken, no
+  // reach granted. It becomes "active" only on a successful payment, and only a
+  // LATER failed renewal becomes "past_due", where the grace period is a
+  // deliberate choice (see an-outage-does-not-downgrade). Settling a decline to
+  // past_due here handed out paid reach for a card that never charged.
+  settle(sessionId, "incomplete");
 }
 
 function settle(sessionId: string, status: string): void {
