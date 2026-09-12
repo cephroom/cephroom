@@ -9,7 +9,7 @@ import { FREE_SERVING_CAPACITY } from "../src/lib/stripe/plans";
 import { readColumnFile, type Column } from "./columns";
 import { foldForScope } from "./fold-facts";
 import { PresenceLoop } from "./presence";
-import { ProposalStore, proposalRootFor } from "./proposals";
+import { isNodeScoped, ProposalStore, proposalRootFor } from "./proposals";
 import { verifyKeyWithPlatform } from "./verify";
 
 config({ path: ".env.local", quiet: true });
@@ -43,21 +43,10 @@ const DATA_DIR = resolve(
 );
 const HAS_DATASET = existsSync(join(DATA_DIR, "gap_report.json"));
 
-// Proposal-channel limits. A proposal lands on this contributor's disk, so
-// these bound a member's ability to fill it. A column body is Markdown;
-// 512 KB is generous. The request cap sits a little above the body cap to
-// leave room for the surrounding JSON.
 const MAX_BODY_CHARS = 512 * 1024;
 const MAX_PROPOSAL_BYTES = 640 * 1024;
 const MAX_OPEN_PER_SUBJECT = 20;
 
-/**
- * How far past the cap a body is still drained so the sender can be told why.
- *
- * An honest overshoot — a long proposal, a pasted table — is worth spending a
- * little bandwidth on to answer properly. Several times the cap is not a
- * slip, and the connection is simply closed.
- */
 const OVERSHOOT_DRAIN = 4;
 const TOO_LARGE = Symbol("payload-too-large");
 
@@ -119,23 +108,13 @@ function readDataset() {
     };
   };
 
-  // The fold spread of a cell — how far its loosest and tightest measurements
-  // disagree — is not in the matrices; it lives per cell in the report. Index
-  // it so a fact can carry the agreement signal, not just the median.
   const cellByPair = new Map<string, (typeof report.cells)[number]>();
   for (const cell of report.cells ?? []) {
     cellByPair.set(`${cell.gene_symbol}|${cell.compound}`, cell);
   }
 
-  // The cross-check against an independent database (the PDSP Ki DB): the
-  // fold difference between ChEMBL's median and PDSP's, per cell. Indexed the
-  // same way, so a fact can carry "does a second source agree with this
-  // number" — the strongest reproducibility signal in the report.
   const pdspByPair = new Map<string, number | null>();
   for (const row of report.pdsp_cross_check?.comparison ?? []) {
-    // A row with no ChEMBL measurements has nothing to compare, and NaN folds
-    // were already nulled at parse. Either way the fold is unusable, so the
-    // fact carries null and a pdsp_fold claim on it resolves broken, not 0×.
     const fold = row.chembl_n ? row.fold_difference : null;
     pdspByPair.set(
       `${row.gene_symbol}|${row.compound}`,
@@ -185,9 +164,6 @@ function readDataset() {
         object,
         nPoints: points === null ? null : Math.round(points),
         nDocs: docs === null ? null : Math.round(docs),
-        // The censored count and the total behind it — the raw material for a
-        // "this cell is a ceiling" claim. A cell property, so it rides every
-        // metric like the fold spread does.
         nMeasurements: cell?.n_measurements ?? null,
         nCensored: cell?.n_censored ?? null,
         pdspFold: pdspByPair.get(`${subject}|${object}`) ?? null,
@@ -199,8 +175,6 @@ function readDataset() {
         value: number | null,
         unit: string | null,
       ) => {
-        // An empty cell is not a fact. Dropping it means a claim against one
-        // fails loudly rather than resolving to "no data".
         if (value === null) return;
         const { foldSpread, foldSpreadIqr } = foldForScope(
           { all: foldAll, iqrAll: foldIqrAll, human: foldHuman },
@@ -210,11 +184,7 @@ function readDataset() {
           ...shared,
           metric,
           scope,
-          // A median Ki is computed one way. The ChEMBL matrix genuinely has
-          // a single analysis per cell, so its facts say so rather than
-          // inventing a method name nobody would type.
           method: null,
-          // This matrix reports no per-cell dispersion. Null, not zero.
           dispersion: null,
           dispersionKind: null,
           nObservations: null,
@@ -282,9 +252,6 @@ function readDecoderBenchmark() {
   for (const row of raw.rows) {
     for (const method of ["offline", "online"] as const) {
       const value = row[method];
-      // An absent protocol is absent. The ten offline-only decoders get no
-      // `online` fact, so a claim against one fails loudly rather than
-      // resolving to a number the paper never reported.
       if (value === null) continue;
       facts.push({
         subject: row.decoder,
@@ -328,8 +295,6 @@ const datasets = [
   ...(readDecoderBenchmark() ? [readDecoderBenchmark()!] : []),
 ];
 const dataset = datasets[0] ?? null;
-// Rooted by this node's own content, so two contributors running from one
-// checkout do not share an inbox. See node/proposals.ts.
 const PROPOSAL_ROOT = resolve(
   flag("proposals", process.env.PROPOSAL_DIR ?? proposalRootFor(CONTENT_DIR)),
 );
@@ -354,14 +319,6 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify(body));
   };
 
-  /**
-   * Refuse a body that exceeded its cap, and only then hang up.
-   *
-   * The client is still uploading — that is why it was rejected — so the
-   * socket has to stay alive long enough for the refusal to reach them. It is
-   * closed on `finish` rather than left open, because there is no reason to
-   * keep receiving megabytes that are already going in the bin.
-   */
   const refuseOversized = (message: string) => {
     request.on("error", () => {});
     response.once("finish", () => request.destroy());
@@ -392,21 +349,13 @@ const server = createServer(async (request, response) => {
     return send(200, dataset);
   }
 
-  // A reader's browser resolves a claim's dataset by slug against the column's
-  // own node. This answers only for the dataset this node actually serves, so
-  // a claim referencing a slug this author does not serve resolves to broken
-  // rather than silently borrowing a stranger's numbers.
   if (url.pathname.startsWith("/dataset/")) {
     const wanted = decodeURIComponent(url.pathname.slice("/dataset/".length));
     const found = datasets.find((candidate) => candidate.id === wanted);
     if (!found) return send(404, { error: "not served here" });
-    // Same reasoning as the column response: the reader checks that this
-    // machine is the contributor the registry named. A dataset matters more
-    // than most, since a claim is checked against it.
     return send(200, { servedBySub: SUB, ...found });
   }
 
-  // Proposals live here, on the author's disk. The platform never sees them.
   if (url.pathname === "/proposals" && request.method === "GET") {
     const columnId = url.searchParams.get("column") ?? undefined;
     const column = columnId
@@ -414,8 +363,6 @@ const server = createServer(async (request, response) => {
       : undefined;
     if (!column) return send(404, { error: "not served here" });
 
-    // Open, like the column it belongs to. A proposal is a public review
-    // thread on public work; there is no membership for it to sit behind.
     return send(200, { proposals: proposals.list(columnId) });
   }
 
@@ -443,6 +390,13 @@ const server = createServer(async (request, response) => {
       return send(403, {
         error:
           "A proposal has to be attributable. Sign in and use your own key rather than an anonymous search token.",
+      });
+    }
+
+    if (!isNodeScoped(fromSub)) {
+      return send(403, {
+        error:
+          "That key names a platform-wide subject rather than a pseudonym scoped to this node. The same identifier at every contributor is what node-scoping exists to prevent, so it is refused rather than written down.",
       });
     }
 
@@ -485,10 +439,6 @@ const server = createServer(async (request, response) => {
     const column = columns.find((candidate) => candidate.id === id);
     if (!column) return send(404, { error: "not served here" });
 
-    // Served whole, to whoever asks. There is nothing to check: a reader's
-    // key carries no tier, and a column has no access level for one to be
-    // measured against. What this contributor charges for, if anything, is
-    // arranged directly with the reader and the platform is not told.
     const parsed = parseBody(column.body);
 
     return send(200, {
@@ -498,11 +448,6 @@ const server = createServer(async (request, response) => {
       repo: column.repo ?? null,
       commit: column.commit ?? null,
       author: DISPLAY_NAME,
-      // Who is actually answering. The registry holds an address that
-      // arrived in an announcement, and nothing there connects the address to
-      // the subject announcing it — one contributor can announce another's
-      // node. The reader compares this with the contributor they went looking
-      // for; see src/lib/signaling/serving.ts.
       servedBySub: SUB,
       prose: parsed.prose,
       source: column.body,
@@ -556,19 +501,6 @@ async function readJson(
   let oversized = false;
   for await (const chunk of request) {
     total += (chunk as Buffer).length;
-    // Stop *keeping* anything the moment the cap is exceeded, so an attacker
-    // cannot make the node buffer gigabytes before it decides to reject them.
-    // Memory is bounded from here whatever the client does next.
-    //
-    // Reading continues for a little longer on purpose. Destroying the socket
-    // the instant the cap is passed also destroys the 413 about to be written
-    // into it, and the client sees ECONNRESET with no idea their proposal was
-    // too big — which is the wrong answer for the person this actually
-    // happens to: not an attacker, who does not read the response, but a
-    // contributor who wrote something long and careful.
-    //
-    // So an honest overshoot is drained and discarded, and gets a real
-    // refusal. A body several times the cap is nobody's slip, and is cut off.
     if (total > maxBytes) {
       if (total > maxBytes * OVERSHOOT_DRAIN) {
         request.destroy();
@@ -600,26 +532,9 @@ async function serveKey(): Promise<string> {
     );
   }
   const { mintServeKey } = await import("../src/lib/keys/tokens");
-  // A serve key, not an access key: the node only ever announces to the
-  // platform, so this matches what a contributor's pasted NODE_KEY is.
-  // The byline travels on the announcement body, where the contributor
-  // chose it, rather than inside the key. A key states a subject and a
-  // capability; it is not the place to carry a name.
-  //
-  // The free capacity, because a locally-minted key has no subscription
-  // behind it. A contributor who wants to serve more signs in and pastes the
-  // key their plan issues.
   return mintServeKey({ sub: SUB, capacity: FREE_SERVING_CAPACITY });
 }
 
-/**
- * One announce attempt. Returns the lease length; throws if it did not land.
- *
- * Retrying, backing off and re-announcing after a lapsed lease are all
- * `PresenceLoop`'s problem now. They used to live in here, which is why a
- * failed first attempt was terminal: the retry was scheduled by the success
- * path it never reached.
- */
 async function announceOnce(): Promise<number> {
   const response = await fetch(`${PLATFORM}/api/signal`, {
     method: "POST",

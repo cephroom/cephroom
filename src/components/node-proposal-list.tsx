@@ -93,7 +93,16 @@ export function NodeProposalList({
             </p>
           )}
           <p className="mt-1.5 text-[0.78rem] text-ink-faint">
-            <span className="font-mono text-[0.78rem]">{proposal.fromSub}</span>{" "}
+            {proposal.fromSub === "n_withdrawn" ? (
+              <span
+                className="text-[0.78rem] italic"
+                title="This proposal predates node-scoped pseudonyms, or its pseudonym has passed the retention window. The identifier was redacted rather than kept."
+              >
+                pseudonym withdrawn
+              </span>
+            ) : (
+              <span className="font-mono text-[0.78rem]">{proposal.fromSub}</span>
+            )}{" "}
             ·{" "}
             {new Date(proposal.createdAt).toLocaleString("en-GB", {
               day: "numeric",

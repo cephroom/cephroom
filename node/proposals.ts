@@ -3,29 +3,18 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join, resolve } from "node:path";
 
 
-/**
- * Where a node keeps the proposals it has been sent.
- *
- * Beside the content, not inside it — inside would make a reader's unmerged
- * edit look like publishable source to anything that walks the content
- * directory, including the node's own column reader.
- *
- * The node used to root this at its *source* directory, so every node started
- * from the same checkout shared one inbox however its `--content` was set.
- * Running two contributors at once showed what that costs: with a column slug
- * in common — and slugs are author-chosen and collide, which is the same fact
- * behind the discovery hijack in tests/contracts/signal-auth.test.ts — one
- * contributor could read, count and close proposals addressed to the other.
- *
- * Deriving it from the content directory means isolation follows from the
- * flag a contributor already sets, and the default layout
- * (`node/content` -> `node/proposals`) is exactly where it has always been.
- */
 export function proposalRootFor(contentDir: string): string {
   return dirname(resolve(contentDir));
 }
 
-/** The fields that decide what a proposal *is*. */
+export const REDACTED_SUB = "n_withdrawn";
+
+export const SUBJECT_RETENTION_DAYS = 90;
+
+export function isNodeScoped(sub: string): boolean {
+  return /^n_/.test(sub);
+}
+
 export interface ProposalContent {
   columnId: string;
   title: string;
@@ -34,25 +23,6 @@ export interface ProposalContent {
   fromSub: string;
 }
 
-/**
- * A proposal's identifier, derived from the proposal.
- *
- * These were random UUIDs, which named a piece of writing after the moment it
- * was written. In a system that keeps no index anywhere, an accidental name
- * is particularly poor: there is nothing to look it up in afterwards, so the
- * only way to check that an id names what you think it does is to be told.
- * A content address can be recomputed by anyone holding the proposal.
- *
- * `createdAt` and `status` are excluded deliberately — they are what the
- * author *did* about the proposal, not what it says. Including either would
- * make the name change when the author closed it.
- *
- * The separator is a NUL byte, which none of these fields can contain
- * (`parseBody` and the node's own limits reject control characters, and JSON
- * transport would not survive one). Joining with an ordinary character means
- * a title ending in it and a rationale beginning with it produce the same
- * digest as the reverse, which is a real, if unlikely, collision.
- */
 export function proposalId(content: ProposalContent): string {
   const digest = createHash("sha256")
     .update(
@@ -75,21 +45,11 @@ export interface Proposal {
   title: string;
   rationale: string;
   body: string;
-  /**
-   * Who to answer, and nothing more.
-   *
-   * This sat next to a `fromName` carrying the proposer's Google display
-   * name, written here permanently with no expiry and no way to withdraw it.
-   * A proposal has to be attributable — an anonymous one lands on somebody's
-   * disk with nobody to answer for it — but it has to be attributable to a
-   * subject, which is stable and unforgeable and says nothing about a person.
-   * Two proposals from the same subject are visibly the same person; who that
-   * is stays with them.
-   */
   fromSub: string;
   status: "open" | "merged" | "closed";
   createdAt: string;
   resolvedAt: string | null;
+  subjectRedacted?: boolean;
 }
 
 export class ProposalStore {
@@ -98,35 +58,82 @@ export class ProposalStore {
   constructor(root: string) {
     this.dir = join(root, "proposals");
     if (!existsSync(this.dir)) mkdirSync(this.dir, { recursive: true });
+    this.redactExpiredSubjects();
+  }
+
+  private files(): string[] {
+    return readdirSync(this.dir).filter((file) => file.endsWith(".json"));
+  }
+
+  private path(id: string): string {
+    return join(this.dir, `${id}.json`);
+  }
+
+  private readFile(file: string): Proposal | null {
+    try {
+      return JSON.parse(readFileSync(join(this.dir, file), "utf8")) as Proposal;
+    } catch {
+      return null;
+    }
+  }
+
+  private redactExpiredSubjects(now: number = Date.now()): void {
+    const cutoff = now - SUBJECT_RETENTION_DAYS * 86_400_000;
+
+    for (const file of this.files()) {
+      const proposal = this.readFile(file);
+      if (!proposal) continue;
+      if (proposal.fromSub === REDACTED_SUB) continue;
+
+      const foreign = !isNodeScoped(proposal.fromSub);
+      const settled =
+        proposal.status !== "open" &&
+        proposal.resolvedAt !== null &&
+        Date.parse(proposal.resolvedAt) < cutoff;
+
+      if (!foreign && !settled) continue;
+
+      writeFileSync(
+        join(this.dir, file),
+        JSON.stringify(
+          { ...proposal, fromSub: REDACTED_SUB, subjectRedacted: true },
+          null,
+          2,
+        ),
+      );
+    }
+  }
+
+  private withoutForeignSubject(proposal: Proposal): Proposal {
+    return isNodeScoped(proposal.fromSub)
+      ? proposal
+      : { ...proposal, fromSub: REDACTED_SUB, subjectRedacted: true };
   }
 
   list(columnId?: string): Proposal[] {
-    return readdirSync(this.dir)
-      .filter((file) => file.endsWith(".json"))
-      .map(
-        (file) =>
-          JSON.parse(readFileSync(join(this.dir, file), "utf8")) as Proposal,
-      )
+    return this.files()
+      .map((file) => this.readFile(file))
+      .filter((proposal): proposal is Proposal => proposal !== null)
+      .map((proposal) => this.withoutForeignSubject(proposal))
       .filter((proposal) => !columnId || proposal.columnId === columnId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   get(id: string): Proposal | null {
-    const path = join(this.dir, `${id}.json`);
-    if (!existsSync(path)) return null;
-    return JSON.parse(readFileSync(path, "utf8")) as Proposal;
+    if (!existsSync(this.path(id))) return null;
+    const proposal = JSON.parse(readFileSync(this.path(id), "utf8")) as Proposal;
+    return this.withoutForeignSubject(proposal);
   }
 
   create(input: Omit<Proposal, "id" | "status" | "createdAt" | "resolvedAt">) {
+    if (!isNodeScoped(input.fromSub)) {
+      throw new Error(
+        `A proposal must be attributed to a node-scoped pseudonym (n_…), not to ${input.fromSub.slice(0, 2)}… — a platform-wide subject is the same identifier at every contributor, which is the thing node-scoping exists to prevent.`,
+      );
+    }
+
     const id = proposalId(input);
 
-    // The same edit, proposed twice, is one edit. A retry after a dropped
-    // connection used to leave a duplicate behind, and pressing the button
-    // again was a way around the per-subject flood limit.
-    //
-    // Returning the existing record rather than overwriting it matters more
-    // than it looks: overwriting would let anyone reopen a proposal the
-    // author had already closed, simply by submitting it again.
     const existing = this.get(id);
     if (existing) return existing;
 
@@ -137,10 +144,7 @@ export class ProposalStore {
       createdAt: new Date().toISOString(),
       resolvedAt: null,
     };
-    writeFileSync(
-      join(this.dir, `${proposal.id}.json`),
-      JSON.stringify(proposal, null, 2),
-    );
+    writeFileSync(this.path(proposal.id), JSON.stringify(proposal, null, 2));
     return proposal;
   }
 
@@ -152,7 +156,7 @@ export class ProposalStore {
       status,
       resolvedAt: new Date().toISOString(),
     };
-    writeFileSync(join(this.dir, `${id}.json`), JSON.stringify(updated, null, 2));
+    writeFileSync(this.path(id), JSON.stringify(updated, null, 2));
     return updated;
   }
 
