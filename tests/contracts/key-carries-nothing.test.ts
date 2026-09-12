@@ -75,13 +75,20 @@ describe("every key's claim set is pinned exactly", () => {
 
   it("gives the node key nothing a contributor could identify a reader by", async () => {
     // This one is presented to a stranger's machine on every read. It proves
-    // a tier. That is the entire job.
+    // a tier, and names a pseudonym scoped to that one contributor. That is
+    // the entire job.
     const claims = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_reader", tier: "lab" }),
+      await tokens.mintNodeKey({
+        sub: "s_reader",
+        tier: "lab",
+        audience: "s_contributor",
+      }),
     );
     expect(Object.keys(claims).sort()).toEqual(
-      [...STRUCTURAL, "scp", "sub", "tier"].sort(),
+      [...STRUCTURAL, "nod", "scp", "sub", "tier"].sort(),
     );
+    // The reader's own subject is not in there at all.
+    expect(JSON.stringify(claims)).not.toContain("s_reader");
   });
 
   it("gives the serve key a subject and the announce scope", async () => {

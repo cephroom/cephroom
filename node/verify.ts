@@ -34,6 +34,8 @@ async function platformKey(platform: string) {
 export async function verifyKeyWithPlatform(
   platform: string,
   token: string,
+  /** This node's own subject. A key naming a different one is not ours. */
+  self?: string,
 ): Promise<VerifiedKey | null> {
   try {
     const { key, issuer, audience } = await platformKey(platform);
@@ -44,6 +46,12 @@ export async function verifyKeyWithPlatform(
     // A key with no subject is anonymous, not invalid — but only if it says
     // so. One with neither a subject nor the marker is malformed.
     if (!payload.sub && payload.anon !== true) return null;
+
+    // The subject in a reader's key is scoped to the contributor it was
+    // minted for, so it is only meaningful here if it was minted for here.
+    // Accepting another node's key would let two contributors compare
+    // pseudonyms and undo the scoping — which is the entire reason it exists.
+    if (payload.anon !== true && self && payload.nod !== self) return null;
 
     return {
       sub: payload.sub ?? null,

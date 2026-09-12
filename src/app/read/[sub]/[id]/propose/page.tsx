@@ -48,6 +48,7 @@ export default async function ProposePage({
   const nodeKey = await mintNodeKey({
     sub: viewer.sub,
     tier: viewer.tier,
+    audience: sub,
   });
 
   return (

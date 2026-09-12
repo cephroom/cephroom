@@ -49,6 +49,52 @@ export const DEV_PERSONAS: DevPersona[] = [
     mimics: "github",
     login: "kabara",
   },
+  // Enough distinct accounts to run the platform at a realistic shape —
+  // several readers on different tiers against more than one contributor at
+  // the same time. One-to-one role-play hides everything that only shows up
+  // when parties can be compared with each other.
+  {
+    sub: "dev-google-2",
+    name: "Priya Raghunathan",
+    email: "priya.raghunathan@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-3",
+    name: "Tomas Lindqvist",
+    email: "tomas.lindqvist@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-4",
+    name: "Amara Okonjo",
+    email: "amara.okonjo@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-5",
+    name: "Wei Chen",
+    email: "wei.chen@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-6",
+    name: "Marcus Oyelaran",
+    email: "marcus.oyelaran@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-7",
+    name: "Sofia Marchetti",
+    email: "sofia.marchetti@example.com",
+    picture: null,
+    mimics: "google",
+  },
 ];
 
 interface IssuedCode {

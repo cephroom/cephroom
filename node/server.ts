@@ -553,7 +553,7 @@ function datasetTags(id: string): string[] {
 
 async function keyFromRequest(header: string | undefined) {
   if (!header?.toLowerCase().startsWith("bearer ")) return null;
-  return verifyKeyWithPlatform(PLATFORM, header.slice(7).trim());
+  return verifyKeyWithPlatform(PLATFORM, header.slice(7).trim(), SUB);
 }
 
 async function tierFromRequest(header: string | undefined) {

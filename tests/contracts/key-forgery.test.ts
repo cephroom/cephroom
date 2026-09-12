@@ -136,9 +136,19 @@ describe("expiry and audience are enforced", () => {
 
 describe("the node key is an access-audience key, and nothing more", () => {
   it("verifies and carries the tier's scopes", async () => {
-    const nodeKey = await tokens.mintNodeKey({ sub: "s_lab", tier: "lab" });
-    const key = await tokens.verifyAccessKey(nodeKey);
-    expect(key?.sub).toBe("s_lab");
+    const nodeKey = await tokens.mintNodeKey({
+      sub: "s_lab",
+      tier: "lab",
+      audience: "s_contributor",
+    });
+    const key = await tokens.verifyAccessKey(nodeKey, {
+      audience: "s_contributor",
+    });
+    // The subject is scoped to the contributor being visited, so it is
+    // deliberately *not* the reader's own — see
+    // tests/contracts/readers-are-not-correlatable.test.ts.
+    expect(key?.sub).not.toBe("s_lab");
+    expect(key?.sub?.startsWith("n_")).toBe(true);
     expect(key?.scp).toContain("read:lab");
     // Not `serve:node`. That scope left `scopesForTier` in cycle 3: it was
     // granted to Lab alone, never checked anywhere, and its only effect was

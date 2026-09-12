@@ -73,6 +73,39 @@ export function deriveSubject(provider: string, accountId: string): string {
   return `s_${digest.slice(0, 27)}`;
 }
 
+/**
+ * The subject one contributor sees for one reader.
+ *
+ * The reader's real subject is a global identifier, and handing the same one
+ * to every node made it a join key: two contributors comparing their logs
+ * could reconstruct a reader's history across the whole network, and a
+ * node's proposal list handed the same identifier to other readers. The
+ * platform held no activity record and had distributed the means to build one.
+ *
+ * Derived from both halves under the server secret, so it is:
+ *
+ *   - stable for this pairing — the contributor recognises a returning
+ *     reader, attributes a proposal, and enforces a per-person flood limit;
+ *   - useless anywhere else — no other contributor can join on it, and it
+ *     cannot be reversed to the reader without the secret;
+ *   - visibly not a platform subject, hence the `n_` prefix, so one appearing
+ *     where a real subject belongs is a noticeable wrong rather than a quiet
+ *     one.
+ *
+ * The domain tag keeps this from colliding with `deriveSubject`, which HMACs
+ * under the same secret over a different tuple.
+ */
+export function nodeScopedSubject(
+  readerSub: string,
+  contributorSub: string,
+): string {
+  const secret = requireEnv("AUTH_SUBJECT_SECRET");
+  const digest = createHmac("sha256", secret)
+    .update(`node-scope:${contributorSub}:${readerSub}`)
+    .digest("base64url");
+  return `n_${digest.slice(0, 27)}`;
+}
+
 export function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
@@ -123,18 +156,30 @@ export async function mintAccessKey(input: {
 
 export const NODE_KEY_TTL_SECONDS = 120;
 
+/**
+ * The key a reader's browser presents to one contributor's node.
+ *
+ * `audience` is the contributor being visited, and it does two things. It
+ * scopes the subject, so this contributor sees a pseudonym nobody else can
+ * join on. And it is stamped into the key as `nod`, so the key is refused
+ * anywhere else — without that, a second node could accept a key minted for
+ * the first, read the pseudonym the first would have seen, and the two could
+ * correlate again through the back door.
+ */
 export async function mintNodeKey(input: {
   sub: string;
   tier: Tier;
+  audience: string;
 }): Promise<string> {
   return new SignJWT({
     tier: input.tier,
     scp: scopesForTier(input.tier),
+    nod: input.audience,
   })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
     .setAudience(ACCESS_AUDIENCE)
-    .setSubject(input.sub)
+    .setSubject(nodeScopedSubject(input.sub, input.audience))
     .setIssuedAt()
     .setExpirationTime(`${NODE_KEY_TTL_SECONDS}s`)
     .sign(await signingKey());
@@ -192,7 +237,10 @@ export async function mintRefreshKey(input: { sub: string }): Promise<string> {
     .sign(await signingKey());
 }
 
-export async function verifyAccessKey(token: string): Promise<AccessKey | null> {
+export async function verifyAccessKey(
+  token: string,
+  options: { audience?: string } = {},
+): Promise<AccessKey | null> {
   const payload = await verify(token, ACCESS_AUDIENCE);
   // A subject-less key is valid and anonymous — not invalid. What is not
   // acceptable is a key with neither a subject nor the anonymous marker, which
@@ -201,6 +249,20 @@ export async function verifyAccessKey(token: string): Promise<AccessKey | null> 
 
   const tier = payload.tier as Tier | undefined;
   if (tier !== "reader" && tier !== "member" && tier !== "lab") return null;
+
+  // A key bound to a contributor is only a key at that contributor. An
+  // anonymous key carries no binding and travels anywhere, which costs
+  // nothing because it names nobody.
+  const boundTo = payload.nod as string | undefined;
+  if (payload.anon !== true) {
+    if (options.audience) {
+      if (boundTo !== options.audience) return null;
+    } else if (boundTo) {
+      // A node-bound key presented where a plain session key is required —
+      // a node replaying a reader's key back at the platform.
+      return null;
+    }
+  }
 
   return {
     sub: payload.sub ?? null,
