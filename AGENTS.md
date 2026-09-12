@@ -6,41 +6,47 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Working on Cephroom
 
-## Read tests/contracts/ first
+## Read docs/CONTRACTS.md, then tests/contracts/
 
-Two constraints govern this platform: it persists nothing about users, and it
-stores nothing anyone writes. They are not preferences. When a feature and a
-contract conflict, the contract wins and the feature is cut.
+Eleven contracts govern this project. They are authored, they are not derived
+from the code, and they outrank it: where the code disagrees, the code changes.
+They are written out in full in `docs/CONTRACTS.md`, together with the reason
+each one exists, the tests enforcing it, and every place it is knowingly bent.
 
-The contracts used to be prose in `docs/CONTRACTS.md`. They are not any more —
-that file was deleted, and the deletion took with it the only assertion
-guarding the prohibition on platform-funded payouts, which had been written as
-"this sentence appears in that document". A rule whose enforcement can be
-removed by deleting a file nobody ships was never enforced. So the contracts
-now live where they are executed:
+Read that file before changing anything. Then read the tests, because the
+contracts are enforced by tests rather than by discipline — a suite that would
+still pass after a user table appeared enforces nothing.
+
+An earlier arrangement had the contracts as prose only, and the prohibition on
+platform-funded payouts was "guarded" by a test asserting that a sentence
+appeared in a document. The document was deleted and the guard went with it.
+Worse, the replacement guard searched its own source file for a string that
+appeared only in its own assertion — it could not fail. Both are fixed: the
+reasoning lives in `docs/RESEARCH-NOTES.md` and the test asserts *that* file
+carries it, which is falsifiable by deleting the section.
 
 | Contract | Where it is held |
 | --- | --- |
-| No persistence layer, no identity at rest | `tests/contracts/no-user-data.test.ts` |
-| Identity stays in a named set of modules | `tests/contracts/identity-surface.test.ts` |
-| A key states its plans and names nobody | `tests/contracts/key-carries-nothing.test.ts` |
-| A proposal is attributed to a subject, never a person | `tests/contracts/attribution-is-pseudonymous.test.ts` |
-| Two contributors cannot correlate a reader | `tests/contracts/readers-are-not-correlatable.test.ts` |
-| An announced address is checked by the reader | `tests/contracts/address-is-not-a-claim.test.ts` |
-| Exactly what each party can observe | `tests/contracts/what-each-side-learns.test.ts` |
-| No content at rest, no proxying | `tests/contracts/no-content-at-rest.test.ts` |
-| No durable state over HTTP, no content proxy | `tests/contracts/no-remote-state.test.ts` |
-| Presence is never cached or prerendered | `tests/contracts/presence-is-not-an-archive.test.ts` |
-| Not a social network | `tests/contracts/thesis.test.ts` |
-| The bounded nullifier exception | `tests/contracts/nullifier-shape.test.ts` |
-| Layer 1 unlinkability, and its wiring | `tests/contracts/unlinkability.test.ts`, `tests/contracts/anonymous-access.test.ts` |
-| The platform verifies and never proves | `tests/contracts/prover-neutrality.test.ts` |
-| Brokers connections, never value | `tests/contracts/brokers-connections-not-value.test.ts` |
-| Money is integer minor units | `tests/contracts/money-is-integer.test.ts` |
-| Identifiers derive from content | `tests/contracts/content-derived-ids.test.ts` |
-| What the product claims matches what it does | `tests/contracts/stated-limits.test.ts` |
-| The rules can actually fail | `tests/contracts/scanner.test.ts` |
-| Continuity is the endpoints' job | `tests/node/presence-loop.test.ts` |
+| 1. A GitHub for science, not a publishing SaaS | `thesis.test.ts`, `discovery-indexes-nothing.test.ts` |
+| 2. No person-linkable data at rest | `no-user-data.test.ts`, `identity-surface.test.ts`, `no-remote-state.test.ts` |
+| 2. Tokens do not degrade into identified search | `tokens-do-not-degrade-silently.test.ts` |
+| 2. A node stores a scoped pseudonym, and expires it | `tests/node/proposal-subjects-are-node-scoped.test.ts` |
+| 3. Authorization is a signature, never a lookup | `key-forgery.test.ts`, `key-carries-nothing.test.ts`, `an-outage-does-not-downgrade.test.ts` |
+| 3. Signed expiry, verifiable by a node alone | `tests/node/platform-key-reaches-the-node.test.ts` |
+| 3. Two contributors cannot correlate a reader | `readers-are-not-correlatable.test.ts`, `what-each-side-learns.test.ts` |
+| 4. No content at rest, no proxying, no tombstones | `no-content-at-rest.test.ts`, `presence-is-not-an-archive.test.ts` |
+| 4. An announced address is checked by the reader | `address-is-not-a-claim.test.ts` |
+| 5. Brokers connections, never value | `brokers-connections-not-value.test.ts` |
+| 6. No platform-funded payouts, ever | `brokers-connections-not-value.test.ts` |
+| 7. Money is integer minor units | `money-is-integer.test.ts` |
+| 8. Verifies proofs, never produces them | `prover-neutrality.test.ts` |
+| 9. What the product claims matches what it does | `stated-limits.test.ts`, `copy-does-not-overstate.test.ts` |
+| 10. The rules can actually fail | `scanner.test.ts` |
+| — A key unlocks nothing; there is nowhere to gate | `a-key-unlocks-nothing.test.ts` |
+| — Layer 1 unlinkability, and its wiring | `unlinkability.test.ts`, `anonymous-access.test.ts` |
+| — The bounded nullifier exception | `nullifier-shape.test.ts` |
+| — Identifiers derive from content | `content-derived-ids.test.ts` |
+| — Continuity is the endpoints' job | `tests/node/presence-loop.test.ts` |
 
 If you can make those tests pass while violating the spirit of a contract, the
 test is wrong - fix the test. If you genuinely need to bend a contract, add it
@@ -113,6 +119,39 @@ will not catch it — only the rendered HTML shows it. Write the space as
 side is not enforced: nothing has ever broken there, and a rule without
 evidence is churn.)
 
+**A Privacy Pass batch can die while still looking current.** Issuer keypairs
+live in memory and are keyed by epoch *number*, so restarting the platform
+replaces the keypair behind an epoch that is still listed as live. Every
+outstanding token stops verifying and nothing about it looks stale. This shipped:
+the key page reported ten healthy tokens, every one of them dead, and each search
+popped one, failed redemption silently, and fell through to the identified path —
+the one mechanism that severs paying from searching, degrading into the thing it
+prevents. Do not fix it by persisting the keys; that is storage, and contract 9
+says the argument for it is the signal to stop. The wallet stores a fingerprint
+of the issuer public key beside the batch and checks it against `/api/tokens/keys`
+before spending. `spendToken` must never remove a token before redemption has
+actually succeeded, and a dead batch must be said out loud rather than counted as
+stock. The CLI has its own copy of this logic — fix both.
+
+**A proposal must be attributed to a node-scoped pseudonym.** `n_…`, derived per
+contributor, never the `s_…` platform subject. A platform subject is the same
+identifier at every contributor, which is exactly what node-scoping exists to
+prevent, and writing one to a contributor's disk cannot be undone. The node
+refuses it at the door and the store refuses it on write; a store that finds one
+already on disk redacts it to `n_withdrawn` in place on open. Scoped pseudonyms
+themselves expire 90 days after a proposal is resolved. If you write a fixture,
+use `n_`: the suite used to normalise `s_` in its own fixtures, which is part of
+why the leak went unnoticed.
+
+**There is no rule against Markdown.** A `scripts/check-no-docs.ts` once forbade
+every `.md` file in the repository and every `/** */` doc comment. It was
+withdrawn, not weakened: a column *is* a Markdown file with front matter,
+`/contribute` documents that format, and the rule had caused the six demo columns
+to be deleted, so a fresh clone served nothing while `/contribute` promised a
+demo. Write prose where prose belongs. `no-content-at-rest.test.ts` now asserts
+the demo content is present, and separately that no column has appeared under
+`src/`, which is the thing that rule should have been guarding.
+
 **mdast `hProperties` keys reach hast verbatim**, not camelCased. The claim
 element's key is read as `node.properties.claimkey`, lowercase, not
 `dataClaimKey`.
@@ -123,9 +162,11 @@ anything in a key is something a stranger learns. It carried the Google
 display name for a while, which meant reading a column told its author who you
 were, and proposing an edit wrote that name to their disk permanently as
 `fromName`. It also carried the Stripe customer id, which made the credential
-a fourth copy of Stripe's records. Both are gone; a key now states a subject,
-a tier and its scopes, and `tests/contracts/key-carries-nothing.test.ts` pins
-the claim set exactly. Before adding a field, ask who ends up holding it.
+a fourth copy of Stripe's records. Both are gone, and so is the tier: a node key now
+states a *node-scoped* subject (`n_…`, different at every contributor), its
+scopes, and the contributor it is bound to — nothing about what the reader has
+paid for, because a node has nothing to check. `key-carries-nothing.test.ts`
+and `what-each-side-learns.test.ts` pin the claim set exactly. Before adding a field, ask who ends up holding it.
 
 **Server actions are public endpoints.** Every one of them re-derives the
 viewer from their key and re-checks authorisation against Stripe; none trust a
@@ -177,8 +218,8 @@ Two things cannot be provisioned on a developer machine: a Google OAuth client
 and a Stripe account. Both are handled by mocking the *counterparty* rather
 than our own code.
 
-- `src/lib/auth/dev-oauth.ts` plus `src/app/api/dev-oauth/*` is a real OAuth
-  2.0 provider. The hand-rolled code flow runs against it exactly as it will
+- `simulated-counterparties/google/provider.ts` plus `src/app/api/dev-oauth/*`
+  is a real OAuth 2.0 provider. The hand-rolled code flow runs against it exactly as it will
   against Google.
 - `simulated-counterparties/stripe/` stores customers and subscriptions the
   way Stripe would, and the gateway switch decides which answers.
@@ -229,8 +270,15 @@ same standard as the columns.
 
 ```bash
 npm test
+npm run typecheck
+npm run lint
 npm run build      # type errors surface here that tsc alone may not
 ```
+
+All three of the first commands run in CI (`.github/workflows/ci.yml`) on push
+and pull request. Do not leave `lint` red: it was red for a while, which quietly
+undercuts "enforced by tests rather than discipline" — a declared check that
+nobody runs and that does not pass is not a check.
 
 Then open the thing in a browser and look at it. Three of the bugs in this
 repository's history — the unscanned Tailwind directory, the CRLF claim

@@ -5,30 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { ROOT, walk } from "./scan";
 
-/**
- * The platform brokers connections and never value.
- *
- * A subscription buys a key of a given tier. The tier is a permission, not a
- * balance: it is not consumed by use, it expires when the key does, and that is
- * the whole model. A contributor may announce where they can be paid; the
- * platform displays the string and is not a party to anything that follows.
- *
- * This is enforced by a test because of what it replaced. An earlier design had
- * the platform split a subscription and pay contributors from the reserved part
- * against dual-signed usage records — receipt chains, write-before-pay
- * ordering, per-grant caps, bounded spent counters, the lot. Every line of it
- * defended one attack: **two colluding parties can sign a transfer that never
- * happened**, which is unpreventable without watching the data layer, because a
- * transcript of a real transfer is computable by the serving party alone.
- *
- * The defences could only make that loss-making and bounded, never impossible.
- * Removing the pool removes the attack outright — colluders are now dividing
- * their own money — so the machinery is gone and these assertions keep it gone.
- *
- * The row most likely to be argued back in is the last one: bonuses and growth
- * incentives for popular contributors. It is the obvious lever, it will look
- * harmless, and it reopens exactly this hole.
- */
 
 function platformSources(): { rel: string; code: string }[] {
   return [...walk(join(ROOT, "src")), ...walk(join(ROOT, "node"))]
@@ -44,8 +20,6 @@ function platformSources(): { rel: string; code: string }[] {
 
 describe("no metering: a tier is a permission, not a balance", () => {
   it("has no usage record, allowance, or settlement path anywhere", () => {
-    // A half-removed metering path is worse than either keeping or removing
-    // it, so the absence is asserted rather than assumed.
     for (const { rel, code } of platformSources()) {
       for (const concept of [
         "allowance",
@@ -93,10 +67,6 @@ describe("no metering: a tier is a permission, not a balance", () => {
 
 describe("the platform never funds a payment to a contributor", () => {
   it("has no code path that moves money outward", () => {
-    // Stripe is used to *read* entitlement and to take a subscription. A
-    // transfer, payout or Connect account would make this a payments business
-    // with a different legal shape, and would reopen the collusion hole by
-    // recreating a pool to drain.
     for (const { rel, code } of platformSources()) {
       for (const outward of [
         "transfers.create",
@@ -123,9 +93,6 @@ describe("the platform never funds a payment to a contributor", () => {
 
 describe("what a contributor announces is displayed and nothing more", () => {
   it("passes payTo through without parsing or validating it", () => {
-    // Recognising a wallet address would be the first step towards routing to
-    // one. It is an opaque string: a wallet, a page, an institutional account,
-    // or a sentence saying not to bother.
     const registry = readFileSync(
       join(ROOT, "src", "lib", "signaling", "registry.ts"),
       "utf8",
@@ -135,13 +102,8 @@ describe("what a contributor announces is displayed and nothing more", () => {
     const code = registry
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/\/\/.*$/gm, "");
-    // No shape checking, no chain detection, no normalisation.
     expect(code).not.toMatch(/0x|ethereum|bitcoin|iban|isValidAddress/i);
 
-    // And the same for the module that validates an announcement, which is
-    // where a wallet-recogniser would most plausibly be added now that the
-    // schema lives somewhere of its own. A length is the only thing the
-    // platform is willing to know about this field.
     const schema = readFileSync(
       join(ROOT, "src", "lib", "signaling", "announcement.ts"),
       "utf8",
@@ -149,8 +111,6 @@ describe("what a contributor announces is displayed and nothing more", () => {
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/\/\/.*$/gm, "");
     expect(schema).not.toMatch(/0x|ethereum|bitcoin|iban|isValidAddress/i);
-    // `.max()` and nothing else. A `.trim()`, `.toLowerCase()` or `.regex()`
-    // here would each be the platform forming an opinion about the string.
     const payToLine = schema
       .split("\n")
       .find((line) => line.includes("payTo:"));
@@ -159,10 +119,6 @@ describe("what a contributor announces is displayed and nothing more", () => {
   });
 
   it("bounds it at 300 characters, and says so somewhere that runs", async () => {
-    // The bound existed in exactly one place — a `.max(300)` in the announce
-    // schema — and nothing asserted it. Deleting the cap passed the whole
-    // suite, and payTo is the one attacker-controlled string the platform
-    // relays to every reader of a column.
     const { announcementSchema, PAY_TO_MAX } = await import(
       "@/lib/signaling/announcement"
     );
@@ -182,14 +138,10 @@ describe("what a contributor announces is displayed and nothing more", () => {
       announcementSchema.safeParse({ ...base, payTo: "x".repeat(301) }).success,
     ).toBe(false);
 
-    // Absent is fine: "nothing" is a legitimate answer to how to pay someone.
     expect(announcementSchema.safeParse(base).success).toBe(true);
   });
 
   it("relays it byte for byte, whatever is in it", async () => {
-    // Verbatim means verbatim. No trimming, no normalising, no case folding —
-    // each is a small step towards understanding the string, and understanding
-    // it is the first step towards routing to it.
     const { createRegistry } = await import("@/lib/signaling/registry");
     const registry = createRegistry();
 
@@ -206,8 +158,6 @@ describe("what a contributor announces is displayed and nothing more", () => {
   });
 
   it("is never persisted, like everything else in the registry", () => {
-    // Comments scrubbed: that file's docstring says at length that nothing
-    // here touches a file or a database, and saying so is not doing so.
     const code = readFileSync(
       join(ROOT, "src", "lib", "signaling", "registry.ts"),
       "utf8",
@@ -218,8 +168,6 @@ describe("what a contributor announces is displayed and nothing more", () => {
   });
 
   it("says plainly that the platform is not part of what happens next", () => {
-    // The reader has to understand that paying is their own separate act.
-    // If this copy goes, the page starts to read like a marketplace.
     const reader = readFileSync(
       join(ROOT, "src", "components", "column-reader.tsx"),
       "utf8",
@@ -230,18 +178,6 @@ describe("what a contributor announces is displayed and nothing more", () => {
 });
 
 describe("the prohibition is written down where it will be argued with", () => {
-  /**
-   * This used to read `docs/CONTRACTS.md`, and broke when the documentation
-   * was deleted — which turned out to be the useful accident.
-   *
-   * A rule recorded only in a document is a rule whose enforcement can be
-   * removed by deleting a file nobody ships. The place this particular
-   * prohibition has to survive is not a contributor-facing document; it is the
-   * page where a contributor asks why they are not being paid, because that is
-   * where the pressure to reverse it comes from. So the assertions moved to
-   * the prose the product actually serves, which cannot be deleted without
-   * somebody noticing a blank section.
-   */
   const prose = (...parts: string[]) =>
     readFileSync(join(ROOT, ...parts), "utf8").replace(/\s+/g, " ");
 
@@ -255,18 +191,12 @@ describe("the prohibition is written down where it will be argued with", () => {
   });
 
   it("says it is a rule rather than a feature nobody has built yet", () => {
-    // The distinction is the entire point. "We don't do that yet" invites the
-    // next person to do it; "we are not allowed to do that" invites them to
-    // read why first.
     expect(contribute).toMatch(
       /a rule in the contracts rather than a current limitation/i,
     );
   });
 
   it("carries the reason, so nobody has to re-derive it under pressure", () => {
-    // Two parties agreeing to say a transfer happened, and the platform being
-    // structurally unable to tell. Without this sentence the prohibition looks
-    // like squeamishness about payments rather than the one defence available.
     expect(contribute).toMatch(/pays out of a pool can have that pool drained/i);
     expect(contribute).toMatch(/agree to say a transfer happened/i);
     expect(contribute).toMatch(/we do not watch what moves between you and a reader/i);
@@ -278,18 +208,37 @@ describe("the prohibition is written down where it will be argued with", () => {
     expect(pricing).toMatch(/paying out of a pool/i);
   });
 
-  it("keeps the reasoning next to the code that would have to be written to break it", () => {
-    // The argument also lives in this file's own docstring, which is the
-    // thing a person editing the earnings machinery back in would read.
-    const self = readFileSync(
-      join(ROOT, "tests", "contracts", "brokers-connections-not-value.test.ts"),
+  it("keeps the reasoning somewhere it can be read and argued with", () => {
+    const notes = readFileSync(
+      join(ROOT, "docs", "RESEARCH-NOTES.md"),
       "utf8",
     ).replace(/\s+/g, " ");
-    expect(self).toMatch(
-      /two colluding parties can sign a transfer that never happened/i,
-    );
-    expect(self).toMatch(
+
+    expect(
+      notes,
+      [
+        "docs/RESEARCH-NOTES.md must carry the argument for why the pool was",
+        "removed rather than defended, because contract 6 is the one that will",
+        "be argued with under commercial pressure and 'we decided not to' is not",
+        "an argument anybody can check.",
+        "",
+        "This assertion used to read this test file and search it for a string",
+        "that appeared only in the assertion's own regex literal — it searched",
+        "itself, and could not fail. Pointing it at the document makes deleting",
+        "the reasoning fail the suite, which is the property that was wanted.",
+      ].join("\n"),
+    ).toMatch(
       /transcript of a real transfer is computable by the serving party alone/i,
+    );
+
+    expect(notes).toMatch(
+      /anything a receiver could contribute \*?after\*? a real transfer/i,
+    );
+    expect(notes, "the notes must say prover nodes do not close it").toMatch(
+      /prover nodes do not close it/i,
+    );
+    expect(notes, "the notes must state the structural resolution").toMatch(
+      /two parties moving their own money|colluders (divide|drain)/i,
     );
   });
 });
