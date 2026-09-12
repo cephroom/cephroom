@@ -1,7 +1,29 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
+
+/**
+ * Where a node keeps the proposals it has been sent.
+ *
+ * Beside the content, not inside it — inside would make a reader's unmerged
+ * edit look like publishable source to anything that walks the content
+ * directory, including the node's own column reader.
+ *
+ * The node used to root this at its *source* directory, so every node started
+ * from the same checkout shared one inbox however its `--content` was set.
+ * Running two contributors at once showed what that costs: with a column slug
+ * in common — and slugs are author-chosen and collide, which is the same fact
+ * behind the discovery hijack in tests/contracts/signal-auth.test.ts — one
+ * contributor could read, count and close proposals addressed to the other.
+ *
+ * Deriving it from the content directory means isolation follows from the
+ * flag a contributor already sets, and the default layout
+ * (`node/content` -> `node/proposals`) is exactly where it has always been.
+ */
+export function proposalRootFor(contentDir: string): string {
+  return dirname(resolve(contentDir));
+}
 
 /** The fields that decide what a proposal *is*. */
 export interface ProposalContent {

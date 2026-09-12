@@ -9,7 +9,7 @@ import { tierAllows, type Access } from "../src/lib/access";
 import { gateColumnBody } from "./column-gate";
 import { foldForScope } from "./fold-facts";
 import { PresenceLoop } from "./presence";
-import { ProposalStore } from "./proposals";
+import { ProposalStore, proposalRootFor } from "./proposals";
 import { verifyKeyWithPlatform } from "./verify";
 
 config({ path: ".env.local", quiet: true });
@@ -352,7 +352,12 @@ const datasets = [
   ...(readDecoderBenchmark() ? [readDecoderBenchmark()!] : []),
 ];
 const dataset = datasets[0] ?? null;
-const proposals = new ProposalStore(import.meta.dirname);
+// Rooted by this node's own content, so two contributors running from one
+// checkout do not share an inbox. See node/proposals.ts.
+const PROPOSAL_ROOT = resolve(
+  flag("proposals", process.env.PROPOSAL_DIR ?? proposalRootFor(CONTENT_DIR)),
+);
+const proposals = new ProposalStore(PROPOSAL_ROOT);
 
 
 const CORS = {
