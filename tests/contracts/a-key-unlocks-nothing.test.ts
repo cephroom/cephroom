@@ -139,6 +139,36 @@ describe("nothing carries a consumer's tier across the connection", () => {
     }
   });
 
+  it("tells a reader on the privacy page exactly what is in that key", async () => {
+    /**
+     * The privacy page is where somebody decides whether to trust this, so a
+     * sentence there that overstates what a contributor learns is the worst
+     * kind of stale copy — it describes a leak that was closed and invites a
+     * reader to take a precaution against nothing, while teaching them the
+     * page cannot be relied on.
+     *
+     * It said the key your browser presents "states a tier and a pseudonymous
+     * subject". The tier half stopped being true when the tier stopped
+     * crossing the connection. Asserted against a real minted key rather than
+     * against a phrase, so the page cannot drift from the claim again.
+     */
+    const claims = decodeJwt(
+      await tokens.mintNodeKey({
+        sub: "s_reader",
+        audience: "s_contributor",
+        sessionSecondsLeft: 900,
+      }),
+    );
+    expect(claims).not.toHaveProperty("tier");
+    expect(claims).not.toHaveProperty("discovery");
+
+    const privacy = readFileSync(
+      join(ROOT, "src", "app", "privacy", "page.tsx"),
+      "utf8",
+    ).replace(/\s+/g, " ");
+    expect(privacy).not.toMatch(/presents states a tier|carries your tier to/i);
+  });
+
   it("has no paywall component left to render", () => {
     const files = walk(join(ROOT, "src")).map((f) =>
       relative(ROOT, f).split(sep).join("/"),

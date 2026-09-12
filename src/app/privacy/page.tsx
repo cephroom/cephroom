@@ -55,7 +55,7 @@ export default function PrivacyPage() {
             a signature rather than look anything up.
           </li>
           <li>
-            No copy of anyone&rsquo;s subscription. Your tier is read from
+            No copy of anyone&rsquo;s subscription. Your plan is read from
             Stripe when a key is issued and stamped into it.
           </li>
           <li>
@@ -174,24 +174,27 @@ export default function PrivacyPage() {
             Your
             browser fetches their column from their machine, directly — that is
             the whole architecture, and a direct connection means an IP address
-            at the other end. They do not see a name: the key your browser
-            presents states a tier and a pseudonymous subject, and for a while
-            it also carried the display name Google gave us, which meant
-            reading an article told its author who you were. It does not any
-            more, and neither does proposing an edit. But a direct connection
-            still means an IP address, so an anonymous token stops them
-            learning{" "}
-            <em>who</em>{" "}
-            you are and cannot hide{" "}
+            at the other end. They do not see a name, and no longer see
+            anything else either: reading sends them no key at all, because a
+            column is served to whoever asks and there is nothing for them to
+            check. If you propose an edit they get one thing — a pseudonym
+            particular to them, so that they can reply to you — and the same
+            reader appears to two contributors as two unrelated strangers. For
+            a while the key also carried the display name Google gave us,
+            which meant reading an article told its author who you were. It
+            does not any more. But a direct connection still means an IP
+            address, so none of this hides{" "}
             <em>where</em>{" "}
+            you are, only{" "}
+            <em>who</em>{" "}
             you are. If that matters to you, a VPN or Tor is the
             answer and we cannot substitute for one.
           </li>
           <li>
             <strong>Page requests still carry your session.</strong>{" "}
             The tokens
-            cover what you fetch from a contributor&rsquo;s node. The Cephroom
-            page around it is still requested with your cookie attached,
+            cover the search — the part that happens here. The Cephroom
+            page around a column is still requested with your cookie attached,
             because that is how a same-site cookie works and because the header
             has to know whether to show your name. So we could, today, see which
             column pages you opened even though we cannot see what you read from
@@ -247,17 +250,19 @@ export default function PrivacyPage() {
             something we never receive.
           </li>
           <li>
-            <strong>Your tier is visible at redemption.</strong>{" "}
+            <strong>Your plan is visible at redemption.</strong>{" "}
             A token is
-            signed by a per-tier key, so spending one reveals which tier it was
-            for. It reveals nothing about who.
+            signed by a per-plan key, so spending one reveals which plan it was
+            for — which is to say, how far the search it pays for may reach. It
+            reveals nothing about who.
           </li>
           <li>
             <strong>We cannot revoke anything.</strong>{" "}
             No blocklist, because a
             blocklist is state. A stolen key is good until it expires — fifteen
-            minutes for reading, seven days for renewal — and the only remedy is
-            rotating our signing key, which signs everybody out at once.
+            minutes for a session, seven days for renewal, two minutes for the
+            pseudonym a node sees — and the only remedy is rotating our signing
+            key, which signs everybody out at once.
           </li>
         </ul>
 

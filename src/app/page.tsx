@@ -119,7 +119,7 @@ tolerance: 10%
               </p>
               <ul className="mt-4 space-y-2 text-[0.88rem] text-ink-muted">
                 <Consequence>
-                  Your tier is read from Stripe when the key is issued, because
+                  Your plan is read from Stripe when the key is issued, because
                   Stripe is the only party allowed to remember anything.
                 </Consequence>
                 <Consequence>

@@ -220,13 +220,13 @@ export default function HowItWorksPage() {
           There is no user table, no profile, no session store, and no copy of
           your subscription. You sign in with Google to prove who you are;
           nothing is written as a result. You receive a signed key stating your
-          tier and what it permits, and every check after that is a signature
+          plans and what they permit, and every check after that is a signature
           verification rather than a lookup.
         </p>
         <p>What follows, whether convenient or not:</p>
         <ul>
           <li>
-            Your tier is read from Stripe when the key is issued and at every
+            Your plan is read from Stripe when the key is issued and at every
             renewal, because Stripe is the only party permitted to remember
             anything.
           </li>
