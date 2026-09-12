@@ -3,7 +3,6 @@ slug: serotonin-dopamine-ratio-audited
 title: The 5-HT2A:D2 ratio, audited
 subtitle: Meltzer's ratio is the most cited structure–activity claim in psychiatry. Recomputed from pooled ChEMBL medians, it survives — but not in the form it is usually quoted in.
 tags: neuropharmacology, receptors, binding-affinity
-access: member
 author: elena
 repo: https://github.com/juitindev/meltzer-ratio
 commit: 41d0e77

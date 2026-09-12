@@ -344,3 +344,52 @@ describe("the pages do not imply an obligation either way", () => {
     expect(contribute).toMatch(/no bonuses/i);
   });
 });
+
+describe("the content a contributor copies as a template implies no gate", () => {
+  it("carries no access field in the demo columns", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join, relative, sep } = await import("node:path");
+    const { ROOT, walk } = await import("./scan");
+
+    const offenders: string[] = [];
+    for (const file of walk(join(ROOT, "node", "content"), [".md"])) {
+      const front = readFileSync(file, "utf8").match(
+        /^---\r?\n([\s\S]*?)\r?\n---/,
+      );
+      if (!front) continue;
+      if (/^\s*access\s*:/m.test(front[1])) {
+        offenders.push(relative(ROOT, file).split(sep).join("/"));
+      }
+    }
+
+    expect(
+      offenders,
+      [
+        "A column's front matter is the template a contributor copies. An",
+        "`access:` field implies there is somewhere to put a gate, and there is",
+        "not — a node serves a column whole to whoever asks and has no tier to",
+        "check. These files carried `access: public|member|lab`, naming two",
+        "plans that no longer exist, and nothing read it.",
+        "",
+        ...offenders,
+      ].join("\n"),
+    ).toEqual([]);
+  });
+
+  it("names no removed plan anywhere in the demo content", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join, relative, sep } = await import("node:path");
+    const { ROOT, walk } = await import("./scan");
+
+    const offenders: string[] = [];
+    for (const file of walk(join(ROOT, "node", "content"), [".md"])) {
+      const front = readFileSync(file, "utf8").match(
+        /^---\r?\n([\s\S]*?)\r?\n---/,
+      );
+      if (front && /\b(member|lab)\b/.test(front[1])) {
+        offenders.push(relative(ROOT, file).split(sep).join("/"));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});

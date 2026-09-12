@@ -3,7 +3,6 @@ slug: which-protocol-produced-that-number
 title: A decoding accuracy is not a property of a decoder
 subtitle: Ten models, two evaluation protocols, one reordering. The number you quote depends on how it was produced, and most papers report only one of the two.
 tags: eeg, bci, decoding, machine-learning, comparative-methods
-access: public
 author: marcus
 repo: https://github.com/cephroom/decoder-protocol
 commit: 4b1c09e
