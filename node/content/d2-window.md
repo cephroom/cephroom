@@ -45,6 +45,8 @@ value: 93
 tolerance: 5%
 ```
 
+![Occupancy rises with dose; clinical response sits in the shaded 65–80% window.](d2-window.svg)
+
 That is a tight number with a lot of evidence behind it, and it tells you
 almost nothing about what dose to give. It tells you about the receptor.
 

@@ -6,6 +6,7 @@ import { config } from "dotenv";
 
 import { parseBody } from "../src/lib/claims/syntax";
 import { FREE_SERVING_CAPACITY } from "../src/lib/stripe/plans";
+import { assetRoot, readAsset, resolveAsset } from "./assets";
 import { readColumnFile, type Column } from "./columns";
 import { foldForScope } from "./fold-facts";
 import { AnnounceRefused, PresenceLoop } from "./presence";
@@ -42,6 +43,7 @@ const DATA_DIR = resolve(
   ),
 );
 const HAS_DATASET = existsSync(join(DATA_DIR, "gap_report.json"));
+const ASSET_ROOT = assetRoot(CONTENT_DIR);
 
 const MAX_BODY_CHARS = 512 * 1024;
 const MAX_PROPOSAL_BYTES = 640 * 1024;
@@ -443,6 +445,26 @@ const server = createServer(async (request, response) => {
         fromSub,
       }),
     );
+  }
+
+  if (url.pathname.startsWith("/asset/")) {
+    const name = decodeURIComponent(url.pathname.slice("/asset/".length));
+    const resolved = resolveAsset(ASSET_ROOT, name);
+    if (typeof resolved === "string") {
+      const status = resolved === "too-large" ? 413 : 404;
+      return send(status, { error: `asset ${resolved}` });
+    }
+    response.writeHead(200, {
+      "content-type": resolved.contentType,
+      "content-length": String(resolved.size),
+      // A figure is content, so it is served with the same posture as a column:
+      // no store, and readable cross-origin because the reader's browser on the
+      // platform origin is who fetches it.
+      "cache-control": "no-store",
+      ...CORS,
+    });
+    response.end(readAsset(resolved));
+    return;
   }
 
   if (url.pathname.startsWith("/column/")) {

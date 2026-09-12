@@ -76,6 +76,18 @@ npm run node:serve                       # serves the demo content`}
           file it finds, whole, to whoever asks. There is no field for
           withholding part of one.
         </p>
+        <p className="mt-4 max-w-[62ch] text-[0.95rem] leading-relaxed text-ink-muted">
+          Figures work the same way. Drop an image or a short video beside your
+          columns (an <code>assets/</code>{" "}
+          folder if you like) and reference it
+          in Markdown: <code>{"![caption](figure.svg)"}</code>.{" "}
+          Your node serves it, and the reader&rsquo;s browser fetches it from
+          you. An image that points anywhere <em>else</em>{" "}
+          is not shown — a reader&rsquo;s browser
+          loading an off-machine image would tell that server who is reading,
+          which is the one thing this design keeps it from doing, so those are
+          left as a link the reader can choose to open.
+        </p>
       </div>
 
       <pre

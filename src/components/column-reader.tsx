@@ -17,6 +17,7 @@ import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { CiteReading } from "@/components/cite-reading";
 import { safeExternalUrl } from "@/lib/safe-url";
+import { isVideoAsset, nodeAssetUrl } from "@/lib/node-asset";
 import { servingMismatch } from "@/lib/signaling/serving";
 
 
@@ -332,7 +333,7 @@ export function ColumnReader({
         <div className="prose mt-10">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkClaims]}
-            components={components(claims)}
+            components={components(claims, address)}
           >
             {column.prose}
           </ReactMarkdown>
@@ -410,7 +411,79 @@ export function ColumnReader({
   );
 }
 
-function components(claims: Map<string, ResolvedClaim>): Components {
+/**
+ * A figure, but only if it comes from the node that served the column.
+ *
+ * nodeAssetUrl returns a URL only for the serving node's own /asset/ route;
+ * anything else - another origin, a tracking pixel, a javascript: src - comes
+ * back null, and rather than fetch it for the reader we show a link they may
+ * choose to follow. The reason is the same one behind resolving a dataset from
+ * the serving node: an <img> the author points anywhere is a request the
+ * reader's browser makes on open, and off-node that leaks who is reading. A
+ * video reference (mp4/webm/ogg) on the node renders as a <video>, since
+ * markdown image syntax is the only figure syntax there is.
+ */
+function NodeFigure({
+  src,
+  alt,
+  address,
+}: {
+  src?: string;
+  alt?: string;
+  address: string;
+}) {
+  const url = nodeAssetUrl(src, address);
+
+  if (!url) {
+    return (
+      <span className="my-2 block text-[0.82rem] text-ink-faint">
+        {alt ? `${alt} — ` : ""}figure not shown: it is not served by this node.
+        {src && /^https?:/i.test(src) ? (
+          <>
+            {" "}
+            <a href={src} target="_blank" rel="noopener noreferrer" className="underline">
+              open it yourself
+            </a>
+            .
+          </>
+        ) : null}
+      </span>
+    );
+  }
+
+  return (
+    <figure className="my-6">
+      {isVideoAsset(url) ? (
+        <video
+          src={url}
+          controls
+          className="w-full rounded-lg border border-rule"
+        />
+      ) : (
+        // next/image is forbidden here: <Image> routes the fetch through the
+        // platform's /_next/image optimizer, which would make the platform
+        // fetch the contributor's bytes - a content proxy, contract 2 and 4. A
+        // plain <img>, loaded by the reader's browser straight from the node,
+        // is the only architecture-compatible option.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt={alt ?? ""}
+          loading="lazy"
+          className="w-full rounded-lg border border-rule"
+        />
+      )}
+      {alt && (
+        <figcaption className="mt-2 text-[0.8rem] text-ink-muted">{alt}</figcaption>
+      )}
+    </figure>
+  );
+}
+
+function components(
+  claims: Map<string, ResolvedClaim>,
+  address: string,
+): Components {
   const map = {
     claim: ({ node }: { node?: { properties?: Record<string, unknown> } }) => {
       const key = String(node?.properties?.claimkey ?? "");
@@ -436,6 +509,9 @@ function components(claims: Map<string, ResolvedClaim>): Components {
         </a>
       );
     },
+    img: ({ src, alt }: { src?: string; alt?: string }) => (
+      <NodeFigure src={typeof src === "string" ? src : undefined} alt={alt} address={address} />
+    ),
   };
   return map as unknown as Components;
 }
