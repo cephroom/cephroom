@@ -153,11 +153,60 @@ export function PricingTable({
                   </form>
                 )}
               </div>
+
+              {/* The reduced rate sits inside the card, at the same weight as
+                  the plan it belongs to, rather than in a footnote someone has
+                  to go looking for. A rate people do not find is a rate that
+                  does not exist. */}
+              {plan.reduced && !isCurrent && !isDowngrade && (
+                <div className="mt-5 border-t border-rule pt-4">
+                  <form action={checkoutAction}>
+                    <input type="hidden" name="plan" value={planId} />
+                    <input type="hidden" name="interval" value="year" />
+                    <input type="hidden" name="reduced" value="1" />
+                    <input type="hidden" name="from" value={from} />
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="text-[0.8rem] font-medium text-counter">
+                        {plan.reduced.label}
+                      </span>
+                      <span className="font-mono text-[0.95rem] tnum text-ink">
+                        {formatPrice(plan.reduced.unitAmount)}
+                        <span className="ml-0.5 font-sans text-[0.72rem] font-normal text-ink-faint">
+                          /yr
+                        </span>
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-[0.76rem] leading-relaxed text-ink-faint">
+                      {plan.reduced.note}
+                    </p>
+                    <ReducedButton />
+                  </form>
+                </div>
+              )}
             </article>
           );
         })}
       </div>
     </>
+  );
+}
+
+/**
+ * The reduced-rate button, deliberately not styled as a lesser option.
+ *
+ * It takes the counterpart hue rather than a muted grey: someone who needs
+ * this price should not have to click something that looks like a downgrade.
+ */
+function ReducedButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="mt-3 w-full rounded-md border border-counter/40 bg-counter-wash px-4 py-2 text-[0.83rem] font-medium text-counter transition-colors hover:border-counter disabled:opacity-60"
+    >
+      {pending ? "Opening checkout…" : "Take the reduced rate"}
+    </button>
   );
 }
 

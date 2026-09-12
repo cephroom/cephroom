@@ -14,6 +14,22 @@ export interface PlanDefinition {
   tagline: string;
   features: string[];
   prices: Record<BillingInterval, PricePoint>;
+  /**
+   * A self-declared reduced annual rate, for students and anyone for whom the
+   * full price is the reason they are not here.
+   *
+   * A norm in this field rather than a discount gimmick: SfN charges $245 a
+   * year for a regular membership and $95 for a graduate student, OHBM $220
+   * against $100. Both verify status with a letter from a department head —
+   * which Contract 1 forbids us from doing, because verifying means holding a
+   * record of who proved what. So it is asked, not proved. The reader picks
+   * this price at checkout and nothing about the choice is written down.
+   *
+   * It buys the same tier. Nothing about the reading experience differs, and
+   * nothing marks a reduced-rate key, because a key that said "student" would
+   * be a stored fact about a person riding around in their browser.
+   */
+  reduced?: PricePoint & { label: string; note: string };
 }
 
 /**
@@ -52,19 +68,34 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
         priceId: priceId("STRIPE_PRICE_MEMBER_YEARLY", "price_local_member_year"),
       },
     },
+    reduced: {
+      interval: "year",
+      unitAmount: 3600,
+      priceId: priceId(
+        "STRIPE_PRICE_MEMBER_REDUCED",
+        "price_local_member_reduced",
+      ),
+      label: "Student and reduced",
+      note: "If the full price is the reason you are not here, take this one. Students, between posts, unfunded, or paying for it yourself — no proof asked for, because asking for proof would mean keeping it.",
+    },
   },
   lab: {
     id: "lab",
     name: "Lab",
-    tagline: "For groups who publish their own checked work.",
+    tagline: "For groups reading and arguing with each other's work.",
     // No API over "check history" — there is no stored history to expose.
     // Lab is about serving your own work, not about us keeping more of it.
+    // Two entries were removed here in cycle 3: "Serve your own columns and
+    // datasets from your node" and "Serve under your own signed identity".
+    // Both are free at every tier, by contract, and were never enforced — so
+    // the only thing they did was tell a prospective contributor that
+    // publishing costs $29 a month. Selling something free is worse than a
+    // bug. tests/contracts/serving-is-free.test.ts keeps them out.
     features: [
       "Everything in Member",
       "Lab columns: the long methodological pieces",
-      "Serve your own columns and datasets from your node",
-      "Claims resolve against the datasets you serve yourself",
-      "Serve under your own signed identity",
+      "The whole dataset explorer, including the evidence matrices",
+      "Bulk proposals across a group's columns",
     ],
     prices: {
       month: {
@@ -83,7 +114,14 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
 
 export const PLAN_ORDER: PlanId[] = ["member", "lab"];
 
-/** Reverse lookup, used by the webhook to name the plan a price belongs to. */
+/**
+ * Reverse lookup: which plan does this Stripe price belong to.
+ *
+ * The reduced rate resolves to its plan's annual interval, so a reduced-rate
+ * subscriber is a Member subscriber in every respect the rest of the system
+ * can see. That is deliberate: the tier is the entitlement, and what someone
+ * paid is between them and Stripe.
+ */
 export function planForPrice(
   stripePriceId: string,
 ): { plan: PlanId; interval: BillingInterval } | null {
@@ -92,6 +130,35 @@ export function planForPrice(
       if (PLANS[plan].prices[interval].priceId === stripePriceId) {
         return { plan, interval };
       }
+    }
+    if (PLANS[plan].reduced?.priceId === stripePriceId) {
+      return { plan, interval: "year" };
+    }
+  }
+  return null;
+}
+
+/**
+ * Finds a price by its Stripe price id.
+ *
+ * A checkout session is identified by a price id, not by a plan and an
+ * interval — so anything rendering what a session costs has to look it up
+ * this way. Reconstructing it from `plan` + `interval` silently loses any
+ * price that is not one of the two on that axis, which is how the simulated
+ * checkout came to offer the reduced rate at the full annual price.
+ */
+export function priceForId(
+  stripePriceId: string,
+): { plan: PlanDefinition; price: PricePoint } | null {
+  for (const planId of PLAN_ORDER) {
+    const plan = PLANS[planId];
+    for (const interval of ["month", "year"] as const) {
+      if (plan.prices[interval].priceId === stripePriceId) {
+        return { plan, price: plan.prices[interval] };
+      }
+    }
+    if (plan.reduced?.priceId === stripePriceId) {
+      return { plan, price: plan.reduced };
     }
   }
   return null;

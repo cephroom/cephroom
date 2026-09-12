@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { PLANS, planForPrice } from "@/lib/stripe/plans";
+import { PLANS, planForPrice, priceForId } from "@/lib/stripe/plans";
 import {
   SUBJECT_METADATA_KEY,
   subjectFromMetadata,
@@ -118,6 +118,13 @@ export function readSession(sessionId: string): Session | null {
 export function planFor(sessionId: string) {
   const session = readSession(sessionId);
   if (!session) return null;
+
+  // By price id, which is what the session actually carries. Rebuilding it
+  // from plan + interval drops any price off that axis — the reduced rate was
+  // offered at the full annual price for exactly that reason.
+  const byId = priceForId(session.request.priceId);
+  if (byId) return { session, plan: byId.plan, price: byId.price };
+
   const plan = PLANS[session.request.plan];
   return { session, plan, price: plan.prices[session.request.interval] };
 }

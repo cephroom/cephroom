@@ -22,6 +22,24 @@
  *        tolerance: 15%
  *        ```
  *
+ *    Where a dataset holds the same cell under more than one analysis — an
+ *    evaluation protocol, a preprocessing pipeline — the claim must also name
+ *    which one it means:
+ *
+ *        ```claim tcnet-online
+ *        dataset: mi-decoders-2025
+ *        metric: accuracy_pct
+ *        subject: EEG-TCNet
+ *        object: four-class-motor-imagery
+ *        method: online
+ *        value: 70.0 %
+ *        tolerance: 2%
+ *        ```
+ *
+ *    Leaving `method:` out there is not a shortcut to a sensible default; it
+ *    resolves broken and names the analyses that exist. lib/claims/method.ts
+ *    says why.
+ *
  * The author never types a bare number into the prose. The number is
  * rendered from the dataset at read time, and the `value:` line is what CI
  * compares against - so if the dataset moves, the sentence is flagged
@@ -38,7 +56,8 @@ export type ClaimSelect =
   | "fold_spread"
   | "fold_spread_iqr"
   | "censored_fraction"
-  | "pdsp_fold";
+  | "pdsp_fold"
+  | "method_spread";
 
 /**
  * The dimensionless selects. Fold spread is a ratio of the loosest to the
@@ -56,6 +75,10 @@ export const FOLD_SELECTS: ClaimSelect[] = [
   // The ChEMBL-vs-PDSP fold difference is a ratio too, rendered "1.33×", and
   // shares the bare-ratio parsing (drop notation, reject non-positive).
   "pdsp_fold",
+  // How far the *analyses* of the same data disagree, as opposed to how far
+  // the laboratories do. See lib/claims/method.ts — this is the NARPS
+  // quantity, and it is a ratio like the rest.
+  "method_spread",
 ];
 
 export function isFoldSelect(select: ClaimSelect): boolean {
@@ -75,6 +98,15 @@ export interface ParsedClaim {
   subject: string;
   object: string;
   scope: string;
+  /**
+   * The analysis this claim means, or null when it names none.
+   *
+   * Deliberately has **no default**, unlike `scope`. Where a cell exists under
+   * more than one analysis, a claim that leaves this out resolves broken. See
+   * lib/claims/method.ts for why, and for what happened to the one field set
+   * that made it optional.
+   */
+  method: string | null;
   select: ClaimSelect;
   expectedValue: number | null;
   expectedUnit: string | null;
@@ -117,6 +149,7 @@ const SELECTS: ClaimSelect[] = [
   "fold_spread_iqr",
   "censored_fraction",
   "pdsp_fold",
+  "method_spread",
 ];
 
 /** Pulls `{{claim:key}}` keys out of prose, in document order, deduplicated. */
@@ -254,6 +287,8 @@ export function parseBody(rawBody: string): ParsedBody {
         subject: fields.subject,
         object: fields.object,
         scope: (fields.scope ?? "all").toLowerCase(),
+        // No `?? "all"`. An absent method is absent, not a pooled one.
+        method: fields.method ? fields.method.trim() : null,
         select,
         expectedValue: value,
         expectedUnit,

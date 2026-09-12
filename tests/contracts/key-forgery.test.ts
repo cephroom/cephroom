@@ -144,7 +144,12 @@ describe("the node key is an access-audience key, and nothing more", () => {
     const nodeKey = await tokens.mintNodeKey({ sub: "s_lab", tier: "lab" });
     const key = await tokens.verifyAccessKey(nodeKey);
     expect(key?.sub).toBe("s_lab");
-    expect(key?.scp).toContain("serve:node");
+    expect(key?.scp).toContain("read:lab");
+    // Not `serve:node`. That scope left `scopesForTier` in cycle 3: it was
+    // granted to Lab alone, never checked anywhere, and its only effect was
+    // to imply that publishing is a paid feature — which Contract 2 says it
+    // is not. See tests/contracts/serving-is-free.test.ts.
+    expect(key?.scp).not.toContain("serve:node");
   });
 
   it("issues a serve key that announces but grants NO read access", async () => {

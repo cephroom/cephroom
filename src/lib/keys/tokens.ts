@@ -68,12 +68,23 @@ export interface RefreshKey {
   exp: number;
 }
 
+/**
+ * What a tier may do.
+ *
+ * Note what is *not* here: `serve:node`. Announcing is free at every tier, by
+ * contract — "the requirement is attribution, not payment" — and the signal
+ * endpoint has always accepted any valid key, so granting `serve:node` to Lab
+ * alone enforced nothing. It only advertised a paywall on publishing that
+ * does not exist, in the plan the Lab tier sells. The scope lives on the
+ * serve key and nowhere else; `tests/contracts/serving-is-free.test.ts` holds
+ * the line.
+ */
 export function scopesForTier(tier: Tier): Scope[] {
   const scopes: Scope[] = ["read:public"];
   if (tier === "member" || tier === "lab") {
     scopes.push("read:member", "write:propose");
   }
-  if (tier === "lab") scopes.push("read:lab", "serve:node");
+  if (tier === "lab") scopes.push("read:lab");
   return scopes;
 }
 

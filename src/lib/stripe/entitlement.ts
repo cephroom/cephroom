@@ -1,5 +1,5 @@
 import type { Tier } from "@/lib/access";
-import { tierFromSubscriptions } from "@/lib/access";
+import { governingSubscription, tierFromSubscriptions } from "@/lib/access";
 
 import { gateway } from "./gateway";
 
@@ -58,11 +58,11 @@ export async function entitlementForCustomer(
     })),
   );
 
-  // The subscription that is actually granting access, for display.
-  const governing =
-    subscriptions.find((subscription) => subscription.tier === tier) ??
-    subscriptions[0] ??
-    null;
+  // The subscription that is actually granting access, for display. Not
+  // simply the first at that tier: a customer who resubscribed after
+  // cancelling holds both, and describing the dead one tells a paying reader
+  // their subscription has ended.
+  const governing = governingSubscription(subscriptions, tier);
 
   return {
     tier,

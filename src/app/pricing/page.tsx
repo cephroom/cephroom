@@ -29,8 +29,16 @@ export default async function PricingPage({
           Plans
         </h1>
         <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
-          Membership pays for the writing and for running the broker.
-          It does not pay for hosting, because nothing is hosted here.
+          Membership pays for running the broker and building the reading
+          tools. It does not pay for hosting, because nothing is hosted here —
+          and it does not yet pay contributors, which is the part of this we
+          are least happy with and are saying out loud rather than implying
+          otherwise.
+        </p>
+        <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
+          Publishing is free and always will be. Running a node costs you
+          nothing here, at any tier, and we take no share of anything you
+          choose to charge for from your own machine.
         </p>
       </header>
 
@@ -89,9 +97,26 @@ export default async function PricingPage({
             to hold a payment relationship; we never copy it back.
           </Faq>
           <Faq q="Can I publish here?">
-            Anyone can, and it costs nothing: run a node and your work is
-            discoverable while you serve it. Lab exists for people who want to
-            read the long methodological columns and serve their own datasets.
+            Anyone signed in can, at any tier, including the free one. Run a
+            node and your work is discoverable for as long as you serve it.
+            Until cycle 3 the Lab plan listed serving among the things $29 a
+            month bought you; it never did, and the line is gone.
+          </Faq>
+          <Faq q="I cannot afford this.">
+            Take the reduced rate. It is the same membership at $36 a year, it
+            is there for students, people between posts, and anyone paying out
+            of their own pocket, and nobody is asked to prove anything —
+            proving would mean us keeping a record of who proved it.
+          </Faq>
+          <Faq q="Do contributors get paid?">
+            Not by us, not yet, and we would rather say so than let the
+            pricing imply otherwise. A contributor can charge from their own
+            node today, with their own payment relationship, and we take no
+            cut of it because the money never passes through here. A share of
+            membership going back to the people whose work you came to read is
+            the open question on this design — the honest obstacle is that
+            splitting revenue fairly means counting who read what, and that
+            ledger is the thing Contract 1 forbids.
           </Faq>
           <Faq q="What happens if the site goes down?">
             Nothing happens to anyone's work. It was never here. Contributors

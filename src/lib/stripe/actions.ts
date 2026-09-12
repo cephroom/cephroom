@@ -19,8 +19,15 @@ export async function startCheckout(formData: FormData) {
   const plan = String(formData.get("plan") ?? "") as PlanId;
   const interval = String(formData.get("interval") ?? "month") as BillingInterval;
   const from = String(formData.get("from") ?? "/account");
+  // The reduced rate is a price, not a tier. It is honoured only where the
+  // plan actually offers one, so a crafted form field cannot conjure a
+  // discount on a plan that has none — this is a public endpoint like every
+  // other server action.
+  const wantsReduced = String(formData.get("reduced") ?? "") === "1";
 
   if (!PLANS[plan]) throw new Error(`Unknown plan "${plan}".`);
+
+  const reduced = wantsReduced ? PLANS[plan].reduced : undefined;
 
   const viewer = await getViewer();
   if (!viewer.sub) {
@@ -32,9 +39,9 @@ export async function startCheckout(formData: FormData) {
   const session = await (await gateway()).createCheckoutSession({
     sub: viewer.sub,
     customerId: viewer.cus,
-    priceId: PLANS[plan].prices[interval].priceId,
+    priceId: reduced?.priceId ?? PLANS[plan].prices[interval].priceId,
     plan,
-    interval,
+    interval: reduced ? "year" : interval,
     // Through the re-stamp handler, because the key still says what it
     // said before the payment and a page cannot set a cookie while rendering.
     successUrl: `${baseUrl()}/api/auth/restamp?next=${encodeURIComponent("/account?checkout=success")}`,

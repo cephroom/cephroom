@@ -60,6 +60,38 @@ export function tierFromSubscriptions(
   }, "reader");
 }
 
+/**
+ * Which of a customer's subscriptions is the one to describe.
+ *
+ * A customer can hold several — an old one that lapsed, a new one just
+ * bought, a Member alongside a Lab. `tierFromSubscriptions` decides what they
+ * may *read*; this decides what the account page should *say*, and the two
+ * have to agree or the page contradicts itself.
+ *
+ * Preference order: a subscription at the granting tier that actually
+ * entitles, then any subscription at that tier, then anything at all. The
+ * middle rung matters — a reader whose only subscription has lapsed still
+ * needs to be told about it rather than shown an empty panel.
+ *
+ * The bug this replaces: `subscriptions.find(s => s.tier === tier)` returned
+ * whichever Stripe happened to list first, so a reader who resubscribed after
+ * cancelling was shown "Cancelled · This subscription has ended" while paying.
+ */
+export function governingSubscription<
+  T extends { status: string; tier: "member" | "lab" },
+>(subscriptions: T[], tier: Tier): T | null {
+  const atTier = subscriptions.filter(
+    (subscription) => subscription.tier === tier,
+  );
+  return (
+    atTier.find((subscription) => isEntitling(subscription.status)) ??
+    atTier[0] ??
+    subscriptions.find((subscription) => isEntitling(subscription.status)) ??
+    subscriptions[0] ??
+    null
+  );
+}
+
 export const TIER_LABEL: Record<Tier, string> = {
   reader: "Reader",
   member: "Member",

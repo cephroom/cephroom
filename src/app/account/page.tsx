@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { SimulatedBillingControls } from "@/components/simulated-billing-controls";
 import { ServeKey } from "@/components/serve-key";
 import { SubmitButton } from "@/components/submit-button";
-import { TIER_LABEL } from "@/lib/access";
+import { governingSubscription, TIER_LABEL } from "@/lib/access";
 import { getViewer } from "@/lib/auth/session";
 import {
   cancelSubscription,
@@ -13,7 +13,7 @@ import {
   resumeSubscription,
 } from "@/lib/stripe/actions";
 import { gateway, usingRealStripe } from "@/lib/stripe/gateway";
-import { formatPrice, PLANS } from "@/lib/stripe/plans";
+import { formatPrice, PLANS, priceForId } from "@/lib/stripe/plans";
 import type { SubscriptionView } from "@/lib/stripe/types";
 
 export const dynamic = "force-dynamic";
@@ -77,13 +77,14 @@ export default async function AccountPage({
     }
   }
 
-  const governing =
-    subscriptions.find((subscription) => subscription.tier === fresh.tier) ??
-    subscriptions[0] ??
-    null;
+  const governing = governingSubscription(subscriptions, fresh.tier);
   const status = governing ? STATUS_COPY[governing.status] : null;
+  // By price id. Rebuilding from plan + interval reports the list price
+  // rather than the one they are on, so a reduced-rate subscriber was told
+  // they pay $9 a month.
   const price = governing
-    ? PLANS[governing.tier].prices[governing.interval]
+    ? (priceForId(governing.priceId)?.price ??
+      PLANS[governing.tier].prices[governing.interval])
     : null;
 
   return (

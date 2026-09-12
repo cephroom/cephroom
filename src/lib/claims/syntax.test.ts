@@ -204,3 +204,64 @@ describe("formatValue", () => {
     expect(formatValue(Number.NaN)).toBe("—");
   });
 });
+
+describe("the method line", () => {
+  const withMethod = [
+    "```claim tcnet-online",
+    "dataset: mi-decoders-2025",
+    "metric: accuracy_pct",
+    "subject: EEG-TCNet",
+    "object: four-class-motor-imagery",
+    "method: online",
+    "value: 70.0 %",
+    "tolerance: 2%",
+    "```",
+  ].join("\n");
+
+  it("parses a method when one is given", () => {
+    const { claims } = parseBody(withMethod);
+    expect(claims[0].method).toBe("online");
+  });
+
+  it("leaves method null when the line is absent", () => {
+    // Emphatically not "all". An absent analysis is absent; the resolver
+    // decides what that means, and for a multi-analysis cell it means broken.
+    const { claims } = parseBody(withMethod.replace("method: online\n", ""));
+    expect(claims[0].method).toBeNull();
+  });
+
+  it("trims but does not lowercase the method name", () => {
+    // Matching is case-insensitive at resolution time; the name is preserved
+    // as written so an error message can quote the author back to themselves.
+    const { claims } = parseBody(
+      withMethod.replace("method: online", "method:   Online  "),
+    );
+    expect(claims[0].method).toBe("Online");
+  });
+
+  it("accepts method_spread as a select", () => {
+    const { claims, errors } = parseBody(
+      withMethod
+        .replace("method: online\n", "")
+        .replace("value: 70.0 %", "select: method_spread\nvalue: 1.18x"),
+    );
+    // The fixture is a bare block with no prose, so the only complaint is the
+    // unreferenced key — nothing about the select itself.
+    expect(errors.map((error) => error.message)).toEqual([
+      'Claim "tcnet-online" is defined but never referenced in the prose.',
+    ]);
+    expect(claims[0].select).toBe("method_spread");
+    // A ratio, so the fold parsing applies: no unit, notation dropped.
+    expect(claims[0].expectedValue).toBeCloseTo(1.18, 6);
+    expect(claims[0].expectedUnit).toBeNull();
+  });
+
+  it("rejects a non-positive method spread, like the other ratios", () => {
+    const { claims } = parseBody(
+      withMethod
+        .replace("method: online\n", "")
+        .replace("value: 70.0 %", "select: method_spread\nvalue: -2x"),
+    );
+    expect(claims[0].expectedValue).toBeNull();
+  });
+});

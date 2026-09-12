@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { isEntitling, tierAllows, tierFromSubscriptions } from "./access";
+import {
+  governingSubscription,
+  isEntitling,
+  tierAllows,
+  tierFromSubscriptions,
+} from "./access";
 
 const sub = (status: string, tier: "member" | "lab" = "member") => ({
   status,
@@ -69,5 +74,57 @@ describe("tierAllows", () => {
   it("gates lab columns above member", () => {
     expect(tierAllows("member", "lab")).toBe(false);
     expect(tierAllows("lab", "lab")).toBe(true);
+  });
+});
+
+/**
+ * Which subscription is the one talking.
+ *
+ * Found by taking the reduced rate through checkout as a reader who had
+ * cancelled a Member subscription earlier. The customer then had two Member
+ * subscriptions — one `canceled`, one `active` — and the account page picked
+ * the first that matched the tier, which was the dead one. A paying
+ * subscriber was shown "Cancelled · This subscription has ended" directly
+ * above a live period end date.
+ *
+ * The rule: among subscriptions at the tier that is actually granting access,
+ * one that entitles beats one that does not.
+ */
+describe("governingSubscription", () => {
+  const cancelled = { status: "canceled", tier: "member" as const, id: "dead" };
+  const active = { status: "active", tier: "member" as const, id: "live" };
+  const lab = { status: "active", tier: "lab" as const, id: "lab" };
+
+  it("prefers a live subscription over a dead one at the same tier", () => {
+    expect(governingSubscription([cancelled, active], "member")?.id).toBe(
+      "live",
+    );
+  });
+
+  it("does not depend on the order Stripe listed them in", () => {
+    expect(governingSubscription([active, cancelled], "member")?.id).toBe(
+      "live",
+    );
+  });
+
+  it("picks the subscription at the tier that is granting access", () => {
+    expect(governingSubscription([active, lab], "lab")?.id).toBe("lab");
+  });
+
+  it("falls back to whatever exists when nothing entitles", () => {
+    // A reader whose only subscription has lapsed still needs the account
+    // page to say something about it, so it is shown rather than hidden.
+    expect(governingSubscription([cancelled], "reader")?.id).toBe("dead");
+  });
+
+  it("is null when there is nothing at all", () => {
+    expect(governingSubscription([], "reader")).toBeNull();
+  });
+
+  it("treats past_due as live, because it keeps access", () => {
+    const pastDue = { status: "past_due", tier: "member" as const, id: "retry" };
+    expect(governingSubscription([cancelled, pastDue], "member")?.id).toBe(
+      "retry",
+    );
   });
 });
