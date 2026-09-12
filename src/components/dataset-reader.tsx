@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { DatasetMatrix, type MatrixCell } from "@/components/dataset-matrix";
+import { linkifyNote } from "@/lib/linkify";
 import { formatValue } from "@/lib/claims/syntax";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { servingMismatch } from "@/lib/signaling/serving";
@@ -324,7 +325,23 @@ export function DatasetReader({
                   aria-hidden
                   className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-accent"
                 />
-                {note}
+                <span>
+                  {linkifyNote(note).map((seg, i) =>
+                    seg.kind === "link" ? (
+                      <a
+                        key={i}
+                        href={seg.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent underline underline-offset-2 hover:text-accent-hover"
+                      >
+                        {seg.text}
+                      </a>
+                    ) : (
+                      <span key={i}>{seg.text}</span>
+                    ),
+                  )}
+                </span>
               </li>
             ))}
           </ul>
