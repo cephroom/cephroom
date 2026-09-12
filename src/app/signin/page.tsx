@@ -55,7 +55,7 @@ export default async function SignInPage({
               <a
                 key={provider.id}
                 href={`/api/auth/start?provider=${provider.id}&next=${encodeURIComponent(next)}`}
-                className="flex w-full items-center justify-center gap-2.5 rounded-md border border-rule-strong bg-paper-raised px-4 py-2.5 text-[0.88rem] font-medium text-ink transition-colors hover:border-ink-faint"
+                className="flex w-full items-center justify-center gap-2.5 rounded-md border border-field-border bg-paper-raised px-4 py-2.5 text-[0.88rem] font-medium text-ink transition-colors hover:border-ink-faint"
               >
                 {provider.label}
               </a>

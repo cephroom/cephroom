@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DistributedFigure } from "@/components/brand";
+
 export const metadata: Metadata = {
   title: "How it works",
   description:
@@ -65,7 +67,8 @@ export default function HowItWorksPage() {
 
       <div className="prose mt-10">
         <p>
-          The <code>value:</code> line is never displayed. It exists so that
+          The <code>value:</code>{" "}
+          line is never displayed. It exists so that
           something can be compared against — and the comparison happens on
           your machine, against a dataset fetched from whoever is serving it,
           a few hundred milliseconds before you read the sentence.
@@ -73,12 +76,14 @@ export default function HowItWorksPage() {
 
         <h3>What a claim can assert</h3>
         <p>
-          A claim does not have to be a median. The <code>select:</code> line
+          A claim does not have to be a median. The <code>select:</code>{" "}
+          line
           chooses what the cell is asked for:
         </p>
         <ul>
           <li>
-            <code>value</code> (the default) — the median the query resolves
+            <code>value</code>{" "}
+            (the default) — the median the query resolves
             to, in the metric&rsquo;s own unit.
           </li>
           <li>
@@ -98,26 +103,34 @@ export default function HowItWorksPage() {
           </li>
           <li>
             <code>censored_fraction</code> — what share of the cell&rsquo;s
-            measurements are censored ceilings (a <code>&gt;</code> bound)
-            rather than real values. Written as <code>0.07</code> or{" "}
+            measurements are censored ceilings (a <code>&gt;</code>{" "}
+            bound)
+            rather than real values. Written as <code>0.07</code>{" "}
+            or{" "}
             <code>7%</code>. A claim about how much of the median rests on true
             data.
           </li>
           <li>
-            <code>pdsp_fold</code> — how far this number sits from the
-            <em> independent</em> PDSP Ki Database&rsquo;s median for the same
-            target and compound, as a fold ratio. Near <code>1×</code> means a
+            <code>pdsp_fold</code> — how far this number sits from the{" "}
+            <em>independent</em>{" "}
+            PDSP Ki Database&rsquo;s median for the same
+            target and compound, as a fold ratio. Near <code>1×</code>{" "}
+            means a
             second, separate database reproduces the number — the strongest
             check there is.
           </li>
         </ul>
         <p>
           A fold value is a bare ratio — <code>5.07x</code>,{" "}
-          <code>5.07-fold</code> and <code>5.07</code> are the same assertion —
+          <code>5.07-fold</code>{" "}
+          and <code>5.07</code>{" "}
+          are the same assertion —
           and renders as <code>5.07×</code>. Where a cell has too few
           measurements to have an interquartile range at all, an{" "}
-          <code>fold_spread_iqr</code> claim on it resolves to{" "}
-          <em>broken</em> rather than borrowing a looser number: you cannot
+          <code>fold_spread_iqr</code>{" "}
+          claim on it resolves to{" "}
+          <em>broken</em>{" "}
+          rather than borrowing a looser number: you cannot
           honestly assert agreement you do not have the data to measure.
         </p>
       </div>
@@ -136,8 +149,10 @@ export default function HowItWorksPage() {
           The query did not resolve — the cell is gone, the unit no longer
           matches, or nobody is serving the dataset it needs. A unit mismatch
           is deliberately broken rather than drifted:{" "}
-          <code className="font-mono">1.55 nM</code> against{" "}
-          <code className="font-mono">1.55 µM</code> is not a 0% drift, it is a
+          <code className="font-mono">1.55 nM</code>{" "}
+          against{" "}
+          <code className="font-mono">1.55 µM</code>{" "}
+          is not a 0% drift, it is a
           question nothing here is allowed to answer by guessing a conversion.
         </Verdict>
       </div>
@@ -167,7 +182,8 @@ export default function HowItWorksPage() {
             anything.
           </li>
           <li>
-            <strong>Keys cannot be revoked.</strong> Revocation needs a
+            <strong>Keys cannot be revoked.</strong>{" "}
+            Revocation needs a
             blocklist and a blocklist is state. They last fifteen minutes and
             renew quietly, so a cancellation reaches you within fifteen
             minutes. A stolen renewal key is good for seven days and there is
@@ -193,10 +209,23 @@ export default function HowItWorksPage() {
           copy, so there is nothing for it to cache, censor, or keep serving
           after the author has stopped.
         </p>
+
+        <figure className="not-prose my-9 rounded-xl border border-rule bg-paper-sunken px-5 py-7">
+          <DistributedFigure className="mx-auto h-44 w-44 text-ink-faint" />
+          <figcaption className="mx-auto mt-5 max-w-[34rem] text-center text-[0.85rem] leading-relaxed text-ink-muted">
+            An octopus keeps about two thirds of its half-billion neurons in
+            its arms rather than its brain; an arm tastes and decides without
+            asking. That is the shape of this platform, and the reason for its
+            name. Each node out there holds the columns, the datasets and the
+            evidence. The ring in the middle holds a lease and an address —
+            drawn hollow because there is nothing inside it.
+          </figcaption>
+        </figure>
         <p>What follows:</p>
         <ul>
           <li>
-            <strong>There is no archive.</strong> You cannot cite a column and
+            <strong>There is no archive.</strong>{" "}
+            You cannot cite a column and
             expect it next year. If nobody will serve it, nobody is standing
             behind it.
           </li>
@@ -262,7 +291,7 @@ export default function HowItWorksPage() {
         </p>
         <Link
           href="/contribute"
-          className="mt-4 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-white transition-colors hover:bg-accent-hover"
+          className="mt-4 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
         >
           Run a node
         </Link>

@@ -61,7 +61,7 @@ export function ServeKey({ sub }: { sub: string }) {
           type="button"
           onClick={reveal}
           disabled={state.kind === "loading"}
-          className="mt-3 rounded-md border border-rule-strong px-4 py-2 text-[0.85rem] font-medium transition-colors hover:border-ink-faint disabled:opacity-60"
+          className="mt-3 rounded-md border border-field-border px-4 py-2 text-[0.85rem] font-medium transition-colors hover:border-ink-faint disabled:opacity-60"
         >
           {state.kind === "loading" ? "Issuing…" : "Reveal a serve key"}
         </button>
@@ -82,7 +82,7 @@ export function ServeKey({ sub }: { sub: string }) {
             <button
               type="button"
               onClick={() => copy(state.key)}
-              className="shrink-0 rounded-md border border-rule-strong px-3 py-2 text-[0.8rem] font-medium transition-colors hover:border-ink-faint"
+              className="shrink-0 rounded-md border border-field-border px-3 py-2 text-[0.8rem] font-medium transition-colors hover:border-ink-faint"
             >
               {copied ? "Copied" : "Copy"}
             </button>

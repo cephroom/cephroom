@@ -84,9 +84,9 @@ export function KeyMenu({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex items-center gap-2 rounded-full border border-rule py-1 pl-1 pr-2.5 transition-colors hover:border-rule-strong"
+        className="flex items-center gap-2 rounded-full border border-rule py-1 pl-1 pr-2.5 transition-colors hover:border-field-border"
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[0.72rem] font-semibold text-white">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[0.72rem] font-semibold text-accent-ink">
           {name.charAt(0).toUpperCase()}
         </span>
         <span className="hidden text-[0.8rem] text-ink-muted sm:block">

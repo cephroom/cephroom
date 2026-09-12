@@ -4,9 +4,9 @@ import { useFormStatus } from "react-dom";
 
 const VARIANT = {
   primary:
-    "bg-accent text-white hover:bg-accent-hover border border-transparent",
+    "bg-accent text-accent-ink hover:bg-accent-hover border border-transparent",
   outline:
-    "border border-rule-strong text-ink hover:border-ink-faint bg-transparent",
+    "border border-field-border text-ink hover:border-ink-faint bg-transparent",
   quiet: "border border-transparent text-ink-muted hover:text-ink bg-transparent",
   danger: "border border-broken/40 text-broken hover:bg-broken-wash",
 } as const;

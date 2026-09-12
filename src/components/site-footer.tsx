@@ -34,7 +34,7 @@ export function SiteFooter() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <CephroomMark className="h-5 w-5 text-accent" />
+              <CephroomMark duotone className="h-5 w-5 text-accent" />
               <span className="font-serif text-lg font-semibold tracking-[-0.02em]">
                 Cephroom
               </span>

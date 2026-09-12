@@ -91,7 +91,7 @@ export default async function SimulatedCheckoutPage({
             <form action={pay}>
               <button
                 type="submit"
-                className="w-full rounded-md bg-accent px-4 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover"
+                className="w-full rounded-md bg-accent px-4 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
               >
                 Pay {formatPrice(price.unitAmount)}
               </button>

@@ -175,7 +175,7 @@ export function ColumnReader({
         </p>
         <Link
           href="/read"
-          className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover"
+          className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
         >
           See what is online
         </Link>
@@ -307,7 +307,7 @@ export function ColumnReader({
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
                 href={`${base}/propose`}
-                className="rounded-md border border-rule-strong px-4 py-2 text-[0.86rem] font-medium transition-colors hover:border-ink-faint"
+                className="rounded-md border border-field-border px-4 py-2 text-[0.86rem] font-medium transition-colors hover:border-ink-faint"
               >
                 Propose an edit
               </Link>

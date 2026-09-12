@@ -110,13 +110,13 @@ function Offline({ sub, id }: { sub: string; id: string }) {
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
           href="/read"
-          className="rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover"
+          className="rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
         >
           See what is online
         </Link>
         <Link
           href="/how-it-works"
-          className="rounded-md border border-rule-strong px-5 py-2.5 text-[0.9rem] font-medium transition-colors hover:border-ink-faint"
+          className="rounded-md border border-field-border px-5 py-2.5 text-[0.9rem] font-medium transition-colors hover:border-ink-faint"
         >
           Why it works this way
         </Link>

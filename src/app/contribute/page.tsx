@@ -48,8 +48,10 @@ npm run node:serve                       # serves the demo content`}
         <p>
           A column is a Markdown file with front matter (a <code>slug</code>,{" "}
           <code>title</code>, and <code>access</code>). Put your columns in a
-          directory and point the node at it. That directory <em>is</em> your
-          manifest — the node serves every <code>.md</code> file it finds.
+          directory and point the node at it. That directory <em>is</em>{" "}
+          your
+          manifest — the node serves every <code>.md</code>{" "}
+          file it finds.
         </p>
       </div>
 
@@ -63,7 +65,8 @@ npm run node:serve                       # serves the demo content`}
       <div className="prose mt-8">
         <p>
           The node announces what it serves, then heartbeats to keep the lease
-          alive. On <code>Ctrl-C</code> it withdraws, and the platform forgets
+          alive. On <code>Ctrl-C</code>{" "}
+          it withdraws, and the platform forgets
           it immediately — there is nothing to clean up, because the
           announcement was the only record.
         </p>
@@ -75,7 +78,8 @@ npm run node:serve                       # serves the demo content`}
           which is fine for trying it out. To serve as <em>you</em> — so your
           work is namespaced to your subject and nobody else can announce under
           it — sign in, and set the key you are issued as{" "}
-          <code>NODE_KEY</code> in the node&rsquo;s environment.
+          <code>NODE_KEY</code>{" "}
+          in the node&rsquo;s environment.
         </p>
 
         <h2>What the platform learns</h2>
@@ -111,16 +115,19 @@ npm run node:serve                       # serves the demo content`}
         <h2>What this costs you</h2>
         <ul>
           <li>
-            <strong>No archive.</strong> Readers cannot cite your column and
+            <strong>No archive.</strong>{" "}
+            Readers cannot cite your column and
             expect it next year unless you are still serving it.
           </li>
           <li>
-            <strong>No reach while offline.</strong> A closed laptop is an
+            <strong>No reach while offline.</strong>{" "}
+            A closed laptop is an
             unreachable column, and the page a reader lands on cannot even name
             it.
           </li>
           <li>
-            <strong>You are the host.</strong> Bandwidth, uptime and
+            <strong>You are the host.</strong>{" "}
+            Bandwidth, uptime and
             reachability are yours. The default address is localhost, which is
             the honest starting point: a tunnel or a public address is a
             deliberate step you take.

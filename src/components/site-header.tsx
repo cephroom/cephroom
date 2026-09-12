@@ -61,7 +61,7 @@ export async function SiteHeader() {
               </Link>
               <Link
                 href="/pricing"
-                className="rounded-md bg-accent px-3.5 py-1.5 text-[0.855rem] font-medium text-white transition-colors hover:bg-accent-hover"
+                className="rounded-md bg-accent px-3.5 py-1.5 text-[0.855rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
               >
                 Subscribe
               </Link>

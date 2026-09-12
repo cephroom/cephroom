@@ -8,89 +8,168 @@
 /* ------------------------------------------------------------------ *
  * Cephroom design tokens
  *
- * An editorial surface, not an app chrome: warm paper, high-contrast ink,
- * one evergreen accent, and a dedicated four-colour verdict scale that is
- * the only place saturated colour is allowed to appear.
+ * Orange primary, purple counterpart. Both are real cephalopod chromatophore
+ * pigments, and together they read as a neural activation map rather than as
+ * a developer tool (orange on black) or an ecology site (orange on green) —
+ * which matters, because this is a publication about nervous systems.
+ *
+ * Rules this file exists to enforce:
+ *
+ * 1. Components name a role, never a colour. `bg-accent`, not `bg-orange-600`;
+ *    `text-accent-ink`, not `text-white`. The hex lives here and nowhere else.
+ *    (`text-white` on `bg-accent` was the previous leak, and it was not
+ *    cosmetic: in dark mode it rendered white on a bright accent at 2.3:1,
+ *    failing AA on every primary button on the site.)
+ *
+ * 2. Every text-on-background pair below clears WCAG AA — 4.5:1 for body
+ *    text — on every surface it can land on: paper, raised, sunken, and its
+ *    own wash. Measured, not eyeballed; the numbers are in the comments and
+ *    `tests/contrast.test.ts` recomputes them so a future edit cannot quietly
+ *    drop one below the line.
+ *
+ * 3. The four verdict colours are a separate scale from the brand, and are
+ *    kept off the brand's hue on purpose. Orange is now the accent, so
+ *    `drifted` was pulled toward gold and `broken` toward crimson; a reader
+ *    must never have to decide whether an orange thing is a warning or a
+ *    button. (Hue separation is the belt; the braces are that every verdict
+ *    is also carried as a word, never by colour alone.)
  * ------------------------------------------------------------------ */
 
 :root {
   color-scheme: light;
 
+  /* Surfaces. Warm paper — an orange accent on a blue-grey ground looks
+     accidental, on a warm one it looks chosen. */
   --paper: #fbfaf6;
   --paper-raised: #ffffff;
-  --paper-sunken: #f2f0e9;
-  --ink: #16181a;
-  --ink-muted: #5b6067;
-  --ink-faint: #8b9099;
-  --rule: #e2ded2;
-  --rule-strong: #cdc7b6;
+  --paper-sunken: #f4f1ea;
 
-  --accent: #0f5c4a;
-  --accent-hover: #0b483a;
-  --accent-wash: #e6f0ec;
+  /* Text. ink-faint is the dimmest tier that still clears AA on all three
+     surfaces (4.66:1 on sunken, its worst case). */
+  --ink: #16181a;        /* 17.0 on paper */
+  --ink-muted: #55585e;  /*  6.8 on paper */
+  --ink-faint: #696c73;  /*  5.0 on paper, 4.7 on sunken */
 
-  --verified: #16704a;
-  --verified-wash: #e3f1e9;
-  --drifted: #9a6206;
-  --drifted-wash: #faefd9;
-  --broken: #a02a24;
-  --broken-wash: #f8e5e3;
-  --stale: #5b6067;
-  --stale-wash: #eceae4;
+  --rule: #e5e0d4;
+  --rule-strong: #cfc8b7;
+  /* The border of an interactive control, which WCAG 1.4.11 holds to 3:1
+     against its background — a rule --rule-strong does not meet (1.6:1) and
+     should not have to: a table divider is decoration, a text field's edge
+     is the only thing telling you where to click. They were the same token,
+     which is how the search box ended up outlined at 1.6:1. */
+  --field-border: #8e8676;   /* 3.45 on paper, 3.61 on raised */
+
+  /* Primary — orange. `accent` is the text/interactive value and clears AA
+     on paper (5.2), sunken (4.8) and its own wash (4.7); `accent-bright` is
+     for graphics only, where 3:1 is the bar. */
+  --accent: #ba4105;
+  --accent-hover: #9c3604;
+  --accent-bright: #e8590c;
+  --accent-wash: #fbeade;
+  --accent-ink: #ffffff;  /* on an accent fill: 5.5 */
+
+  /* Counterpart — purple. Carries the distributed half of the idea: the
+     ganglia in the mark, dataset provenance, secondary emphasis. */
+  --counter: #6b3fa0;
+  --counter-hover: #572f88;
+  --counter-bright: #7c3aed;
+  --counter-wash: #f0e8fb;
+  --counter-ink: #ffffff;  /* on a counter fill: 7.4 */
+
+  /* Verdicts. Held off the brand hue: gold, not amber; crimson, not red. */
+  --verified: #0f6b45;
+  --verified-wash: #e2f0e8;
+  --drifted: #7d6100;
+  --drifted-wash: #f7efd6;
+  --broken: #a8123c;
+  --broken-wash: #fce3ea;
+  --stale: #55585e;
+  --stale-wash: #eceae3;
+
+  --focus: var(--accent);
 }
 
+/* The dark palette, defined once and applied from two places: the system
+   preference (unless the reader has explicitly chosen light) and the explicit
+   choice. Neither block may be the only definition of a colour. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
 
-    --paper: #121316;
-    --paper-raised: #1a1c20;
-    --paper-sunken: #0d0e10;
-    --ink: #e9e6df;
-    --ink-muted: #a0a5ad;
-    --ink-faint: #71767e;
-    --rule: #2a2d33;
-    --rule-strong: #3d4149;
+    --paper: #141013;
+    --paper-raised: #1d181c;
+    --paper-sunken: #0e0b0d;
 
-    --accent: #4bbd9b;
-    --accent-hover: #6ad0b1;
-    --accent-wash: #14302a;
+    --ink: #ece6e0;
+    --ink-muted: #a5a0a8;
+    --ink-faint: #8a848c;
 
-    --verified: #54c08d;
-    --verified-wash: #14301f;
-    --drifted: #d9a441;
-    --drifted-wash: #33280f;
-    --broken: #e2726a;
-    --broken-wash: #351b1a;
-    --stale: #9aa0a8;
-    --stale-wash: #212429;
+    --rule: #2e282e;
+    --rule-strong: #443c44;
+    --field-border: #706870;   /* 3.51 on paper, 3.25 on raised */
+
+    --accent: #fb923c;
+    --accent-hover: #ffaa63;
+    --accent-bright: #ff8b4c;
+    --accent-wash: #3a1d09;
+    --accent-ink: #1a1206;  /* dark ink on a bright fill: 8.2 */
+
+    --counter: #b78cf5;
+    --counter-hover: #cba9f9;
+    --counter-bright: #c4a2f8;
+    --counter-wash: #291a3d;
+    --counter-ink: #150e20;  /* 7.6 */
+
+    --verified: #5ec99a;
+    --verified-wash: #12301f;
+    --drifted: #d8c24e;
+    --drifted-wash: #2f2a0d;
+    --broken: #f4849b;
+    --broken-wash: #3a1622;
+    --stale: #a5a0a8;
+    --stale-wash: #221d22;
+
+    --focus: var(--accent);
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --paper: #121316;
-  --paper-raised: #1a1c20;
-  --paper-sunken: #0d0e10;
-  --ink: #e9e6df;
-  --ink-muted: #a0a5ad;
-  --ink-faint: #71767e;
-  --rule: #2a2d33;
-  --rule-strong: #3d4149;
+  --paper: #141013;
+  --paper-raised: #1d181c;
+  --paper-sunken: #0e0b0d;
 
-  --accent: #4bbd9b;
-  --accent-hover: #6ad0b1;
-  --accent-wash: #14302a;
+  --ink: #ece6e0;
+  --ink-muted: #a5a0a8;
+  --ink-faint: #8a848c;
 
-  --verified: #54c08d;
-  --verified-wash: #14301f;
-  --drifted: #d9a441;
-  --drifted-wash: #33280f;
-  --broken: #e2726a;
-  --broken-wash: #351b1a;
-  --stale: #9aa0a8;
-  --stale-wash: #212429;
+  --rule: #2e282e;
+  --rule-strong: #443c44;
+  --field-border: #706870;
+
+  --accent: #fb923c;
+  --accent-hover: #ffaa63;
+  --accent-bright: #ff8b4c;
+  --accent-wash: #3a1d09;
+  --accent-ink: #1a1206;
+
+  --counter: #b78cf5;
+  --counter-hover: #cba9f9;
+  --counter-bright: #c4a2f8;
+  --counter-wash: #291a3d;
+  --counter-ink: #150e20;
+
+  --verified: #5ec99a;
+  --verified-wash: #12301f;
+  --drifted: #d8c24e;
+  --drifted-wash: #2f2a0d;
+  --broken: #f4849b;
+  --broken-wash: #3a1622;
+  --stale: #a5a0a8;
+  --stale-wash: #221d22;
+
+  --focus: var(--accent);
 }
 
 @theme inline {
@@ -102,9 +181,20 @@
   --color-ink-faint: var(--ink-faint);
   --color-rule: var(--rule);
   --color-rule-strong: var(--rule-strong);
+  --color-field-border: var(--field-border);
+
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-bright: var(--accent-bright);
   --color-accent-wash: var(--accent-wash);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-counter: var(--counter);
+  --color-counter-hover: var(--counter-hover);
+  --color-counter-bright: var(--counter-bright);
+  --color-counter-wash: var(--counter-wash);
+  --color-counter-ink: var(--counter-ink);
+
   --color-verified: var(--verified);
   --color-verified-wash: var(--verified-wash);
   --color-drifted: var(--drifted);
@@ -137,7 +227,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
   border-radius: 2px;
 }

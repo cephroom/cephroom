@@ -151,7 +151,7 @@ export default async function AccountPage({
           {fresh.tier === "reader" || !governing ? (
             <Link
               href="/pricing"
-              className="rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-white transition-colors hover:bg-accent-hover"
+              className="rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
             >
               Choose a plan
             </Link>

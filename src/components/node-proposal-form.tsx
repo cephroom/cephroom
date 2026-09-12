@@ -123,7 +123,7 @@ export function NodeProposalForm({
         </p>
         <Link
           href="/pricing"
-          className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-white transition-colors hover:bg-accent-hover"
+          className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
         >
           See plans
         </Link>
@@ -145,7 +145,7 @@ export function NodeProposalForm({
         <p className="mt-2 font-mono text-[0.76rem] text-ink-faint">{state.id}</p>
         <Link
           href={`/read/${sub}/${columnId}/proposals`}
-          className="mt-5 inline-block rounded-md border border-rule-strong px-4 py-2 text-[0.88rem] font-medium transition-colors hover:border-ink-faint"
+          className="mt-5 inline-block rounded-md border border-field-border px-4 py-2 text-[0.88rem] font-medium transition-colors hover:border-ink-faint"
         >
           See proposals on this column
         </Link>
@@ -247,7 +247,7 @@ export function NodeProposalForm({
       <button
         type="submit"
         disabled={!changed || state.kind === "sending"}
-        className="rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+        className="rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-50"
       >
         {state.kind === "sending" ? "Sending…" : "Send to the author"}
       </button>
@@ -256,7 +256,7 @@ export function NodeProposalForm({
 }
 
 const INPUT =
-  "w-full rounded-md border border-rule-strong bg-paper-raised px-3 py-2 text-[0.9rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent";
+  "w-full rounded-md border border-field-border bg-paper-raised px-3 py-2 text-[0.9rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent";
 
 function Tab({
   active,
@@ -273,7 +273,7 @@ function Tab({
       onClick={onClick}
       aria-pressed={active}
       className={`rounded-md px-3.5 py-1 text-[0.83rem] font-medium transition-colors ${
-        active ? "bg-accent text-white" : "text-ink-muted hover:text-ink"
+        active ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
       }`}
     >
       {children}

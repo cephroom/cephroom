@@ -43,7 +43,7 @@ export default async function ProposalsPage({
         </p>
         <Link
           href="/read"
-          className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover"
+          className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
         >
           See what is online
         </Link>
@@ -72,7 +72,7 @@ export default async function ProposalsPage({
         </div>
         <Link
           href={`/read/${sub}/${id}/propose`}
-          className="shrink-0 rounded-md bg-accent px-4 py-2 text-[0.86rem] font-medium text-white transition-colors hover:bg-accent-hover"
+          className="shrink-0 rounded-md bg-accent px-4 py-2 text-[0.86rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
         >
           Propose an edit
         </Link>

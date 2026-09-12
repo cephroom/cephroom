@@ -40,13 +40,13 @@ export default async function HomePage() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
                 href="/read"
-                className="rounded-md bg-accent px-5 py-2.5 text-[0.92rem] font-medium text-white transition-colors hover:bg-accent-hover"
+                className="rounded-md bg-accent px-5 py-2.5 text-[0.92rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
               >
                 {online.length > 0 ? "Read what is online" : "See what is online"}
               </Link>
               <Link
                 href="/how-it-works"
-                className="rounded-md border border-rule-strong px-5 py-2.5 text-[0.92rem] font-medium text-ink transition-colors hover:border-ink-faint"
+                className="rounded-md border border-field-border px-5 py-2.5 text-[0.92rem] font-medium text-ink transition-colors hover:border-ink-faint"
               >
                 How it works
               </Link>
@@ -196,7 +196,7 @@ tolerance: 10%
               </p>
               <Link
                 href="/contribute"
-                className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover"
+                className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
               >
                 Run a node
               </Link>

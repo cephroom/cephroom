@@ -252,7 +252,8 @@ export function DatasetReader({
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Callout label={`${coverage.n_censored_only_cells} censored-only cells`}>
               Reported separately and never folded into the empty count. A
-              result of <code className="font-mono">&gt;10000 nM</code> is a
+              result of <code className="font-mono">&gt;10000 nM</code>{" "}
+              is a
               measurement, and for working out what a compound does <em>not</em>{" "}
               hit it is the most useful kind of data point there is.
             </Callout>
@@ -281,8 +282,8 @@ export function DatasetReader({
               aria-pressed={index === selected}
               className={`rounded-md border px-3 py-1.5 text-[0.83rem] font-medium transition-colors ${
                 index === selected
-                  ? "border-accent bg-accent text-white"
-                  : "border-rule text-ink-muted hover:border-rule-strong hover:text-ink"
+                  ? "border-accent bg-accent text-accent-ink"
+                  : "border-rule text-ink-muted hover:border-field-border hover:text-ink"
               }`}
             >
               {option.label}
@@ -313,7 +314,7 @@ export function DatasetReader({
             </p>
             <Link
               href="/pricing"
-              className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-white transition-colors hover:bg-accent-hover"
+              className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
             >
               See plans — from $9/month
             </Link>

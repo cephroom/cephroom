@@ -62,7 +62,7 @@ export function Paywall({
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             href={`/pricing?from=${encodeURIComponent(returnTo)}`}
-            className="rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover"
+            className="rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
           >
             {needsUpgrade
               ? `Upgrade to ${REQUIRED_LABEL[access]}`

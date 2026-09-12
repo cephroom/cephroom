@@ -48,11 +48,11 @@ export default async function ReadPage({
             defaultValue={q}
             placeholder="Search what is online"
             aria-label="Search"
-            className="w-full rounded-md border border-rule-strong bg-paper-raised px-3 py-2 text-[0.9rem] outline-none transition-colors placeholder:text-ink-faint focus:border-accent"
+            className="w-full rounded-md border border-field-border bg-paper-raised px-3 py-2 text-[0.9rem] outline-none transition-colors placeholder:text-ink-faint focus:border-accent"
           />
           <button
             type="submit"
-            className="shrink-0 rounded-md bg-accent px-4 py-2 text-[0.88rem] font-medium text-white transition-colors hover:bg-accent-hover"
+            className="shrink-0 rounded-md bg-accent px-4 py-2 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
           >
             Search
           </button>
@@ -185,7 +185,7 @@ function Empty({ query }: { query: string }) {
       </p>
       <Link
         href="/contribute"
-        className="mt-5 inline-block rounded-md border border-rule-strong px-4 py-2 text-[0.88rem] font-medium transition-colors hover:border-ink-faint"
+        className="mt-5 inline-block rounded-md border border-field-border px-4 py-2 text-[0.88rem] font-medium transition-colors hover:border-ink-faint"
       >
         Run a node
       </Link>

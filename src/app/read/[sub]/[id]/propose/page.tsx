@@ -37,7 +37,7 @@ export default async function ProposePage({
         </p>
         <Link
           href="/read"
-          className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white transition-colors hover:bg-accent-hover"
+          className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
         >
           See what is online
         </Link>

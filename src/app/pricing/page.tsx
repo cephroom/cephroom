@@ -45,10 +45,12 @@ export default async function PricingPage({
 
       {!usingRealStripe() && (
         <p className="mt-6 rounded-lg border border-drifted/30 bg-drifted-wash px-4 py-3 text-[0.84rem] leading-relaxed text-drifted">
-          <strong className="font-semibold">Simulated billing.</strong> No Stripe
+          <strong className="font-semibold">Simulated billing.</strong>{" "}
+          No Stripe
           key is configured, so checkout runs against a stand-in counterparty
           holding its own records. Set{" "}
-          <code className="font-mono">STRIPE_SECRET_KEY</code> to switch to
+          <code className="font-mono">STRIPE_SECRET_KEY</code>{" "}
+          to switch to
           Stripe test mode, and a live key to go live.
         </p>
       )}

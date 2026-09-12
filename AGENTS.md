@@ -37,6 +37,18 @@ zero claims while the live preview — which passes the string straight to a
 server action — showed them all. `parseBody` normalises at the door; keep it
 that way, and there are regression tests.
 
+**A bare space next to a closing inline JSX tag is not reliably a space.**
+Three sentences shipped fused — `revoked.Revocation`, `independentPDSP`,
+`NODE_KEYin` — from source that read `</strong> Revocation`, with the space on
+the same line, in the same shape as a dozen sites that render correctly.
+esbuild keeps the space; Next's SWC transform drops it in some of these
+positions and I could not derive which. The source reads correctly, so review
+will not catch it — only the rendered HTML shows it. Write the space as
+`{" "}` on its own line and continue the prose on the next;
+`tests/inline-spacing.test.ts` enforces that for closing tags. (The opening
+side is not enforced: nothing has ever broken there, and a rule without
+evidence is churn.)
+
 **mdast `hProperties` keys reach hast verbatim**, not camelCased. The claim
 element's key is read as `node.properties.claimkey`, lowercase, not
 `dataClaimKey`.

@@ -40,7 +40,7 @@ export function PricingTable({
             aria-pressed={interval === option}
             className={`rounded-md px-4 py-1.5 text-[0.85rem] font-medium transition-colors ${
               interval === option
-                ? "bg-accent text-white"
+                ? "bg-accent text-accent-ink"
                 : "text-ink-muted hover:text-ink"
             }`}
           >
@@ -92,7 +92,7 @@ export function PricingTable({
               }`}
             >
               {featured && (
-                <span className="absolute -top-2.5 left-6 rounded-full bg-accent px-2.5 py-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.06em] text-white">
+                <span className="absolute -top-2.5 left-6 rounded-full bg-accent px-2.5 py-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.06em] text-accent-ink">
                   Most read
                 </span>
               )}
@@ -126,14 +126,14 @@ export function PricingTable({
                 {isCurrent ? (
                   <Link
                     href="/account"
-                    className="block rounded-md border border-rule-strong px-4 py-2.5 text-center text-[0.88rem] font-medium transition-colors hover:border-ink-faint"
+                    className="block rounded-md border border-field-border px-4 py-2.5 text-center text-[0.88rem] font-medium transition-colors hover:border-ink-faint"
                   >
                     Manage your plan
                   </Link>
                 ) : isDowngrade ? (
                   <Link
                     href="/account"
-                    className="block rounded-md border border-rule px-4 py-2.5 text-center text-[0.88rem] text-ink-muted transition-colors hover:border-rule-strong"
+                    className="block rounded-md border border-rule px-4 py-2.5 text-center text-[0.88rem] text-ink-muted transition-colors hover:border-field-border"
                   >
                     Change plan in account
                   </Link>
@@ -175,8 +175,8 @@ function CheckoutButton({
       disabled={pending}
       className={`w-full rounded-md px-4 py-2.5 text-[0.88rem] font-medium transition-colors disabled:opacity-60 ${
         featured
-          ? "bg-accent text-white hover:bg-accent-hover"
-          : "border border-rule-strong text-ink hover:border-ink-faint"
+          ? "bg-accent text-accent-ink hover:bg-accent-hover"
+          : "border border-field-border text-ink hover:border-ink-faint"
       }`}
     >
       {pending ? "Opening checkout…" : label}
