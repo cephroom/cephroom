@@ -5,25 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { ROOT, stripCommentsOnly, walk } from "./scan";
 
-/**
- * Layer 2 was rejected, and the rejection is only honest if it is published.
- *
- * The decision has two halves and the page had one of them. The measurable
- * half — 1.1 million constraints, a ~550MB proving key, half a minute of
- * proving — is a cost that could fall, and a reader could reasonably expect
- * it to. The structural half does not fall: **the platform is the verifier,
- * so any prover the platform runs is the platform.** A zero-knowledge proof
- * that the verifier computed on your behalf, from your token, has no
- * zero-knowledge property left. That is why there is no "we'll do the proving
- * for you" option and never can be, and it is the sentence a reader needs.
- *
- * These assertions also guard the direction nobody checks: that the product
- * does not claim a capability the code lacks. A verifier, a circuit pin and a
- * challenge endpoint shipped after this page was written, and no route ever
- * accepted a proof — so for a while the page said "it is not built" about
- * something partly built, while the thing a reader would actually want was
- * genuinely absent. Both halves of that are worth failing a test over.
- */
 
 const privacy = readFileSync(
   join(ROOT, "src", "app", "privacy", "page.tsx"),
@@ -45,8 +26,6 @@ describe("the platform asks the identity provider for as little as it can", () =
   });
 
   it("has no branch that would use an email if one arrived", () => {
-    // A fallback is an invitation to put the scope back. The address is not
-    // something the platform forgets; it is something it never receives.
     const code = stripCommentsOnly(providers);
     expect(code).not.toMatch(/raw\.email|\.email\b/);
   });
@@ -60,9 +39,6 @@ describe("what sign-in still reveals is stated rather than implied", () => {
   it("says the account id is seen, and for how long", () => {
     expect(privacy).toMatch(/we still see your Google account id at sign-in/i);
     expect(privacy).toMatch(/as long as one request takes/i);
-    // And that a promise is what stops it, rather than architecture. This is
-    // the one place in the design where that is true, and softening it is how
-    // the page would start to overstate the guarantee.
     expect(privacy).toMatch(/a promise is what stops us/i);
   });
 
@@ -72,11 +48,6 @@ describe("what sign-in still reveals is stated rather than implied", () => {
   });
 
   it("counts the spent-marker set among the places the contracts bend", () => {
-    // /how-it-works enumerates the exceptions and said "four places", listing
-    // the registry, Stripe, the simulated Stripe file and the node's disk —
-    // and omitted the one durable-ish thing the platform itself keeps. The
-    // privacy page has always described it at length, so the omission read as
-    // an oversight rather than a position, which is the worst of both.
     const howItWorks = readFileSync(
       join(ROOT, "src", "app", "how-it-works", "page.tsx"),
       "utf8",
@@ -84,31 +55,15 @@ describe("what sign-in still reveals is stated rather than implied", () => {
 
     const bends = howItWorks.slice(howItWorks.indexOf("Where they bend"));
     expect(bends).toMatch(/spent-token markers|spent-marker|spent tokens/i);
-    // A reader who counts the list should get the number the page claims.
     expect(bends).toMatch(/Five places/i);
   });
 
   it("admits that page requests still carry the session", () => {
-    // The limit of Layer 1. Tokens cover what a reader fetches from a node;
-    // the page around it is still requested with a cookie attached.
     expect(privacy).toMatch(/page requests still carry your session/i);
   });
 });
 
 describe("the product does not point readers at things that are not there", () => {
-  /**
-   * Every in-repository link the site offers, checked against the repository.
-   *
-   * Deleting the documentation left four live links to files that no longer
-   * exist — on /privacy, /how-it-works, /account, and inside the JSON that
-   * `/api/zk/params` serves to client authors. Each was correct when written.
-   * None of them failed anything, because a dead link is invisible to a test
-   * suite that only reads code.
-   *
-   * It matters more here than on most sites: three of the four were pointing
-   * at the place a reader was told to go to verify a privacy claim, which
-   * makes a broken link an unverifiable claim.
-   */
   const REPO_LINK = /github\.com\/cephroom\/cephroom\/blob\/main\/([^\s"'`)]+)/g;
 
   it("links to no repository path that does not exist", () => {
@@ -134,10 +89,83 @@ describe("the product does not point readers at things that are not there", () =
     ).toEqual([]);
   });
 
+  it("names no document that does not exist, in code or in configuration", () => {
+    const DOC_REFERENCE = /\bdocs\/[A-Za-z0-9_-]+\.md\b/g;
+
+    const scanned: { rel: string; text: string }[] = [];
+
+    for (const file of walk(join(ROOT, "src"))) {
+      if (!file.endsWith(".ts") && !file.endsWith(".tsx")) continue;
+      if (file.includes(".test.")) continue;
+      scanned.push({
+        rel: relative(ROOT, file).split(sep).join("/"),
+        text: readFileSync(file, "utf8"),
+      });
+    }
+
+    for (const rel of [".env.example", "package.json", "README.md"]) {
+      const path = join(ROOT, rel);
+      if (!existsSync(path)) continue;
+      scanned.push({ rel, text: readFileSync(path, "utf8") });
+    }
+
+    const dangling: string[] = [];
+    for (const { rel, text } of scanned) {
+      for (const match of text.matchAll(DOC_REFERENCE)) {
+        if (!existsSync(join(ROOT, ...match[0].split("/")))) {
+          dangling.push(`${rel} → ${match[0]}`);
+        }
+      }
+    }
+
+    expect(
+      dangling,
+      [
+        "These point at a document that does not exist.",
+        "A reader who follows one to check a claim finds nothing, which is worse",
+        "than not having offered the pointer. Configuration counts: .env.example",
+        "is the first file a deployment owner opens.",
+        "",
+        ...dangling,
+      ].join("\n"),
+    ).toEqual([]);
+  });
+
+  it("documents only environment variables the code actually reads", () => {
+    const example = readFileSync(join(ROOT, ".env.example"), "utf8");
+    const documented = [
+      ...example.matchAll(/^#?\s*([A-Z][A-Z0-9_]{3,})=/gm),
+    ].map((match) => match[1]);
+
+    expect(documented.length).toBeGreaterThan(0);
+
+    const sources = [
+      ...walk(join(ROOT, "src")),
+      ...walk(join(ROOT, "node")),
+      ...walk(join(ROOT, "scripts")),
+      ...walk(join(ROOT, "simulated-counterparties")),
+    ]
+      .filter((file) => file.endsWith(".ts") || file.endsWith(".tsx"))
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+
+    const unread = documented.filter(
+      (name) => !new RegExp(`\\b${name}\\b`).test(sources),
+    );
+
+    expect(
+      unread,
+      [
+        "These are documented in .env.example but no code reads them.",
+        "A deployment owner who sets one gets silence, and the variable the code",
+        "does read stays unset. This is how a rename half-lands.",
+        "",
+        ...unread,
+      ].join("\n"),
+    ).toEqual([]);
+  });
+
   it("names no deleted document in anything it serves to a client", () => {
-    // The same failure in machine-readable form: `/api/zk/params` told client
-    // authors to read a protocol document, which is exactly the audience that
-    // cannot shrug off a dead reference.
     const served: string[] = [];
     for (const file of walk(join(ROOT, "src", "app"))) {
       if (!file.endsWith(".ts") && !file.endsWith(".tsx")) continue;
@@ -154,7 +182,6 @@ describe("the product does not point readers at things that are not there", () =
 });
 
 describe("the zero-knowledge path is described as what it actually is", () => {
-  /** Does any route accept a proof? */
   const proofRoutes = walk(join(ROOT, "src", "app", "api"))
     .filter((file) => file.endsWith("route.ts"))
     .map((file) => ({
@@ -164,7 +191,6 @@ describe("the zero-knowledge path is described as what it actually is", () => {
     .filter((route) => /verifySubmission|publicSignals/.test(route.code));
 
   it("gives the structural reason, not only the cost", () => {
-    // The cost could fall. This cannot.
     expect(privacy).toMatch(/we are the verifier|the verifier is us|any prover we ran would be us/i);
     expect(privacy).toMatch(/run no prover|never operate a prover|we do not run a prover/i);
   });
@@ -175,9 +201,6 @@ describe("the zero-knowledge path is described as what it actually is", () => {
   });
 
   it("does not offer a sign-in the code cannot perform", () => {
-    // If nothing accepts a proof, the page must not suggest a reader can use
-    // one today. The published protocol is a real thing to describe; a button
-    // that does not exist is not.
     if (proofRoutes.length === 0) {
       expect(
         privacy,
@@ -187,13 +210,44 @@ describe("the zero-knowledge path is described as what it actually is", () => {
   });
 
   it("keeps the claim and the code in step in the other direction too", () => {
-    // The mirror of the above: once a route does accept a proof, the caveat
-    // has to go, or the page understates what the platform offers.
     if (proofRoutes.length > 0) {
       expect(
         privacy,
         `${proofRoutes.map((r) => r.rel).join(", ")} accepts a proof, so the privacy page should no longer say the path is unavailable.`,
       ).not.toMatch(/not something you can use yet|is not wired/i);
     }
+  });
+});
+
+describe("the plan catalogue and the records that reference it agree", () => {
+  it("resolves every price id the simulated counterparty has on file", async () => {
+    const store = join(ROOT, ".stripe-simulated.json");
+    if (!existsSync(store)) return;
+
+    const { planForPrice } = await import("@/lib/stripe/plans");
+    const records = JSON.parse(readFileSync(store, "utf8")) as {
+      subscriptions?: Record<string, { priceId?: string }>;
+    };
+
+    const unresolvable = [
+      ...new Set(
+        Object.values(records.subscriptions ?? {})
+          .map((subscription) => subscription.priceId ?? "")
+          .filter((priceId) => priceId.length > 0)
+          .filter((priceId) => planForPrice(priceId) === null),
+      ),
+    ];
+
+    expect(
+      unresolvable,
+      [
+        "These price ids are on file but the plan catalogue no longer knows them.",
+        "A subscription carrying one resolves to null and is silently dropped, so",
+        "the subscriber appears to have no plan and nothing says why. This is what",
+        "a half-finished rename looks like from the outside.",
+        "",
+        ...unresolvable,
+      ].join("\n"),
+    ).toEqual([]);
   });
 });
