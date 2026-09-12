@@ -171,16 +171,19 @@ export default async function AccountPage() {
 
       {}
       <section className="mt-8 rounded-xl border border-rule p-5">
-        <h2 className="text-[0.95rem] font-semibold">Read without us knowing</h2>
+        <h2 className="text-[0.95rem] font-semibold">Search without us knowing</h2>
         <p className="mt-2 max-w-[62ch] text-[0.88rem] leading-relaxed text-ink-muted">
-          Your key carries a subject, so every column you open is a request we
-          could in principle associate with your subscription. We do not, and
-          tests say we do not — but a promise is weaker than an impossibility.
-          These tokens make it one: we blind-sign them without seeing them, and
-          when your browser spends one we cannot tell whose it was.
+          Reading happens on somebody else&rsquo;s machine and we never see it.
+          Searching happens here, and your key carries a subject, so every
+          query is a request we could in principle put next to your
+          subscription. A sequence of them is a research programme, months
+          before you publish one. We do not keep them, and tests say we do not
+          — but a promise is weaker than an impossibility. These tokens make it
+          one: we blind-sign them without seeing them, and when your browser
+          spends one we cannot tell whose it was.
         </p>
         <div className="mt-4">
-          <TokenWallet entitled={fresh.discovery !== "browse"} />
+          <TokenWallet issuing={fresh.discovery !== "browse"} />
         </div>
       </section>
 

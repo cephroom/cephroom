@@ -36,21 +36,23 @@ export function NodeProposalForm({
           { headers: { authorization: `Bearer ${nodeKey}` } },
         );
         if (!response.ok) throw new Error(`node returned ${response.status}`);
-        const column = (await response.json()) as {
-          source: string | null;
-          entitled: boolean;
-        };
+        const column = (await response.json()) as { source: string | null };
         if (cancelled) return;
-        if (!column.entitled) {
+        // A column arrives whole or not at all, so there is nothing to check
+        // here beyond whether the node sent a body. It stopped sending an
+        // `entitled` flag when the gate was removed; this read `undefined`
+        // and refused every proposal on every column until the seam was
+        // asserted in tests/contracts/a-key-unlocks-nothing.test.ts.
+        if (column.source === null) {
           setState({
             kind: "error",
             message:
-              "You can only propose edits to a column you can read in full.",
+              "This node served the column without its source, so there is nothing to edit.",
           });
           return;
         }
-        setOriginal(column.source ?? "");
-        setDraft(column.source ?? "");
+        setOriginal(column.source);
+        setDraft(column.source);
       } catch (error) {
         if (!cancelled) {
           setState({

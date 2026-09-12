@@ -147,6 +147,57 @@ describe("nothing carries a consumer's tier across the connection", () => {
   });
 });
 
+describe("the reader asks a node for nothing it no longer sends", () => {
+  /**
+   * The half-removed path this file exists to prevent, found on the reader
+   * side rather than the node side.
+   *
+   * `NodeProposalForm` fetched a column and refused to open unless
+   * `column.entitled` was true. The node stopped sending that field when the
+   * gate was removed, so the check read `undefined` and every proposal form
+   * on every column failed closed with "You can only propose edits to a
+   * column you can read in full." — a paywall message about a paywall that
+   * does not exist, on content that is served whole to anybody.
+   *
+   * Nothing caught it because the scans looked at `node/` for a gate being
+   * applied and at components for a badge being rendered. This looks at the
+   * seam between them: what the client expects a node to say.
+   */
+  function readerSources() {
+    return walk(join(ROOT, "src"))
+      .filter((f) => (f.endsWith(".ts") || f.endsWith(".tsx")) && !f.includes(".test."))
+      .map((file) => ({
+        rel: relative(ROOT, file).split(sep).join("/"),
+        code: stripCommentsAndStrings(readFileSync(file, "utf8")),
+      }));
+  }
+
+  it("branches on no entitlement field from a node", () => {
+    for (const { rel, code } of readerSources()) {
+      expect(code, `${rel} still reads an entitlement`).not.toMatch(
+        /\bentitled\b|\baccess:\s*["'`]?(member|lab|public)/,
+      );
+    }
+  });
+
+  it("is not sent one either", () => {
+    const server = stripCommentsAndStrings(
+      readFileSync(join(ROOT, "node", "server.ts"), "utf8"),
+    );
+    expect(server).not.toMatch(/\bentitled\b/);
+  });
+
+  it("refuses a proposal for a reason a reader can act on", () => {
+    // The message that was being shown. If a form ever refuses again it must
+    // be for something the reader can do something about, not for a tier.
+    const form = readFileSync(
+      join(ROOT, "src", "components", "node-proposal-form.tsx"),
+      "utf8",
+    );
+    expect(form).not.toMatch(/read in full|only propose edits to a column you/i);
+  });
+});
+
 describe("the two subscriptions never mention each other", () => {
   it("keeps a consumer's tier out of anything a contributor sees", async () => {
     const { DISCOVERY_PLANS, SERVING_PLANS } = await import("@/lib/stripe/plans");

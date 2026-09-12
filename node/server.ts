@@ -442,7 +442,7 @@ const server = createServer(async (request, response) => {
     if (!fromSub) {
       return send(403, {
         error:
-          "A proposal has to be attributable. Sign in and use your own key rather than an anonymous reading token.",
+          "A proposal has to be attributable. Sign in and use your own key rather than an anonymous search token.",
       });
     }
 

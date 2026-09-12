@@ -51,6 +51,109 @@ async function subscriberGetsTokens(
   };
 }
 
+/**
+ * What the tokens are for, now that reading is not gated.
+ *
+ * Layer 1 was built to sever who-paid from who-reads. Reading is no longer
+ * something anyone pays for, so the obvious reading is that the tokens have
+ * lost their purpose and should go. That is wrong, and the decision is
+ * recorded here rather than left to be re-derived.
+ *
+ * What they sever now is **who-paid from who-searches**. Searching is the one
+ * activity that still happens on the platform's own surface: a query reaches
+ * us with a cookie attached, and we can see it. Against the old paywall a
+ * token hid one bit — whether somebody opened a particular column. Against
+ * discovery it hides a great deal more, because a sequence of queries is a
+ * research programme, and reading somebody's search history over a few months
+ * tells you what they are working on before they have published it.
+ *
+ * So the tokens are more useful after this change than before it, not less.
+ * They are also cheaper to justify: what a token now buys is reach on a
+ * surface the platform owns, so handing one out costs a contributor nothing.
+ *
+ * The mechanism is unchanged and the assertions below are unchanged with it —
+ * blind-signed, per-plan keys, a fixed redemption context, opaque nullifiers.
+ * Only the thing being protected is different.
+ */
+describe("Layer 1 protects a search history, not a paywall", () => {
+  it("issues against discovery plans, and only the paid ones", async () => {
+    // `browse` has no token because there is nothing to sever: a free
+    // consumer has no subscription for their searching to be linked to.
+    const { TOKEN_TIERS } = await import("@/lib/tokens/issuer");
+    const { DISCOVERY_ORDER } = await import("@/lib/stripe/plans");
+    expect([...TOKEN_TIERS].sort()).toEqual(
+      DISCOVERY_ORDER.filter((id) => id !== "browse").sort(),
+    );
+  });
+
+  it("lets a query be spent without a cookie", async () => {
+    // The property that makes it worth having. The listing endpoint accepts a
+    // token as a bearer, so a subscriber can search at their own reach with
+    // nothing linking the search to their subscription.
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { ROOT, stripCommentsOnly } = await import("./scan");
+
+    const live = stripCommentsOnly(
+      readFileSync(
+        join(ROOT, "src", "app", "api", "v1", "live", "route.ts"),
+        "utf8",
+      ),
+    );
+    expect(live).toContain("authorization");
+    expect(live).toContain("verifyAccessKey");
+  });
+
+  it("says everywhere it is described what they are for", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { ROOT } = await import("./scan");
+
+    // Three places describe them to a reader deciding whether to bother. All
+    // three have to describe the same thing, and the thing has changed.
+    const surfaces = [
+      ["src", "app", "account", "page.tsx"],
+      ["src", "components", "token-wallet.tsx"],
+      ["src", "app", "privacy", "page.tsx"],
+    ];
+
+    for (const parts of surfaces) {
+      const copy = readFileSync(join(ROOT, ...parts), "utf8").replace(
+        /\s+/g,
+        " ",
+      );
+      const where = parts.join("/");
+      expect(copy, `${where} does not say what a token hides`).toMatch(
+        /search|quer/i,
+      );
+      // The old description. A token never hid a column from us — the node
+      // serving it did, and does — so describing them as reading tokens
+      // promises a protection we are not the ones providing.
+      expect(copy, `${where} still calls them reading tokens`).not.toMatch(
+        /anonymous reading|reading token|reading session/i,
+      );
+      // And they come with a plan, not a membership: there is no membership.
+      expect(copy, `${where} still says membership`).not.toMatch(
+        /\bmembership\b|\bmember\b/,
+      );
+    }
+  });
+
+  it("does not offer them where they would buy nothing", async () => {
+    // A free consumer has no subscription for their searching to be linked
+    // to, so the wallet has nothing to offer them and says so rather than
+    // selling the protection as a feature of a paid plan.
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { ROOT } = await import("./scan");
+    const wallet = readFileSync(
+      join(ROOT, "src", "components", "token-wallet.tsx"),
+      "utf8",
+    );
+    expect(wallet).not.toMatch(/\bentitled\b/);
+  });
+});
+
 describe("Layer 1: a redemption cannot be traced to its issuance", () => {
   it("issues tokens the platform has never seen the contents of", async () => {
     const { tokens, seenByPlatform } = await subscriberGetsTokens("query", 2);

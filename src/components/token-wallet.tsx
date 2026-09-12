@@ -5,7 +5,12 @@ import { useEffect, useState } from "react";
 
 import { clearWallet, stockUp, walletCount } from "@/lib/tokens/wallet";
 
-export function TokenWallet({ entitled }: { entitled: boolean }) {
+/**
+ * `issuing` is whether the viewer's discovery plan issues tokens at all. The
+ * free plan does not, because a consumer with no subscription has nothing for
+ * their searching to be linked to — there is no protection to sell them.
+ */
+export function TokenWallet({ issuing }: { issuing: boolean }) {
   const [count, setCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,10 +19,13 @@ export function TokenWallet({ entitled }: { entitled: boolean }) {
   // the server, and reading it in render would produce a hydration mismatch.
   useEffect(() => setCount(walletCount()), []);
 
-  if (!entitled) {
+  if (!issuing) {
     return (
       <p className="text-[0.88rem] leading-relaxed text-ink-muted">
-        Anonymous reading tokens come with a membership.{" "}
+        Nothing to hide yet: your searches reach us with no subscription behind
+        them, so there is nothing for them to be linked to. Tokens come with a
+        paid discovery plan, which is also the point at which they start
+        mattering.{" "}
         <Link href="/pricing" className="font-medium text-accent hover:underline">
           See plans
         </Link>
@@ -32,8 +40,8 @@ export function TokenWallet({ entitled }: { entitled: boolean }) {
         {count === null
           ? "Checking this browser…"
           : count === 0
-            ? "This browser is holding no tokens, so your reading is being fetched with your ordinary key — which means the node you read from sees your subject."
-            : `This browser is holding ${count} token${count === 1 ? "" : "s"}. Each one buys a reading session that carries your tier and no identity at all.`}
+            ? "This browser is holding no tokens, so your searches are reaching us with your ordinary key — which means we could, in principle, put a month of them next to your name."
+            : `This browser is holding ${count} token${count === 1 ? "" : "s"}. Each one spends a search at the reach your plan bought, carrying no identity at all.`}
       </p>
 
       {error && (
@@ -56,7 +64,7 @@ export function TokenWallet({ entitled }: { entitled: boolean }) {
           }}
           className="rounded-md bg-accent px-4 py-2 text-[0.86rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
-          {busy ? "Getting tokens…" : "Get anonymous reading tokens"}
+          {busy ? "Getting tokens…" : "Get anonymous search tokens"}
         </button>
 
         {count !== null && count > 0 && (
@@ -76,7 +84,9 @@ export function TokenWallet({ entitled }: { entitled: boolean }) {
       <p className="mt-4 text-[0.8rem] leading-relaxed text-ink-faint">
         Getting tokens is the one moment we know it is you asking — we check
         your subscription, then sign twelve values we cannot see. Spending one
-        later carries no cookie and we cannot tell which batch it came from.
+        later carries no cookie and we cannot tell which batch it came from, so
+        a run of queries cannot be read back as one person&rsquo;s programme of
+        work.
         What this does <em>not</em>{" "}
         hide is covered on{" "}
         <Link href="/privacy" className="text-accent hover:underline">

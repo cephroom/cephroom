@@ -70,18 +70,21 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2>Anonymous reading tokens</h2>
+        <h2>Anonymous search tokens</h2>
         <p>
           Signing in gives us a pseudonymous subject derived from your Google
           account. It is not reversible to an email address, and nothing is
-          written down — but it rides along on requests, which means we are{" "}
+          written down — but it rides along on every query, which means we are{" "}
           <em>capable</em>{" "}
-          of associating your reading with your subscription
-          and decline to. That is a promise, and a promise is weaker than an
+          of associating what you are looking for with your
+          subscription, and decline to. What you read we never see at all; what
+          you search for we necessarily do, and a few months of somebody&rsquo;s
+          queries describes their work before they have published any of it.
+          Declining is a promise, and a promise is weaker than an
           impossibility.
         </p>
         <p>
-          So paying and reading are severed by arithmetic. When you ask for
+          So paying and searching are severed by arithmetic. When you ask for
           tokens, your browser generates them, multiplies each by a random
           factor that never leaves your machine, and sends us the results. We
           check your subscription and sign. We have signed twelve values we
@@ -89,8 +92,9 @@ export default function PrivacyPage() {
         </p>
         <p>
           Later, your browser unblinds a signature into a usable token and
-          spends it — with no cookie attached — for a key carrying a tier and no
-          identity. We cannot tell which subscriber that token came from,
+          spends it — with no cookie attached — for a key carrying the reach
+          your plan bought and no identity. We cannot tell which subscriber that
+          token came from,
           because the only thing that would connect them is the blinding factor,
           and we never had it.
         </p>
@@ -100,8 +104,8 @@ export default function PrivacyPage() {
             Privacy Pass
           </a>
           , an IETF standard, using the publicly verifiable blind RSA token type
-          so that a contributor&rsquo;s node can check what you present with a
-          public key alone. It is not a scheme we invented.
+          so that anything you present a token to can check it against a public
+          key alone. It is not a scheme we invented.
         </p>
         <p>
           You control it from{" "}
