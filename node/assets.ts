@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, normalize, resolve, sep } from "node:path";
 
 /**
@@ -15,7 +15,11 @@ import { join, normalize, resolve, sep } from "node:path";
  *
  * Two things this must not become: a path out of the content directory, and a
  * way to serve the columns themselves (or any non-media file) as bytes. Both
- * are refused below.
+ * are refused below. Containment is checked twice - once on the resolved path
+ * string, and once on its real path - because path.resolve does not follow
+ * symlinks, so a link inside the content dir pointing outside it would pass the
+ * string check and then be read straight through. Nodes run on POSIX, where
+ * that link is trivial to create.
  */
 
 export const MEDIA_TYPES: Record<string, string> = {
@@ -63,6 +67,7 @@ function mediaType(name: string): string | null {
 export function resolveAsset(
   root: string,
   requested: string,
+  realPath: (p: string) => string = realpathSync,
 ): ResolvedAsset | AssetError {
   const type = mediaType(requested);
   if (!type) return "not-media";
@@ -72,6 +77,18 @@ export function resolveAsset(
   if (full !== base && !full.startsWith(base + sep)) return "escapes-root";
 
   if (!existsSync(full) || !statSync(full).isFile()) return "not-found";
+
+  // Resolve symlinks and re-check: a link inside the root pointing outside it
+  // would have passed the string check above.
+  let real: string;
+  try {
+    real = resolve(realPath(full));
+  } catch {
+    return "not-found";
+  }
+  const realBase = existsSync(base) ? resolve(realPath(base)) : base;
+  if (real !== realBase && !real.startsWith(realBase + sep)) return "escapes-root";
+
   const size = statSync(full).size;
   if (size > MAX_ASSET_BYTES) return "too-large";
 

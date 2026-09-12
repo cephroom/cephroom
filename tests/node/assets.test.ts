@@ -86,3 +86,39 @@ describe("a node serves its own figures and nothing else", () => {
     expect(assetRoot(root)).toBe(root);
   });
 });
+
+describe("a symlink cannot smuggle a file out of the content root", () => {
+  it("refuses an asset whose real path escapes the root", () => {
+    // Symlinks need elevation on some platforms, so the escape is injected
+    // through the realpath resolver rather than staged on disk. On a
+    // contributor's node (Linux/Mac) a symlink in the content dir pointing at,
+    // say, a key file would otherwise pass the string-level containment check
+    // and be read straight through.
+    const escaping = (p: string) =>
+      p.endsWith("leak.png") ? "/etc/shadow" : p;
+    const r = resolveAsset(root, "leak.png", escaping);
+    // leak.png does not exist on disk here, so not-found is acceptable; what
+    // must never happen is a served result pointing outside the root.
+    expect(typeof r).toBe("string");
+  });
+
+  it("refuses a real, existing file whose realpath is outside the root", () => {
+    const outside = mkdtempSync(join(tmpdir(), "cephroom-outside-"));
+    writeFileSync(join(outside, "real.png"), "x");
+    // Simulate a symlink: figure.png exists in root, but realpath points out.
+    const asIfSymlinked = (p: string) =>
+      p.endsWith("figure.png") ? join(outside, "real.png") : p;
+    const r = resolveAsset(root, "figure.png", asIfSymlinked);
+    expect(
+      r,
+      "figure.png exists and is media, but its real path is outside the content root - it must be refused, not served.",
+    ).toBe("escapes-root");
+    rmSync(outside, { recursive: true, force: true });
+  });
+
+  it("still serves a normal file whose realpath is itself", () => {
+    const identity = (p: string) => p;
+    const r = resolveAsset(root, "figure.png", identity);
+    expect(typeof r !== "string" && r.contentType).toBe("image/png");
+  });
+});
