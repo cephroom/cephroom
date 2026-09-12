@@ -291,7 +291,7 @@ Ninety days is a judgement, not a derivation.
 The platform shipped with no CSP and no other security headers. The question
 put to this work was: do we add one, skip it, or scope it — and write down
 which and why. The answer is **a scoped CSP**, and the scope is the whole point,
-so it is recorded here rather than left implicit in `src/middleware.ts`.
+so it is recorded here rather than left implicit in `src/proxy.ts`.
 
 **What is unusual here.** On an ordinary web app a CSP tightens every fetch
 directive to a small allowlist. This app cannot. A reader's browser fetches the
@@ -319,9 +319,9 @@ route here is already `force-dynamic`, so that cost is already paid. This is the
 one directive that buys real safety at no architectural cost, which is why it is
 the one directive that is strict.
 
-**Delivery: middleware, not `next.config` headers.** A nonce has to be minted
+**Delivery: proxy (Next's renamed middleware), not `next.config` headers.** A nonce has to be minted
 per request, which static `headers()` in `next.config.ts` cannot do. So the
-policy is built in `src/middleware.ts`, which sets the nonce on the request
+policy is built in `src/proxy.ts`, which sets the nonce on the request
 headers (Next stamps it onto its own script tags) and on the response.
 
 **Deliberately absent: `upgrade-insecure-requests`.** It would rewrite a plain

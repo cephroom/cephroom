@@ -9,7 +9,7 @@ import { ROOT, stripCommentsOnly } from "./scan";
  * The scoped Content-Security-Policy keeps its shape - contracts 1, 2 and 4.
  *
  * The decision and its reasoning live in docs/RESEARCH-NOTES.md and in
- * src/middleware.ts. This guards the two ways the policy could rot into
+ * src/proxy.ts. This guards the two ways the policy could rot into
  * something that looks present but protects nothing:
  *
  *  1. script-src quietly reacquires 'unsafe-inline' (or drops the nonce), which
@@ -25,20 +25,20 @@ import { ROOT, stripCommentsOnly } from "./scan";
  *     an improvement and would break the privacy model, so the openness is
  *     pinned here with the reason attached.
  *
- * middleware.ts reads cookies/headers per request, so it is not unit-testable in
+ * proxy.ts reads cookies/headers per request, so it is not unit-testable in
  * a node environment; this guards the policy's shape instead.
  */
-const middleware = stripCommentsOnly(
-  readFileSync(join(ROOT, "src", "middleware.ts"), "utf8"),
+const proxy = stripCommentsOnly(
+  readFileSync(join(ROOT, "src", "proxy.ts"), "utf8"),
 );
 
 function directive(name: string): string {
   // Each directive is a single-quoted line in the policy() array, e.g.
   // "script-src 'self' 'nonce-...' 'strict-dynamic'". Pull its text.
-  const at = middleware.indexOf(`${name} `);
+  const at = proxy.indexOf(`${name} `);
   expect(at, `no ${name} directive`).toBeGreaterThan(-1);
-  const end = middleware.indexOf('"', at);
-  return middleware.slice(at, end);
+  const end = proxy.indexOf('"', at);
+  return proxy.slice(at, end);
 }
 
 describe("script execution is locked to a per-request nonce", () => {
@@ -59,13 +59,13 @@ describe("script execution is locked to a per-request nonce", () => {
   });
 
   it("mints a fresh nonce per request rather than a constant", () => {
-    expect(middleware).toMatch(/randomUUID\(\)/);
+    expect(proxy).toMatch(/randomUUID\(\)/);
     // the nonce must be interpolated into the policy, not a hard-coded string
-    expect(middleware).toMatch(/nonce-\$\{nonce\}/);
+    expect(proxy).toMatch(/nonce-\$\{nonce\}/);
   });
 
   it("forwards the CSP on the request so Next stamps its own scripts", () => {
-    expect(middleware).toMatch(/requestHeaders\.set\(\s*"content-security-policy"/);
+    expect(proxy).toMatch(/requestHeaders\.set\(\s*"content-security-policy"/);
   });
 });
 
@@ -83,7 +83,7 @@ describe("the fetch directives stay open by design", () => {
 
   it("does not upgrade-insecure-requests, which would break plain-http nodes", () => {
     expect(
-      middleware,
+      proxy,
       "upgrade-insecure-requests would rewrite http node fetches to https and break reading from an honest localhost/tunnel node.",
     ).not.toMatch(/upgrade-insecure-requests/);
   });
@@ -91,18 +91,18 @@ describe("the fetch directives stay open by design", () => {
 
 describe("the cheap, unconditional directives are present", () => {
   it("forbids plugins, base hijack, off-platform form posts, and framing", () => {
-    expect(middleware).toMatch(/object-src 'none'/);
-    expect(middleware).toMatch(/base-uri 'self'/);
-    expect(middleware).toMatch(/form-action 'self'/);
-    expect(middleware).toMatch(/frame-ancestors 'none'/);
+    expect(proxy).toMatch(/object-src 'none'/);
+    expect(proxy).toMatch(/base-uri 'self'/);
+    expect(proxy).toMatch(/form-action 'self'/);
+    expect(proxy).toMatch(/frame-ancestors 'none'/);
   });
 
   it("sets the companion headers", () => {
-    expect(middleware).toMatch(/"x-content-type-options",\s*"nosniff"/);
-    expect(middleware).toMatch(/"referrer-policy",\s*"no-referrer"/);
+    expect(proxy).toMatch(/"x-content-type-options",\s*"nosniff"/);
+    expect(proxy).toMatch(/"referrer-policy",\s*"no-referrer"/);
   });
 
   it("applies to every route except Next's own static output", () => {
-    expect(middleware).toMatch(/matcher:\s*\[[^\]]*_next\/static/);
+    expect(proxy).toMatch(/matcher:\s*\[[^\]]*_next\/static/);
   });
 });

@@ -64,7 +64,7 @@ function policy(nonce: string): string {
   ].join("; ");
 }
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const csp = policy(nonce);
 
