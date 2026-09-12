@@ -117,7 +117,7 @@ export function ClaimChip({ claim }: { claim: ClaimView | undefined }) {
         ref={panelRef}
         id={panelId}
         hidden={!open}
-        role="dialog"
+        role="group"
         aria-label={`Provenance for ${claim.key}`}
         style={{
           transform: open && shift ? `translateX(${shift}px)` : undefined,
