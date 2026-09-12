@@ -38,11 +38,6 @@ export function NodeProposalForm({
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const column = (await response.json()) as { source: string | null };
         if (cancelled) return;
-        // A column arrives whole or not at all, so there is nothing to check
-        // here beyond whether the node sent a body. It stopped sending an
-        // `entitled` flag when the gate was removed; this read `undefined`
-        // and refused every proposal on every column until the seam was
-        // asserted in tests/contracts/a-key-unlocks-nothing.test.ts.
         if (column.source === null) {
           setState({
             kind: "error",
@@ -84,9 +79,6 @@ export function NodeProposalForm({
           "content-type": "application/json",
           authorization: `Bearer ${nodeKey}`,
         },
-        // No name. The node attributes this to the subject in the key it
-        // verifies, which is the only attribution the platform can vouch for
-        // and the only one a reader cannot later wish they had not given.
         body: JSON.stringify({ columnId, title, rationale, body: draft }),
       });
       const json = (await response.json()) as { id?: string; error?: string };
@@ -182,8 +174,13 @@ export function NodeProposalForm({
 
       <p className="text-[0.82rem] leading-relaxed text-ink-muted">
         You are editing the Markdown source, claim blocks included. The
-        author&rsquo;s node re-parses it and refuses anything whose claims do
-        not resolve, so a broken number cannot arrive as a proposal.
+        author&rsquo;s node re-parses it and refuses anything malformed &mdash;
+        a claim missing a field, a duplicate key, a{" "}
+        <code className="font-mono text-[0.95em]">{"{{claim:…}}"}</code>{" "}
+        with no block behind it. It does <em>not</em>{" "}
+        check your numbers against the dataset: a claim whose value has drifted
+        is accepted and shown to the author as drifted, because a correction to
+        a number that moved is exactly the proposal worth sending.
       </p>
 
       <div hidden={showDiff}>

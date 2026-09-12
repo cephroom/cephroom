@@ -1,36 +1,8 @@
-/**
- * Two subscriptions, unrelated to each other.
- *
- * The old catalogue sold one thing: a consumer tier that a contributor's node
- * was expected to honour. The consumer paid us; the contributor did the work
- * and received nothing. It was a promise somebody else had to keep, with no
- * mechanism to make them keep it and no reason to want to — a contributor who
- * noticed would rationally ignore the tier, or serve subscribers worse to
- * push them towards paying directly.
- *
- * Each subscription now buys something the platform itself provides, and
- * neither obliges the other side to do anything:
- *
- *   - **Discovery**, for consumers. Content lives on other people's machines,
- *     but finding it is ours. Deeper queries, more results, higher
- *     concurrency, the API.
- *   - **Serving capacity**, for contributors. How much may be announced and
- *     listed at once. The fair-share mechanism that exists because one
- *     contributor announced five hundred items and took 97% of the page is
- *     the same mechanism; this states it as a plan rather than only as an
- *     abuse control.
- *
- * Serving itself is free, and that has to stay unmistakable — see
- * tests/contracts/serving-is-free.test.ts, which exists because a prospective
- * contributor who concludes publishing costs money simply leaves.
- */
 
 export type BillingInterval = "month" | "year";
 
-/** What a consumer's plan buys: reach across the live network. */
 export type DiscoveryTier = "browse" | "query" | "sweep";
 
-/** What a contributor's plan buys: room in the listing. */
 export type ServingTier = "desk" | "shelf" | "stacks";
 
 export interface PricePoint {
@@ -44,7 +16,6 @@ export interface PlanDefinition<Id extends string> {
   name: string;
   tagline: string;
   features: string[];
-  /** Free plans have no prices. They are still plans. */
   prices?: Record<BillingInterval, PricePoint>;
   reduced?: PricePoint & { label: string; note: string };
 }
@@ -53,25 +24,13 @@ function priceId(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
-/* ------------------------------------------------------------------ *
- * Consumer: discovery
- * ------------------------------------------------------------------ */
 
-/**
- * How many results a listing returns, by tier.
- *
- * This is the whole of what a discovery plan buys, and it is deliberately a
- * quantity rather than a capability: there is no query a paying consumer can
- * run that a free one cannot, only further. Nothing here reaches into a
- * contributor's machine.
- */
 export const DISCOVERY_REACH: Record<DiscoveryTier, number> = {
   browse: 50,
   query: 200,
   sweep: 1000,
 };
 
-/** Concurrent node fetches a client is cleared to run while crawling. */
 export const DISCOVERY_CONCURRENCY: Record<DiscoveryTier, number> = {
   browse: 2,
   query: 8,
@@ -146,18 +105,7 @@ export const DISCOVERY_PLANS: Record<DiscoveryTier, PlanDefinition<DiscoveryTier
   },
 };
 
-/* ------------------------------------------------------------------ *
- * Contributor: serving capacity
- * ------------------------------------------------------------------ */
 
-/**
- * How many items a contributor may have listed at once, by tier.
- *
- * The free number is deliberately enough to publish with. A working
- * researcher serving their own columns and the datasets behind them is well
- * inside it, and will never see this limit. It is volume that is paid for,
- * not publishing.
- */
 export const SERVING_CAPACITY: Record<ServingTier, number> = {
   desk: 25,
   shelf: 250,
@@ -185,7 +133,7 @@ export const SERVING_PLANS: Record<ServingTier, PlanDefinition<ServingTier>> = {
     tagline: "For a group or an archive with more online than one desk holds.",
     features: [
       `Announce up to ${SERVING_CAPACITY.shelf} items at once`,
-      "Ten times as much of it eligible for any given listing",
+      "Ten times as much work online at once",
     ],
     prices: {
       month: {
