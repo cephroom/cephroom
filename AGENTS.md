@@ -23,7 +23,7 @@ now live where they are executed:
 | --- | --- |
 | No persistence layer, no identity at rest | `tests/contracts/no-user-data.test.ts` |
 | Identity stays in a named set of modules | `tests/contracts/identity-surface.test.ts` |
-| A key states a tier and names nobody | `tests/contracts/key-carries-nothing.test.ts` |
+| A key states its plans and names nobody | `tests/contracts/key-carries-nothing.test.ts` |
 | A proposal is attributed to a subject, never a person | `tests/contracts/attribution-is-pseudonymous.test.ts` |
 | Two contributors cannot correlate a reader | `tests/contracts/readers-are-not-correlatable.test.ts` |
 | An announced address is checked by the reader | `tests/contracts/address-is-not-a-claim.test.ts` |
@@ -154,7 +154,7 @@ separated from anything that touches a network or a cookie:
 
 | Rule | Module |
 | --- | --- |
-| Who can read what | `src/lib/access.ts` |
+| Which plans a subscription amounts to | `src/lib/access.ts` |
 | The claim grammar | `src/lib/claims/syntax.ts` |
 | Verified / drifted / broken | `src/lib/claims/verdict.ts` |
 | Which analysis a number came from | `src/lib/claims/method.ts` |
@@ -183,9 +183,17 @@ than our own code.
 - `simulated-counterparties/stripe/` stores customers and subscriptions the
   way Stripe would, and the gateway switch decides which answers.
 
-The consequence is that the entitlement rules, the key minting and the access
-decisions are the production code paths in development too. Keep it that way:
-a mock of our own billing logic would test nothing.
+The consequence is that reading a subscription, minting a key and stamping the
+plans into it are the production code paths in development too. Keep it that
+way: a mock of our own billing logic would test nothing.
+
+Note what `src/lib/access.ts` is and is not. It answers *which plans a
+subscription amounts to* — a discovery plan and a serving plan, read from
+Stripe, independent of each other. It does not answer who may read what,
+because nobody may be stopped from reading anything: work is served whole by
+the contributor to whoever asks, and a consumer's plan never crosses that
+connection. `tests/contracts/a-key-unlocks-nothing.test.ts` is the assertion
+that there is nowhere left to put a gate.
 
 ## Data honesty
 
