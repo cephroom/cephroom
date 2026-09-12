@@ -1,4 +1,4 @@
-# Contributing to Receptorome
+# Contributing to Cephroom
 
 Two things are worth reading before anything else:
 

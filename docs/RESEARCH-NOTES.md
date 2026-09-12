@@ -2,8 +2,8 @@
 
 What actual scientific practice tells us researchers need from a platform
 like this, and how each need maps to the product. Grounded where possible in
-the vendored receptorome pipeline's own verification record
-(`C:\dev\receptorome\docs\VERIFICATION.md`, ChEMBL_37, verified 2026-08-06),
+the vendored cephroom pipeline's own verification record
+(`C:\dev\cephroom\docs\VERIFICATION.md`, ChEMBL_37, verified 2026-08-06),
 which is a primary source for how binding data behaves in practice.
 
 Each cycle adds to this. Entries are dated.
@@ -14,7 +14,7 @@ Each cycle adds to this. Entries are dated.
 
 ### What the data actually does
 
-The receptorome verification doc is a catalogue of ways a number betrays you:
+The cephroom verification doc is a catalogue of ways a number betrays you:
 
 - **ChEMBL silently ignores unknown query parameters.** A typo in a filter
   name returns HTTP 200 and the *entire* 24.5M-row activity table rather than

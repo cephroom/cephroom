@@ -2,10 +2,12 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { PLANS, planForPrice } from "@/lib/stripe/plans";
-import type {
-  CheckoutRequest,
-  StripeGateway,
-  SubscriptionView,
+import {
+  SUBJECT_METADATA_KEY,
+  subjectFromMetadata,
+  type CheckoutRequest,
+  type StripeGateway,
+  type SubscriptionView,
 } from "@/lib/stripe/types";
 
 /**
@@ -29,7 +31,13 @@ const YEAR = 365 * 86_400;
 
 interface Customer {
   id: string;
-  metadata: { receptoromeSub: string };
+  /**
+   * Keyed by whichever name the platform used when this customer was created.
+   * Real Stripe metadata is an open string map and holds records written by
+   * older releases, so the stand-in models that rather than a fixed key — it
+   * is the shape that made the receptorome → cephroom rename dangerous.
+   */
+  metadata: Record<string, string>;
 }
 
 interface Subscription {
@@ -175,7 +183,7 @@ export function advancePeriod(subscriptionId: string): void {
 export function subscriptionsForSubject(sub: string): Subscription[] {
   const store = load();
   const customer = Object.values(store.customers).find(
-    (candidate) => candidate.metadata.receptoromeSub === sub,
+    (candidate) => subjectFromMetadata(candidate.metadata) === sub,
   );
   if (!customer) return [];
   return Object.values(store.subscriptions).filter(
@@ -205,9 +213,17 @@ export function simulatedGateway(): StripeGateway {
     async findCustomerBySubject(sub) {
       const store = load();
       const customer = Object.values(store.customers).find(
-        (candidate) => candidate.metadata.receptoromeSub === sub,
+        (candidate) => subjectFromMetadata(candidate.metadata) === sub,
       );
-      return customer?.id ?? null;
+      if (!customer) return null;
+
+      // Migrate a customer found under an older metadata key forward, exactly
+      // as the live gateway does, so the stand-in exercises that path too.
+      if (!customer.metadata[SUBJECT_METADATA_KEY]) {
+        customer.metadata = { [SUBJECT_METADATA_KEY]: sub };
+        save(store);
+      }
+      return customer.id;
     },
 
     async listSubscriptions(customerId) {
@@ -224,7 +240,7 @@ export function simulatedGateway(): StripeGateway {
       let customerId = request.customerId;
       if (!customerId) {
         const existing = Object.values(store.customers).find(
-          (candidate) => candidate.metadata.receptoromeSub === request.sub,
+          (candidate) => subjectFromMetadata(candidate.metadata) === request.sub,
         );
         if (existing) customerId = existing.id;
       }
@@ -232,7 +248,7 @@ export function simulatedGateway(): StripeGateway {
         customerId = id("cus");
         store.customers[customerId] = {
           id: customerId,
-          metadata: { receptoromeSub: request.sub },
+          metadata: { [SUBJECT_METADATA_KEY]: request.sub },
         };
       }
 

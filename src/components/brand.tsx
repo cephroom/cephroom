@@ -4,7 +4,7 @@ import Link from "next/link";
  * The mark is a binding event: a small ligand docked into a pocket.
  * It reads as a glyph at 20px and as a diagram at 64px.
  */
-export function ReceptoromeMark({ className = "" }: { className?: string }) {
+export function CephroomMark({ className = "" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -41,11 +41,11 @@ export function Wordmark({ href = "/" }: { href?: string }) {
     <Link
       href={href}
       className="group inline-flex items-center gap-2 text-ink"
-      aria-label="Receptorome home"
+      aria-label="Cephroom home"
     >
-      <ReceptoromeMark className="h-[22px] w-[22px] text-accent transition-transform group-hover:-rotate-6" />
+      <CephroomMark className="h-[22px] w-[22px] text-accent transition-transform group-hover:-rotate-6" />
       <span className="font-serif text-[1.32rem] font-semibold leading-none tracking-[-0.02em]">
-        Receptorome
+        Cephroom
       </span>
     </Link>
   );

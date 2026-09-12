@@ -143,7 +143,7 @@ model, so its lifetime is its exposure — but the blast radius is narrow: a
 leaked serve key lets someone announce under that subject (list content in
 the namespace), and nothing else. It grants no read access to any reader's
 data and cannot touch billing. This is enforced, not asserted: the serve key
-carries its own audience (`receptorome:serve`) that the reader-session
+carries its own audience (`cephroom:serve`) that the reader-session
 verifier (`verifyAccessKey`, used by the platform and, through the platform's
 public key, by every node) refuses, so no path can accept it as a read
 credential — see `tests/contracts/key-forgery.test.ts`. It is issued on demand
@@ -270,9 +270,9 @@ being served right now, by a node currently connected. Search is a scan over
 live announcements. A column that nobody is serving is not findable, and that
 is the correct behaviour rather than a gap.
 
-The consequence for the product is severe and worth stating plainly: **Receptorome
+The consequence for the product is severe and worth stating plainly: **Cephroom
 has no archive.** A reader cannot cite a column and expect it to be there next
-year. The honest framing is that Receptorome is a live reading surface over work
+year. The honest framing is that Cephroom is a live reading surface over work
 its authors are actively standing behind — if nobody will serve it, nobody is
 standing behind it.
 
@@ -308,6 +308,28 @@ party."*
 email, not a subscription row, not an invoice. The only Stripe identifier the
 platform handles is the customer id, and it handles it by putting it in a
 token and forgetting it.
+
+**The cost nobody anticipates: the metadata key is stored data we do not
+own.** Because the subject-to-customer map lives in Stripe's customer
+metadata rather than in a table here, the *name of that key* is a value
+already written into records the platform cannot rewrite in bulk. It is named
+after the platform, so renaming the platform changes the constant and not the
+data. `findCustomerBySubject` then misses, and a returning subscriber is
+treated as new: a second customer is created beside their live subscription
+and they drop to Reader while still being billed. Silent, and expensive.
+
+This happened. The platform was called `receptorome` before it was called
+`cephroom`. The fix is not to freeze the key but to treat it as append-only
+history: `SUBJECT_METADATA_KEYS` in `src/lib/stripe/types.ts` lists every name
+the platform has ever used, newest first, the lookup tries each in turn, and a
+customer found under an old one is migrated forward on the spot — so the extra
+search is paid once per customer, ever. Adding a name is free. Removing one
+orphans everybody who has not signed in since. `tests/contracts/rename-continuity.test.ts`
+holds the line.
+
+A third-party store holding *our* schema is a general hazard, not a Stripe
+quirk. Anything else we ever ask an outside party to remember for us inherits
+the same rule.
 
 ### 3. The simulated Stripe, in development only
 

@@ -49,7 +49,7 @@ it the most useful thing I looked at:
 
 **The citability gap is the one worth sitting with.** Researchers need a
 stable, resolvable identifier to cite (Zenodo's whole pitch is the DOI).
-Contract 3 means a `receptorome.example/read/<sub>/<slug>` link resolves only
+Contract 3 means a `cephroom.example/read/<sub>/<slug>` link resolves only
 while the author serves it — uncitable in the DOI sense. We cannot fix this
 by caching (that breaks Contract 3). The honest framing, already in the
 product's copy, is that this is a *live reading surface*, not an archive. But
@@ -67,7 +67,7 @@ contract-clean. Noted for the research/extend steps, not built yet.
   contract-clean equivalent: live, but of *presence* not *popularity*.
 - **Neither product's cold empty-state was observable** (both are always
   populated at scale). Ours genuinely can be empty, and the honest "Nobody is
-  serving anything — Receptorome has no archive" state is a feature of the
+  serving anything — Cephroom has no archive" state is a feature of the
   model, not a failure. Confirmed it reads as intentional in the role walk.
 - **GitHub onboarding** funnels hard to account creation. Ours must not: there
   is no account. The nearest equivalent — "get a key" — is framed as exactly

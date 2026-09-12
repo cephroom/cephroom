@@ -22,10 +22,10 @@ const attacker = generateKeyPairSync("ed25519");
 let tokens: typeof import("@/lib/keys/tokens");
 
 beforeAll(async () => {
-  process.env.RECEPTOROME_SIGNING_KEY = b64(
+  process.env.CEPHROOM_SIGNING_KEY = b64(
     platform.privateKey.export({ type: "pkcs8", format: "pem" }) as string,
   );
-  process.env.RECEPTOROME_PUBLIC_KEY = b64(
+  process.env.CEPHROOM_PUBLIC_KEY = b64(
     platform.publicKey.export({ type: "spki", format: "pem" }) as string,
   );
   process.env.AUTH_SUBJECT_SECRET = randomBytes(32).toString("hex");

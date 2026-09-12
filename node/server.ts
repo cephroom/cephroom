@@ -1,5 +1,5 @@
 /**
- * A Receptorome node.
+ * A Cephroom node.
  *
  * This is the thing Contract 2 is about. A contributor runs it on their own
  * machine; it reads their columns and datasets off their own disk, announces
@@ -104,7 +104,7 @@ function readColumns(): Column[] {
     });
 }
 
-/** The receptorome snapshot, as a dataset this node serves. */
+/** The cephroom snapshot, as a dataset this node serves. */
 function readDataset() {
   const matrix = (file: string) => {
     const text = readFileSync(join(DATA_DIR, file), "utf8").trim();
@@ -250,6 +250,12 @@ function readDataset() {
     });
   }
 
+  // The dataset keeps the name of the pipeline that produced it, not the name
+  // of the platform serving it. `receptorome` is a separate ChEMBL extraction
+  // project; this is its output, and a claim's `dataset:` line is provenance.
+  // Renaming it to match the platform would assert authorship the platform
+  // does not have — and would break every claim already written against it,
+  // on machines this repository cannot reach.
   return {
     id: "receptorome-ki",
     name: "Receptorome — antipsychotic binding affinities",
@@ -524,7 +530,7 @@ let heartbeat: NodeJS.Timeout | null = null;
  */
 async function serveKey(): Promise<string> {
   if (process.env.NODE_KEY) return process.env.NODE_KEY;
-  if (!process.env.RECEPTOROME_SIGNING_KEY) {
+  if (!process.env.CEPHROOM_SIGNING_KEY) {
     throw new Error(
       "No NODE_KEY set and no local signing key to mint one. Sign in on the platform and set NODE_KEY.",
     );

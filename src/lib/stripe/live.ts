@@ -1,14 +1,19 @@
 import Stripe from "stripe";
 
 import { planForPrice } from "./plans";
-import type { StripeGateway, SubscriptionView } from "./types";
+import {
+  SUBJECT_METADATA_KEY,
+  SUBJECT_METADATA_KEYS,
+  type StripeGateway,
+  type SubscriptionView,
+} from "./types";
 
 let client: Stripe | null = null;
 
 function stripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set.");
-  client ??= new Stripe(key, { appInfo: { name: "Receptorome" } });
+  client ??= new Stripe(key, { appInfo: { name: "Cephroom" } });
   return client;
 }
 
@@ -53,12 +58,28 @@ export function liveGateway(): StripeGateway {
 
     async findCustomerBySubject(sub) {
       // Stripe holds the subject-to-customer mapping in customer metadata,
-      // so the platform does not have to.
-      const found = await stripe().customers.search({
-        query: `metadata['receptoromeSub']:'${sub}'`,
-        limit: 1,
-      });
-      return found.data[0]?.id ?? null;
+      // so the platform does not have to. Every metadata key this platform
+      // has ever used is searched, newest first — see SUBJECT_METADATA_KEYS
+      // for why dropping one would orphan returning subscribers.
+      for (const key of SUBJECT_METADATA_KEYS) {
+        const found = await stripe().customers.search({
+          query: `metadata['${key}']:'${sub}'`,
+          limit: 1,
+        });
+        const id = found.data[0]?.id;
+        if (!id) continue;
+
+        if (key !== SUBJECT_METADATA_KEY) {
+          // Migrate the mapping forward so the legacy search is paid once per
+          // customer rather than on every renewal. Writing to Stripe is
+          // allowed; writing it here would not be.
+          await stripe().customers.update(id, {
+            metadata: { [SUBJECT_METADATA_KEY]: sub },
+          });
+        }
+        return id;
+      }
+      return null;
     },
 
     async listSubscriptions(customerId) {
@@ -77,7 +98,7 @@ export function liveGateway(): StripeGateway {
         input.customerId ??
         (
           await stripe().customers.create({
-            metadata: { receptoromeSub: input.sub },
+            metadata: { [SUBJECT_METADATA_KEY]: input.sub },
           })
         ).id;
 
@@ -90,7 +111,7 @@ export function liveGateway(): StripeGateway {
         allow_promotion_codes: true,
         // Carried so that a customer created by Checkout still answers the
         // metadata lookup above.
-        subscription_data: { metadata: { receptoromeSub: input.sub } },
+        subscription_data: { metadata: { [SUBJECT_METADATA_KEY]: input.sub } },
       });
 
       if (!session.url) throw new Error("Stripe returned no checkout URL.");

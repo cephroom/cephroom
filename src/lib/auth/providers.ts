@@ -71,8 +71,8 @@ export function providers(): ProviderConfig[] {
       tokenUrl: `${baseUrl()}/api/dev-oauth/token`,
       userinfoUrl: `${baseUrl()}/api/dev-oauth/userinfo`,
       scope: "openid email profile",
-      clientId: "receptorome-local",
-      clientSecret: "receptorome-local-secret",
+      clientId: "cephroom-local",
+      clientSecret: "cephroom-local-secret",
       profile: (raw) => ({
         accountId: String(raw.sub ?? ""),
         name: String(raw.name ?? "Reader"),

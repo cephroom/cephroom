@@ -1,4 +1,4 @@
-# Receptorome
+# Cephroom
 
 **Science writing with a build step.**
 
@@ -24,7 +24,7 @@ against the current data, so the literature slowly accumulates sentences that
 were true once.
 
 Software had the same problem and did not solve it by writing more carefully.
-It solved it with continuous integration. Receptorome does the same for numbers in
+It solved it with continuous integration. Cephroom does the same for numbers in
 prose — an author never types a measured value, they write the query that
 produces it:
 
@@ -120,7 +120,7 @@ npm run node:serve           # a contributor's node, on :4600
 ```
 
 Open <http://localhost:3000/read>. The node ships five columns and the
-receptorome dataset as example content; point it at your own directory and it
+cephroom dataset as example content; point it at your own directory and it
 serves that instead.
 
 Stop the node and reload — the work disappears from the site. That is the

@@ -15,8 +15,8 @@ const pem = (key: { export: (o: never) => string | Buffer }, type: string) =>
   ).toString("base64");
 
 console.log("# Capability key signing pair (Ed25519), base64-encoded PEM.");
-console.log(`RECEPTOROME_SIGNING_KEY=${pem(privateKey, "pkcs8")}`);
-console.log(`RECEPTOROME_PUBLIC_KEY=${pem(publicKey, "spki")}`);
+console.log(`CEPHROOM_SIGNING_KEY=${pem(privateKey, "pkcs8")}`);
+console.log(`CEPHROOM_PUBLIC_KEY=${pem(publicKey, "spki")}`);
 console.log();
 console.log("# Derives pseudonymous subjects from provider account ids.");
 console.log(`AUTH_SUBJECT_SECRET=${randomBytes(32).toString("base64url")}`);

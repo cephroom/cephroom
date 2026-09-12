@@ -22,7 +22,7 @@ const IDENTITY_TOKENS = [
   "email",
   "customerId",
   "stripeCustomer",
-  "receptoromeSub",
+  "cephroomSub",
   "passwordHash",
   "accountId",
   // Contract 2's fuller list. These should not appear anywhere in the

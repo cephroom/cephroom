@@ -31,7 +31,7 @@ export default async function HomePage() {
 
             <p className="mt-6 max-w-[56ch] text-[1.1rem] leading-relaxed text-ink-muted">
               A review article is frozen the day it is written. The databases
-              underneath it are not. Receptorome columns state their numbers as
+              underneath it are not. Cephroom columns state their numbers as
               queries against a dataset, and every reader&rsquo;s browser
               re-runs them on the way in — so a sentence that has quietly
               become wrong says so on the page.
@@ -140,7 +140,7 @@ tolerance: 10%
               </h3>
               <p className="mt-2 max-w-[52ch] text-[0.92rem] leading-relaxed text-ink-muted">
                 A contributor&rsquo;s work lives on their own machine and is
-                served from there. Receptorome brokers the connection and holds no
+                served from there. Cephroom brokers the connection and holds no
                 copy — your browser fetches the bytes from theirs. Stop the
                 process and the work leaves the site immediately.
               </p>
@@ -190,7 +190,7 @@ tolerance: 10%
           {online.length === 0 ? (
             <div className="rounded-xl border border-rule bg-paper-raised p-8">
               <p className="max-w-[58ch] text-[0.95rem] leading-relaxed text-ink-muted">
-                This is not an error state. Receptorome holds nothing, so when no
+                This is not an error state. Cephroom holds nothing, so when no
                 contributor is running a node there is genuinely nothing here
                 to show — and no cached copy to fall back on.
               </p>

@@ -17,8 +17,18 @@ import {
  * anonymous — there is nothing else to consult.
  */
 
-export const ACCESS_COOKIE = "receptorome_key";
-export const REFRESH_COOKIE = "receptorome_renew";
+export const ACCESS_COOKIE = "cephroom_key";
+export const REFRESH_COOKIE = "cephroom_renew";
+
+/**
+ * Cookie names from before the platform was renamed.
+ *
+ * Nothing reads them — a key minted under the old issuer would fail
+ * verification anyway. They are here so that signing out clears them, rather
+ * than leaving a dead credential sitting in the browsers of everyone who was
+ * signed in across the rename until it expires on its own.
+ */
+const LEGACY_COOKIES = ["receptorome_key", "receptorome_renew"];
 
 export interface Viewer {
   sub: string | null;
@@ -106,5 +116,11 @@ export function clearedCookies() {
   return [
     { name: ACCESS_COOKIE, value: "", ...SHARED, maxAge: 0 },
     { name: REFRESH_COOKIE, value: "", ...SHARED, maxAge: 0 },
+    ...LEGACY_COOKIES.map((name) => ({
+      name,
+      value: "",
+      ...SHARED,
+      maxAge: 0,
+    })),
   ];
 }

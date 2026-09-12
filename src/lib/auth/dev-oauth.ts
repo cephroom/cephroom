@@ -14,8 +14,8 @@
  * Enabled only when AUTH_DEV_OAUTH=1 and NODE_ENV is not production.
  */
 
-export const DEV_OAUTH_CLIENT_ID = "receptorome-local";
-export const DEV_OAUTH_CLIENT_SECRET = "receptorome-local-secret";
+export const DEV_OAUTH_CLIENT_ID = "cephroom-local";
+export const DEV_OAUTH_CLIENT_SECRET = "cephroom-local-secret";
 
 export function isDevOAuthEnabled(): boolean {
   return (

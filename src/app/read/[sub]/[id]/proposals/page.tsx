@@ -67,7 +67,7 @@ export default async function ProposalsPage({
           </h1>
           <p className="mt-2 max-w-[54ch] text-[0.93rem] leading-relaxed text-ink-muted">
             Held on {located.presence.displayName}&rsquo;s machine, fetched
-            straight from it. None of this passes through Receptorome.
+            straight from it. None of this passes through Cephroom.
           </p>
         </div>
         <Link

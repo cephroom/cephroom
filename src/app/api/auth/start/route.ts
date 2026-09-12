@@ -11,7 +11,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const FLOW_COOKIE = "receptorome_flow";
+export const FLOW_COOKIE = "cephroom_flow";
 
 /**
  * Begins an authorization-code flow.

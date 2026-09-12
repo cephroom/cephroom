@@ -66,7 +66,7 @@ export default async function ProposePage({
         </h1>
         <p className="mt-2.5 max-w-[60ch] text-[0.95rem] leading-relaxed text-ink-muted">
           This goes directly to {located.presence.displayName}&rsquo;s machine
-          and is stored there, next to the column. Receptorome neither holds it nor
+          and is stored there, next to the column. Cephroom neither holds it nor
           sees it — your browser posts it to their node, the same way it
           fetched the text.
         </p>

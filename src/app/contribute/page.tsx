@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Run a node",
   description:
-    "Your work stays on your machine. Receptorome brokers the connection and holds no copy.",
+    "Your work stays on your machine. Cephroom brokers the connection and holds no copy.",
 };
 
 export default async function ContributePage() {
@@ -21,7 +21,7 @@ export default async function ContributePage() {
           Publishing here means running something
         </h1>
         <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
-          There is no upload. A Receptorome node reads your columns off your own
+          There is no upload. A Cephroom node reads your columns off your own
           disk and serves them to readers directly; the platform is told an id,
           a title and an address, in memory, for as long as you keep serving.
           Close the process and your work leaves the site.
@@ -32,14 +32,14 @@ export default async function ContributePage() {
         <h2>Start a node</h2>
         <p>
           Clone the repository and run the node it ships. With no arguments it
-          serves the demo content — the receptorome dataset and a handful of
+          serves the demo content — the cephroom dataset and a handful of
           example columns — so you can see the whole loop working before you
           point it anywhere.
         </p>
       </div>
 
       <pre className="scroll-x mt-5 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed">
-        {`git clone <this repo> && cd receptorome && npm install
+        {`git clone <this repo> && cd cephroom && npm install
 npm run node:serve                       # serves the demo content`}
       </pre>
 

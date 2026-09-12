@@ -30,15 +30,15 @@ import type { Tier } from "@/lib/access";
 export const ACCESS_TTL_SECONDS = 15 * 60;
 export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-export const ISSUER = "receptorome";
-export const ACCESS_AUDIENCE = "receptorome:access";
-export const REFRESH_AUDIENCE = "receptorome:refresh";
+export const ISSUER = "cephroom";
+export const ACCESS_AUDIENCE = "cephroom:access";
+export const REFRESH_AUDIENCE = "cephroom:refresh";
 // The serve key announces a node's presence and does nothing else. It gets
 // its own audience so that verifyAccessKey — the reader-session verifier used
 // by the platform and, via the platform's public key, by every node — refuses
 // it. A leaked 30-day NODE_KEY can therefore announce, and grant no read
 // access to any paid content.
-export const SERVE_AUDIENCE = "receptorome:serve";
+export const SERVE_AUDIENCE = "cephroom:serve";
 
 export type Scope =
   | "read:public"
@@ -113,7 +113,7 @@ let publicKey: CryptoKey | null = null;
 
 async function signingKey(): Promise<CryptoKey> {
   privateKey ??= (await importPKCS8(
-    decodePem(requireEnv("RECEPTOROME_SIGNING_KEY")),
+    decodePem(requireEnv("CEPHROOM_SIGNING_KEY")),
     "EdDSA",
   )) as CryptoKey;
   return privateKey;
@@ -121,7 +121,7 @@ async function signingKey(): Promise<CryptoKey> {
 
 export async function verificationKey(): Promise<CryptoKey> {
   publicKey ??= (await importSPKI(
-    decodePem(requireEnv("RECEPTOROME_PUBLIC_KEY")),
+    decodePem(requireEnv("CEPHROOM_PUBLIC_KEY")),
     "EdDSA",
   )) as CryptoKey;
   return publicKey;
@@ -129,7 +129,7 @@ export async function verificationKey(): Promise<CryptoKey> {
 
 /** The public key, in the form a node fetches from /.well-known. */
 export function publicKeyPem(): string {
-  return decodePem(requireEnv("RECEPTOROME_PUBLIC_KEY"));
+  return decodePem(requireEnv("CEPHROOM_PUBLIC_KEY"));
 }
 
 export async function mintAccessKey(input: {

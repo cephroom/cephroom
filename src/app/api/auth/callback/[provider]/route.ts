@@ -152,7 +152,7 @@ async function fetchProfile(provider: ProviderConfig, accessToken: string) {
     headers: {
       authorization: `Bearer ${accessToken}`,
       accept: "application/json",
-      "user-agent": "receptorome",
+      "user-agent": "cephroom",
     },
   });
   if (!response.ok) throw new Error("userinfo failed");

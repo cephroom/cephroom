@@ -40,11 +40,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-receptorome.db
+cephroom.db
 
 # local database
-receptorome.db
-receptorome.db-*
+cephroom.db
+cephroom.db-*
 
 # local Stripe stand-in store
 .stripe-local.json

@@ -26,8 +26,8 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Receptorome — science writing with a build step",
-    template: "%s · Receptorome",
+    default: "Cephroom — science writing with a build step",
+    template: "%s · Cephroom",
   },
   description:
     "A subscription publication for pharmacology and neuroscience, where every number in a column is a live query against a versioned dataset and re-checked on every release.",

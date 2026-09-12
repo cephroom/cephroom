@@ -90,5 +90,5 @@ from a single paper. Both appear in the matrix as one number each. Only one
 of them should be load-bearing in an argument, and you cannot tell which
 from the number alone.
 
-That is why every claim on Receptorome carries its evidence count. A value
+That is why every claim on Cephroom carries its evidence count. A value
 without an *n* is a rumour with a decimal point.

@@ -20,7 +20,7 @@ let dir: string;
 let store: ProposalStore;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "receptorome-proposals-"));
+  dir = mkdtempSync(join(tmpdir(), "cephroom-proposals-"));
   store = new ProposalStore(dir);
 });
 

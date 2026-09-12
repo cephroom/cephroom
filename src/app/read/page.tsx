@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Reading now",
   description:
-    "Everything being served right now. Receptorome has no archive — discovery is presence.",
+    "Everything being served right now. Cephroom has no archive — discovery is presence.",
 };
 
 const ACCESS_CHIP: Record<string, string | null> = {
@@ -37,7 +37,7 @@ export default async function ReadPage({
         </h1>
         <p className="mt-3 max-w-[60ch] text-[1rem] leading-relaxed text-ink-muted">
           Everything below is being served from a contributor&rsquo;s own
-          machine, right now. Receptorome holds none of it. When someone stops
+          machine, right now. Cephroom holds none of it. When someone stops
           serving, their work leaves this page — not because it was deleted,
           but because being served was the only reason it was here.
         </p>
@@ -181,7 +181,7 @@ function Empty({ query }: { query: string }) {
       <p className="mx-auto mt-3 max-w-[50ch] text-[0.92rem] leading-relaxed text-ink-muted">
         {query
           ? "Search only reaches what is being served right now. There is no index of what has existed, because keeping one would mean the platform holding a copy."
-          : "Receptorome has no archive. Nothing is stored here, so when no contributor is running a node there is genuinely nothing to show."}
+          : "Cephroom has no archive. Nothing is stored here, so when no contributor is running a node there is genuinely nothing to show."}
       </p>
       <Link
         href="/contribute"
