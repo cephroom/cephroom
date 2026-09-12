@@ -1,0 +1,223 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "What we can and cannot see",
+  description:
+    "What Cephroom is structurally unable to learn about you, and — just as plainly — what it and others still can.",
+};
+
+export default function PrivacyPage() {
+  return (
+    <main className="mx-auto max-w-[46rem] px-5 py-12 sm:py-16">
+      <header className="border-b border-rule pb-8">
+        <h1 className="font-serif text-[2.1rem] font-semibold tracking-[-0.025em] sm:text-[2.6rem]">
+          What we can and cannot see
+        </h1>
+        <p className="mt-3 text-[1.05rem] leading-relaxed text-ink-muted">
+          Overclaiming privacy is worse than claiming none, because somebody
+          makes a decision on the strength of it. So this page is in two halves,
+          and the second half is the one that matters.
+        </p>
+      </header>
+
+      <div className="prose mt-10">
+        <h2>The short version</h2>
+        <p>
+          <strong>Google knows you signed in here.</strong>{" "}
+          That happens on
+          Google&rsquo;s servers, before anything reaches us, and no design of
+          ours can change it.
+        </p>
+        <p>
+          <strong>Stripe knows you paid, and who you are.</strong>{" "}
+          Taking money
+          requires a real identity and a real payment relationship. Somebody has
+          to hold that, and it cannot be nobody.
+        </p>
+        <p>
+          What the mechanisms below achieve is narrower and worth having:{" "}
+          <strong>
+            we cannot connect those two facts to what you read.
+          </strong>{" "}
+          Not &ldquo;we promise not to&rdquo; — we are not able to.
+        </p>
+
+        <h2>What we never hold</h2>
+        <ul>
+          <li>
+            No account, profile, display name, avatar, preference or activity
+            record. There is no database here at all — no schema, no
+            migrations, no ORM in the dependency list.
+          </li>
+          <li>
+            No session store. Your key is a signed statement you carry; we check
+            a signature rather than look anything up.
+          </li>
+          <li>
+            No copy of anyone&rsquo;s subscription. Your tier is read from
+            Stripe when a key is issued and stamped into it.
+          </li>
+          <li>
+            No request logging that retains identity, no analytics, first- or
+            third-party, and no error reporter. We never read your IP address
+            from a socket.
+          </li>
+          <li>
+            None of what anybody publishes. A contributor serves their own work
+            from their own machine; your browser fetches it from theirs, and we
+            are not in that request at all.
+          </li>
+        </ul>
+
+        <h2>Anonymous reading tokens</h2>
+        <p>
+          Signing in gives us a pseudonymous subject derived from your Google
+          account. It is not reversible to an email address, and nothing is
+          written down — but it rides along on requests, which means we are{" "}
+          <em>capable</em>{" "}
+          of associating your reading with your subscription
+          and decline to. That is a promise, and a promise is weaker than an
+          impossibility.
+        </p>
+        <p>
+          So paying and reading are severed by arithmetic. When you ask for
+          tokens, your browser generates them, multiplies each by a random
+          factor that never leaves your machine, and sends us the results. We
+          check your subscription and sign. We have signed twelve values we
+          cannot read.
+        </p>
+        <p>
+          Later, your browser unblinds a signature into a usable token and
+          spends it — with no cookie attached — for a key carrying a tier and no
+          identity. We cannot tell which subscriber that token came from,
+          because the only thing that would connect them is the blinding factor,
+          and we never had it.
+        </p>
+        <p>
+          This is{" "}
+          <a href="https://www.rfc-editor.org/rfc/rfc9578.html">
+            Privacy Pass
+          </a>
+          , an IETF standard, using the publicly verifiable blind RSA token type
+          so that a contributor&rsquo;s node can check what you present with a
+          public key alone. It is not a scheme we invented.
+        </p>
+        <p>
+          You control it from{" "}
+          <Link href="/account">your key page</Link>: get tokens, see how many
+          this browser is holding, throw them away.
+        </p>
+
+        <h2>The one thing we do remember</h2>
+        <p>
+          A blind signature cannot prevent the same token being spent twice
+          unless something remembers that it has been spent. So there is a set
+          of spent-token markers, and{" "}
+          <strong>
+            &ldquo;the platform stores nothing&rdquo; is no longer literally
+            true
+          </strong>
+          . We would rather restate it than let it quietly stop being accurate.
+        </p>
+        <p>What is in it, exactly:</p>
+        <ul>
+          <li>
+            One opaque 32-byte hash per redeemed token. Not a person, not an
+            account, not a column.
+          </li>
+          <li>
+            Nothing else. No time beyond which hour it landed in, no address, no
+            browser, no count.
+          </li>
+          <li>
+            It lives in memory and dies with the process, and the signing keys
+            rotate hourly — so a marker becomes meaningless within two hours and
+            is dropped. The set&rsquo;s size depends on the last two hours of
+            traffic, not on all traffic ever.
+          </li>
+        </ul>
+        <p>
+          The residual, stated rather than buried: somebody operating this
+          server could watch redemptions arrive and count them. They could not
+          tell whose they were, nor that two of them came from the same
+          subscriber. That is the property the tokens buy, and the limit of it.
+        </p>
+
+        <h2>What this still does not hide</h2>
+        <p>
+          The honest list, because the point of the paragraphs above is that you
+          can rely on them, and you can only rely on them if this list is also
+          true.
+        </p>
+        <ul>
+          <li>
+            <strong>Google knows.</strong>{" "}
+            You were redirected to Google and
+            back. Google logged it.
+          </li>
+          <li>
+            <strong>Stripe knows.</strong>{" "}
+            Your name, email and card are theirs
+            and have to be. We never copy any of it back, and the only Stripe
+            identifier we handle is a customer id we put in a token and forget.
+          </li>
+          <li>
+            <strong>The contributor sees your network address.</strong>{" "}
+            Your
+            browser fetches their column from their machine, directly — that is
+            the whole architecture, and a direct connection means an IP address
+            at the other end. An anonymous token stops them learning{" "}
+            <em>who</em>{" "}
+            you are. It does not, and cannot, hide{" "}
+            <em>where</em>{" "}
+            you are. If that matters to you, a VPN or Tor is the
+            answer and we cannot substitute for one.
+          </li>
+          <li>
+            <strong>Page requests still carry your session.</strong>{" "}
+            The tokens
+            cover what you fetch from a contributor&rsquo;s node. The Cephroom
+            page around it is still requested with your cookie attached,
+            because that is how a same-site cookie works and because the header
+            has to know whether to show your name. So we could, today, see which
+            column pages you opened even though we cannot see what you read from
+            the node. Narrowing that is the next thing on this list rather than
+            something already done, and we are not going to describe it as done.
+          </li>
+          <li>
+            <strong>Your tier is visible at redemption.</strong>{" "}
+            A token is
+            signed by a per-tier key, so spending one reveals which tier it was
+            for. It reveals nothing about who.
+          </li>
+          <li>
+            <strong>We cannot revoke anything.</strong>{" "}
+            No blocklist, because a
+            blocklist is state. A stolen key is good until it expires — fifteen
+            minutes for reading, seven days for renewal — and the only remedy is
+            rotating our signing key, which signs everybody out at once.
+          </li>
+        </ul>
+
+        <h2>Why it is built this way</h2>
+        <p>
+          Because a contract that only holds while everyone behaves is not a
+          contract. The rules, the places they bend, and the features that were
+          built and then cut because they could not coexist with them are all
+          written down in{" "}
+          <a href="https://github.com/cephroom/cephroom/blob/main/docs/CONTRACTS.md">
+            docs/CONTRACTS.md
+          </a>
+          , and enforced by tests rather than by intention.
+        </p>
+      </div>
+
+      <p className="mt-12 text-[0.85rem] text-ink-muted">
+        <Link href="/how-it-works" className="font-medium text-accent hover:underline">
+          How the rest of it works →
+        </Link>
+      </p>
+    </main>
+  );
+}

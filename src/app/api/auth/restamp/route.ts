@@ -30,14 +30,18 @@ export async function GET(request: Request) {
   if (!token) return response;
 
   const key = await verifyAccessKey(token);
-  if (!key) return response;
+  // An anonymous key has no subject to ask Stripe about, and nothing to
+  // re-stamp: it was minted against a token, not against a subscription.
+  if (!key?.sub) return response;
+
+  const sub = key.sub;
 
   try {
-    const entitlement = await entitlementFor(key.sub);
+    const entitlement = await entitlementFor(sub);
     response.cookies.set(
       accessCookie(
         await mintAccessKey({
-          sub: key.sub,
+          sub,
           tier: entitlement.tier,
           cus: entitlement.customerId ?? undefined,
           name: key.name,

@@ -56,15 +56,31 @@ be green because of a build that ran three weeks ago.
 
 ## The two contracts
 
-### 1. No user data at rest
+### 1. No person-linkable data at rest
 
 No user table, no profile rows, no session store, no local mirror of anyone's
 subscription. There is no database at all — no schema, no migrations, and no
 ORM in the dependency list.
 
+(The contract used to say "no user data at rest" and that was exactly true
+until anonymous access tokens arrived. Preventing a blind-signed token being
+spent twice means remembering that it has been spent, so there is now a set of
+opaque markers in RAM — no person on the end of any of them, an hour's
+lifetime, and nothing in an entry beyond the fact that it exists. The sentence
+was changed rather than kept and footnoted.)
+
 You sign in with Google; nothing is written as a result. You receive an
 Ed25519-signed **capability key** carrying a pseudonymous subject, a tier and
 an expiry. Every authorization decision after that is a signature check.
+
+That subject still rides along on requests, which means the platform is
+*capable* of linking one person's reading to their subscription and merely
+declines to. So it is severed by arithmetic instead: a subscriber's browser
+gets a batch of **Privacy Pass** tokens (RFC 9578, publicly verifiable blind
+RSA) that the platform signs without being able to see, and spends one — with
+no cookie — for a key carrying a tier and no subject at all. What that does
+*not* hide is on [/privacy](src/app/privacy/page.tsx), in the same plain
+language, because overclaiming privacy is worse than claiming none.
 
 - Tier is read from **Stripe, live**, at key-issue and every renewal. Stripe
   is the only stateful party, and it holds the subject-to-customer mapping in

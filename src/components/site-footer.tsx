@@ -23,6 +23,7 @@ const GROUPS: { title: string; links: { href: string; label: string }[] }[] = [
     links: [
       { href: "/signin", label: "Sign in" },
       { href: "/account", label: "Key and billing" },
+      { href: "/privacy", label: "What we can see" },
     ],
   },
 ];

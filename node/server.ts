@@ -476,6 +476,20 @@ const server = createServer(async (request, response) => {
       });
     }
 
+    // A proposal lands on the author's disk and they have to decide about it,
+    // so it has to be from somebody. An anonymous read key — one minted by
+    // redeeming a blind-signed token — has no subject and carries no
+    // `write:propose` scope; this is the second of those two checks, here
+    // because the node enforces its own door rather than trusting the shape of
+    // what arrives.
+    const fromSub = key.sub;
+    if (!fromSub) {
+      return send(403, {
+        error:
+          "A proposal has to be attributable. Sign in and use your own key rather than an anonymous reading token.",
+      });
+    }
+
     const body = String(payload?.body ?? "");
     const title = String(payload?.title ?? "").trim();
     const rationale = String(payload?.rationale ?? "").trim();
@@ -488,7 +502,7 @@ const server = createServer(async (request, response) => {
     if (body.trim() === column.body.trim()) {
       return send(400, { error: "Nothing changed." });
     }
-    if (proposals.openFromSubject(columnId, key.sub) >= MAX_OPEN_PER_SUBJECT) {
+    if (proposals.openFromSubject(columnId, fromSub) >= MAX_OPEN_PER_SUBJECT) {
       return send(429, {
         error: "You have too many open proposals on this column already.",
       });
@@ -506,7 +520,7 @@ const server = createServer(async (request, response) => {
         title,
         rationale,
         body,
-        fromSub: key.sub,
+        fromSub,
         fromName,
       }),
     );

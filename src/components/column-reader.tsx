@@ -14,6 +14,7 @@ import { formatValue, isFoldSelect, type ParsedClaim } from "@/lib/claims/syntax
 import { concludeRun, judge, type Conclusion } from "@/lib/claims/verdict";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { spendToken } from "@/lib/tokens/wallet";
 
 /**
  * Reads a column by fetching it from the contributor's node.
@@ -106,6 +107,7 @@ export function ColumnReader({
 }) {
   const [phase, setPhase] = useState<Phase>({ state: "loading" });
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const [anonymous, setAnonymous] = useState(false);
   const base = `/read/${encodeURIComponent(sub)}/${encodeURIComponent(id)}`;
 
   useEffect(() => {
@@ -113,8 +115,22 @@ export function ColumnReader({
 
     (async () => {
       try {
+        // Spend an anonymous token if this browser is holding any. The key it
+        // returns carries a tier and no subject, so the contributor's node
+        // serves the column without ever learning who asked — and the platform
+        // that signed the token cannot tell which subscriber redeemed it.
+        //
+        // Falling back to the subject-bearing key when the wallet is empty is
+        // a downgrade in privacy and never in access, which is the right way
+        // round: nobody should lose a column they paid for because a token
+        // expired.
+        const spent = await spendToken();
+        if (cancelled) return;
+        const presentedKey = spent?.key ?? nodeKey;
+        setAnonymous(Boolean(spent));
+
         const response = await fetchWithTimeout(`${address}/column/${encodeURIComponent(id)}`, {
-          headers: nodeKey ? { authorization: `Bearer ${nodeKey}` } : {},
+          headers: presentedKey ? { authorization: `Bearer ${presentedKey}` } : {},
         });
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const column = (await response.json()) as ServedColumn;
@@ -245,6 +261,15 @@ export function ColumnReader({
             <span className="text-[0.8rem] text-ink-muted">
               checked in your browser at {checkedAt}
             </span>
+            {anonymous && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-counter/30 bg-counter-wash px-2 py-0.5 text-[0.7rem] font-medium text-counter"
+                title="Fetched with an anonymous access token. The node was shown a tier and no identity."
+              >
+                <span aria-hidden>▚</span>
+                read anonymously
+              </span>
+            )}
           </div>
 
           {conclusion === "drifted" && (

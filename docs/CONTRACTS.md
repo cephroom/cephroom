@@ -46,11 +46,22 @@ temptations by name.
 
 ---
 
-## Contract 1 — No user data at rest
+## Contract 1 — No person-linkable data at rest
 
-**The platform persists nothing about users.** No user table, no profile rows,
-no email addresses, no display names, no avatars, no preferences, no activity
-record, no session store, no local mirror of anyone's subscription.
+> **Restated, 2026-09-12.** This contract used to read "no user data at rest",
+> and that wording was exactly true until anonymous access tokens arrived. A
+> blind signature scheme cannot prevent a token being spent twice unless
+> something remembers that it has been spent, so there is now a set of opaque
+> spent-token markers in memory. It holds no person and can be linked to none —
+> but "the platform stores nothing" is no longer literally true, and the
+> honest response to that is to change the sentence rather than to keep saying
+> it and rely on a footnote. The exception is named and bounded below, and
+> `tests/contracts/nullifier-shape.test.ts` holds it to its bounds.
+
+**The platform persists nothing that can be linked to a person.** No user
+table, no profile rows, no email addresses, no display names, no avatars, no
+preferences, no activity record, no session store, no local mirror of anyone's
+subscription.
 
 Identity is proven at sign-in and immediately forgotten. A signed key carries
 everything the platform is allowed to know about who you are, and
@@ -156,6 +167,78 @@ the old one leaks.
 scopes, which quietly made it a 30-day read credential — a direct violation of
 this paragraph, caught by a self-audit and closed by giving it its own
 audience.)
+
+### Anonymous access tokens, and the state they require
+
+Signing in yields a pseudonymous subject, and that subject rides on requests.
+Nothing is written down and the tests say nothing is written down — but the
+platform is *capable* of associating one person's reading with their
+subscription, and declines to. **A promise enforced by tests is weaker than a
+property enforced by arithmetic**, so paying and reading are severed.
+
+The mechanism is **Privacy Pass** — RFC 9576 (architecture), RFC 9577 (token
+structure), RFC 9578 (issuance) — using **token type 0x0002, publicly
+verifiable blind RSA (RFC 9474)**. Public verifiability is not optional here
+and is chosen for the same reason the capability keys are Ed25519 rather than
+an HMAC: a contributor's node must be able to check what a reader presents with
+a public key alone. The privately verifiable type would put the platform back
+in the request path, which Contract 2 forbids.
+
+1. A subscriber's browser blinds a batch of tokens with random factors that
+   never leave the machine, and asks for them to be signed.
+2. The platform checks entitlement live against Stripe — this is the one moment
+   it knows who is asking — and signs values it cannot read.
+3. Later the browser unblinds one and redeems it **with no cookie attached**.
+   The platform verifies the signature and cannot tell which issuance produced
+   it, because the only thing connecting them is a blinding factor it never
+   had.
+4. It mints a key carrying a tier and **no subject**, because none exists.
+
+A token has no payload, so the tier is *which key signed it*: one keypair per
+(tier, epoch). The cost is that a redemption reveals its tier, and nothing
+about who.
+
+An anonymous key carries read scopes only. `write:propose` is withheld
+deliberately: a proposal lands on an author's disk and has to be from somebody.
+If you want to argue with an author you sign your name; if you want to read,
+you do not.
+
+#### The nullifier set — the bounded exception
+
+This is the state, named rather than argued away:
+
+| | |
+| --- | --- |
+| What an entry is | one opaque 32-byte hash of a token nonce |
+| What else an entry holds | **nothing** — no timestamp finer than the epoch, no address, no user agent, no tier, no count |
+| Where it lives | RAM, dies with the process |
+| How long | epoch-bucketed; an epoch is dropped whole when its signing key retires |
+| Key rotation | hourly, two live epochs |
+| Therefore | the set's size is a function of the last two hours of traffic, not of traffic ever |
+
+It is a `Map<number, Set<Nullifier>>` and not a `Map<..., something>` on
+purpose. A `Set` can only remember that a thing happened, which is all
+double-spend prevention needs; the moment it can carry a value, somebody adds a
+timestamp "for debugging" and an opaque set becomes a log. The contract test
+asserts the data structure, not just the behaviour.
+
+The residual is honest: an operator could watch redemptions arrive and count
+them. They could not tell whose they were, nor that two came from the same
+subscriber, which is the property being bought.
+
+#### What this does not achieve
+
+Stated here and, more importantly, on `/privacy` where readers see it, because
+overclaiming privacy is worse than claiming none:
+
+- **Google knows** the reader signed in. That redirect is on Google's servers.
+- **Stripe knows** who paid. Taking money requires real identity.
+- **The contributor sees a network address.** A direct fetch from their machine
+  means an IP at the other end. A token hides *who*, never *where*.
+- **Page requests still carry the session cookie.** Tokens cover what a browser
+  fetches from a node. The platform page around it is still requested with a
+  same-site cookie, so the platform could today see which column *pages* were
+  opened. Narrowing that is outstanding work and is described as outstanding.
 
 ### Everything else is also "at rest"
 

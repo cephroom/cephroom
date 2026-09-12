@@ -17,7 +17,20 @@ import type { Tier } from "../src/lib/access";
 let cached: { key: CryptoKey; issuer: string; audience: string } | null = null;
 
 export interface VerifiedKey {
-  sub: string;
+  /**
+   * Who the reader is, or null when the platform does not know.
+   *
+   * Null is the anonymous case: a key minted by redeeming a blind-signed
+   * access token, which carries a tier and nothing else because no subject for
+   * it exists anywhere. A node serving a member column has everything it needs
+   * — the tier, signed by the platform — and learns nothing about the person
+   * on the other end, which is the point.
+   *
+   * Anything on this node that needs attribution (a proposal) must check for a
+   * subject rather than assume one. An anonymous key carries no
+   * `write:propose` scope, so that path is closed twice over.
+   */
+  sub: string | null;
   tier: Tier;
   scopes: string[];
 }
@@ -51,10 +64,13 @@ export async function verifyKeyWithPlatform(
     const { payload } = await jwtVerify(token, key, { issuer, audience });
 
     const tier = payload.tier as Tier | undefined;
-    if (!payload.sub || !tier) return null;
+    if (!tier) return null;
+    // A key with no subject is anonymous, not invalid — but only if it says
+    // so. One with neither a subject nor the marker is malformed.
+    if (!payload.sub && payload.anon !== true) return null;
 
     return {
-      sub: payload.sub,
+      sub: payload.sub ?? null,
       tier,
       scopes: (payload.scp as string[]) ?? [],
     };

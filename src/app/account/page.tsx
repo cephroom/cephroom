@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { SimulatedBillingControls } from "@/components/simulated-billing-controls";
 import { ServeKey } from "@/components/serve-key";
 import { SubmitButton } from "@/components/submit-button";
+import { TokenWallet } from "@/components/token-wallet";
 import { governingSubscription, TIER_LABEL } from "@/lib/access";
 import { getViewer } from "@/lib/auth/session";
 import {
@@ -230,6 +231,21 @@ export default async function AccountPage({
         >
           The constraints this follows from →
         </Link>
+      </section>
+
+      {/* -------------------------------------------- Anonymous reading */}
+      <section className="mt-8 rounded-xl border border-rule p-5">
+        <h2 className="text-[0.95rem] font-semibold">Read without us knowing</h2>
+        <p className="mt-2 max-w-[62ch] text-[0.88rem] leading-relaxed text-ink-muted">
+          Your key carries a subject, so every column you open is a request we
+          could in principle associate with your subscription. We do not, and
+          tests say we do not — but a promise is weaker than an impossibility.
+          These tokens make it one: we blind-sign them without seeing them, and
+          when your browser spends one we cannot tell whose it was.
+        </p>
+        <div className="mt-4">
+          <TokenWallet entitled={fresh.tier !== "reader"} />
+        </div>
       </section>
 
       {/* ------------------------------------------- Run a node as yourself */}

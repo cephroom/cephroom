@@ -48,8 +48,17 @@ export type Scope =
   | "serve:node";
 
 export interface AccessKey {
-  /** Pseudonymous subject. An HMAC of the provider account id. */
-  sub: string;
+  /**
+   * Pseudonymous subject, or null for an anonymous key.
+   *
+   * Null is the Layer 1 case: a key minted by redeeming a blind-signed token
+   * carries a tier and nothing else, because the platform genuinely does not
+   * know who redeemed it. Everything that needs attribution — announcing a
+   * node, proposing an edit — needs a subject and therefore cannot be done
+   * with one of these, which is correct rather than a limitation. Reading
+   * needs no attribution.
+   */
+  sub: string | null;
   tier: Tier;
   scp: Scope[];
   /** Stripe customer id, when the subject has one. */
@@ -194,6 +203,41 @@ export async function mintNodeKey(input: {
 }
 
 /**
+ * A read key with a tier and no subject — Layer 1's output.
+ *
+ * Minted by redeeming a blind-signed access token. The platform cannot put a
+ * subject in it because it does not have one: the redemption arrived with no
+ * cookie, and the token it carried is unlinkable to the issuance that produced
+ * it. So this is not "a key with the subject omitted for privacy"; it is a key
+ * for which no subject exists anywhere.
+ *
+ * It carries read scopes only. `write:propose` is deliberately withheld even
+ * at Member tier, because a proposal arrives on a contributor's disk and an
+ * unattributable one would be both unreviewable and a spam channel. If you
+ * want to argue with an author you sign your name; if you want to read, you
+ * do not.
+ *
+ * Lifetime matches the per-page-view node key. A token buys a reading session,
+ * not a subscription.
+ */
+export async function mintAnonymousKey(input: {
+  tier: Tier;
+}): Promise<string> {
+  const readOnly = scopesForTier(input.tier).filter(
+    (scope) => scope !== "write:propose",
+  );
+
+  return new SignJWT({ tier: input.tier, scp: readOnly, anon: true })
+    .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
+    .setIssuer(ISSUER)
+    .setAudience(ACCESS_AUDIENCE)
+    // No .setSubject(). A JWT with no `sub` claim is exactly what this is.
+    .setIssuedAt()
+    .setExpirationTime(`${NODE_KEY_TTL_SECONDS}s`)
+    .sign(await signingKey());
+}
+
+/**
  * A long-lived key a contributor pastes into their node as NODE_KEY, so it
  * can announce under their own subject.
  *
@@ -250,13 +294,16 @@ export async function mintRefreshKey(input: {
 
 export async function verifyAccessKey(token: string): Promise<AccessKey | null> {
   const payload = await verify(token, ACCESS_AUDIENCE);
-  if (!payload?.sub) return null;
+  // A subject-less key is valid and anonymous — not invalid. What is not
+  // acceptable is a key with neither a subject nor the anonymous marker, which
+  // would be a malformed key rather than a deliberate one.
+  if (!payload || (!payload.sub && payload.anon !== true)) return null;
 
   const tier = payload.tier as Tier | undefined;
   if (tier !== "reader" && tier !== "member" && tier !== "lab") return null;
 
   return {
-    sub: payload.sub,
+    sub: payload.sub ?? null,
     tier,
     scp: (payload.scp as Scope[]) ?? [],
     cus: payload.cus as string | undefined,

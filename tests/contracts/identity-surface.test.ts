@@ -65,6 +65,23 @@ const ALLOWED = [
   "src/app/account/page.tsx",
 ];
 
+/**
+ * Removes JSX text content, so that a page *describing* what is not stored
+ * does not read as storing it.
+ *
+ * The privacy page lists "no account, profile, display name, avatar,
+ * preference or activity record" and tripped on `avatar,` — a comma is
+ * punctuation, and the matcher below keys on punctuation. The test's own
+ * comment already said prose must not count; this makes that true rather than
+ * mostly true.
+ *
+ * Only text runs containing no `{` are removed, so a real expression like
+ * `<span>{viewer.sub}</span>` is left in place to be caught.
+ */
+function stripJsxProse(source: string): string {
+  return source.replace(/>([^<>{}]+)</g, "> <");
+}
+
 describe("Contract 1: identity stays in a small, named set of modules", () => {
   it("does not leak identity handling into new modules", () => {
     const offenders: string[] = [];
@@ -74,7 +91,9 @@ describe("Contract 1: identity stays in a small, named set of modules", () => {
       if (rel.includes(".test.")) continue;
       if (ALLOWED.includes(rel)) continue;
 
-      const source = stripCommentsAndStrings(readFileSync(file, "utf8"));
+      const source = stripJsxProse(
+        stripCommentsAndStrings(readFileSync(file, "utf8")),
+      );
       // Match the token used as code — reached through a property access, or
       // followed by punctuation — so that prose in JSX saying "no email
       // address is stored" does not read as handling one.
