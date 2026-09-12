@@ -285,3 +285,61 @@ support, so the pseudonym is redacted and the record stays. Open proposals keep
 theirs, because the exchange is still live.
 
 Ninety days is a judgement, not a derivation.
+
+## The Content-Security-Policy decision
+
+The platform shipped with no CSP and no other security headers. The question
+put to this work was: do we add one, skip it, or scope it — and write down
+which and why. The answer is **a scoped CSP**, and the scope is the whole point,
+so it is recorded here rather than left implicit in `src/middleware.ts`.
+
+**What is unusual here.** On an ordinary web app a CSP tightens every fetch
+directive to a small allowlist. This app cannot. A reader's browser fetches the
+column, the datasets and the figures **directly from the contributor's node**,
+whose address is open-ended — any `http(s)` origin a contributor states. That is
+not incidental; it is contract 2 working: the platform is not in the request, so
+it learns nothing about who read what. `ColumnReader` and `DatasetReader` are
+client components that `fetch(${address}/column/…)` and `.../dataset/…` from the
+browser. Lock `connect-src`/`img-src`/`media-src` to an allowlist and one of two
+things happens: reading from an honest node breaks, or the content has to be
+proxied through the platform to satisfy the policy — and proxying it is exactly
+what contract 2 forbids. So those directives are **deliberately open**
+(`http: https:`), and that openness is pinned by a test with the reason
+attached, because a future "hardening" that closes them would look like an
+improvement while quietly breaking the privacy model.
+
+**Where the CSP does bite: scripts.** The platform controls every script it
+serves. There are no inline `<script>` tags and no `dangerouslySetInnerHTML`
+anywhere in the app, and `react-markdown` escapes HTML in untrusted node
+content. So `script-src` is locked to a **per-request nonce plus
+`'strict-dynamic'`**, with no `'unsafe-inline'`. Even if some later change let a
+stranger's column inject a `<script>`, the browser would refuse to run it. This
+normally costs static rendering — a nonce forces dynamic rendering — but every
+route here is already `force-dynamic`, so that cost is already paid. This is the
+one directive that buys real safety at no architectural cost, which is why it is
+the one directive that is strict.
+
+**Delivery: middleware, not `next.config` headers.** A nonce has to be minted
+per request, which static `headers()` in `next.config.ts` cannot do. So the
+policy is built in `src/middleware.ts`, which sets the nonce on the request
+headers (Next stamps it onto its own script tags) and on the response.
+
+**Deliberately absent: `upgrade-insecure-requests`.** It would rewrite a plain
+`http://` node fetch to `https://` and break reading from an honest node — a
+localhost node, a dev tunnel — so it is left out on purpose.
+
+**The cheap, unconditional directives.** `object-src 'none'` (no plugins),
+`base-uri 'self'` (no `<base>` hijack of the relative figure URLs),
+`form-action 'self'` (a form only ever posts back to the platform's own billing
+and auth, never to a node), `frame-ancestors 'none'` and `frame-src 'none'`
+(the platform is neither framed nor a framer). Companion headers:
+`X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`,
+`X-Frame-Options: DENY`.
+
+**Verified, not assumed.** With the policy live, the app renders, hydrates, and
+a reader page fetches a column cross-origin from a node on `127.0.0.1:4601` and
+re-checks all eight claims in the browser — "8 claims verified · fetched with
+nothing attached" — with a nonce'd `script-src` and zero console CSP
+violations. The header shape is guarded by
+`tests/contracts/csp-locks-scripts.test.ts`, which fails if `script-src`
+reacquires `'unsafe-inline'` or if the open fetch directives silently close.
