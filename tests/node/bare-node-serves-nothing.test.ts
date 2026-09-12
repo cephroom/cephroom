@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -78,7 +78,6 @@ describe("no page claims a bare node serves demo content", () => {
 
 describe("the demo content still exists for local development", () => {
   it("keeps the demo columns in the repository", () => {
-    const { readdirSync } = require("node:fs") as typeof import("node:fs");
     const columns = readdirSync(join(NODE_DIR, "content")).filter((f) =>
       f.endsWith(".md"),
     );
