@@ -8,7 +8,7 @@ interface Proposal {
   id: string;
   title: string;
   rationale: string;
-  fromName: string;
+  fromSub: string;
   status: "open" | "merged" | "closed";
   createdAt: string;
 }
@@ -109,7 +109,8 @@ export function NodeProposalList({
             </p>
           )}
           <p className="mt-1.5 text-[0.78rem] text-ink-faint">
-            {proposal.fromName} ·{" "}
+            <span className="font-mono text-[0.78rem]">{proposal.fromSub}</span>{" "}
+            ·{" "}
             {new Date(proposal.createdAt).toLocaleString("en-GB", {
               day: "numeric",
               month: "short",

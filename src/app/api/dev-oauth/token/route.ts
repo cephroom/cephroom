@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 import {
   DEV_OAUTH_CLIENT_ID,
   DEV_OAUTH_CLIENT_SECRET,
+  DEV_TOKEN_TTL_MS,
   isDevOAuthEnabled,
   issueToken,
   redeemCode,
-} from "@/lib/auth/dev-oauth";
+} from "@simulated/google/provider";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,14 @@ export async function POST(request: Request) {
     {
       access_token: issueToken(persona),
       token_type: "bearer",
-      expires_in: 3600,
-      scope: "openid email profile",
+      expires_in: Math.floor(DEV_TOKEN_TTL_MS / 1000),
+      // Not "openid email profile". The platform asks for "openid profile"
+      // and this endpoint must echo what was granted rather than something
+      // richer — a stand-in that advertises a scope the real provider was
+      // never asked for is a stand-in that quietly disagrees with production,
+      // which is worse than no stand-in at all. The consent screen was
+      // corrected when the email scope was dropped; this was missed.
+      scope: "openid profile",
     },
     { headers: { "cache-control": "no-store" } },
   );

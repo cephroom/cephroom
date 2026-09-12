@@ -2,6 +2,7 @@
 
 import { getViewer } from "@/lib/auth/session";
 
+import { entitlementFor } from "./entitlement";
 import { gateway, usingRealStripe } from "./gateway";
 import { restampKey } from "./actions";
 
@@ -12,11 +13,15 @@ async function guard(formData: FormData): Promise<string> {
 
   const viewer = await getViewer();
   const subscriptionId = String(formData.get("subscriptionId") ?? "");
-  if (!viewer.sub || !viewer.cus) throw new Error("Sign in first.");
+  if (!viewer.sub) throw new Error("Sign in first.");
 
   // A server action is a public endpoint. Confirm ownership with the
-  // counterparty rather than trusting the form.
-  const mine = await (await gateway()).listSubscriptions(viewer.cus);
+  // counterparty rather than trusting the form — and resolve the customer
+  // from the subject, because the key no longer carries one to trust.
+  const { customerId } = await entitlementFor(viewer.sub);
+  if (!customerId) throw new Error("No subscription.");
+
+  const mine = await (await gateway()).listSubscriptions(customerId);
   if (!mine.some((subscription) => subscription.id === subscriptionId)) {
     throw new Error("Not your subscription.");
   }

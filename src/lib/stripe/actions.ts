@@ -36,9 +36,16 @@ export async function startCheckout(formData: FormData) {
     );
   }
 
+  // The customer id comes from Stripe, not from the key. It used to ride
+  // along in the key as a convenience, which made the credential a cache of
+  // Stripe's records keyed by identity — the thing Contract 1 says the
+  // platform does not keep, in the one place nobody was looking. Asking costs
+  // a round trip on a page that is already talking to Stripe.
+  const { customerId } = await entitlementFor(viewer.sub);
+
   const session = await (await gateway()).createCheckoutSession({
     sub: viewer.sub,
-    customerId: viewer.cus,
+    customerId,
     priceId: reduced?.priceId ?? PLANS[plan].prices[interval].priceId,
     plan,
     interval: reduced ? "year" : interval,
@@ -54,10 +61,12 @@ export async function startCheckout(formData: FormData) {
 export async function openBillingPortal() {
   const viewer = await getViewer();
   if (!viewer.sub) redirect("/signin?next=/account");
-  if (!viewer.cus) redirect("/pricing");
+
+  const { customerId } = await entitlementFor(viewer.sub);
+  if (!customerId) redirect("/pricing");
 
   const session = await (await gateway()).createBillingPortalSession({
-    customerId: viewer.cus,
+    customerId,
     returnUrl: `${baseUrl()}/account`,
   });
   redirect(session.url);
@@ -73,12 +82,16 @@ export async function resumeSubscription(formData: FormData) {
 
 async function setCancellation(subscriptionId: string, cancel: boolean) {
   const viewer = await getViewer();
-  if (!viewer.sub || !viewer.cus) redirect("/signin?next=/account");
+  if (!viewer.sub) redirect("/signin?next=/account");
 
   // A server action is a public endpoint. Confirm the subscription really
-  // belongs to this customer before touching it, by asking Stripe rather than
-  // trusting the form.
-  const mine = await (await gateway()).listSubscriptions(viewer.cus);
+  // belongs to this caller before touching it — and resolve the customer
+  // through Stripe from the subject, rather than believing a customer id the
+  // caller's own key handed us.
+  const { customerId } = await entitlementFor(viewer.sub);
+  if (!customerId) redirect("/pricing");
+
+  const mine = await (await gateway()).listSubscriptions(customerId);
   if (!mine.some((subscription) => subscription.id === subscriptionId)) {
     throw new Error("That subscription is not yours.");
   }
@@ -92,12 +105,7 @@ export async function restampKey() {
   if (!viewer.sub) return;
 
   const entitlement = await entitlementFor(viewer.sub);
-  const token = await mintAccessKey({
-    sub: viewer.sub,
-    tier: entitlement.tier,
-    cus: entitlement.customerId ?? undefined,
-    name: viewer.name ?? undefined,
-  });
+  const token = await mintAccessKey({ sub: viewer.sub, tier: entitlement.tier });
 
   (await cookies()).set(accessCookie(token));
 }

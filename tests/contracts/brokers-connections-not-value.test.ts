@@ -137,6 +137,72 @@ describe("what a contributor announces is displayed and nothing more", () => {
       .replace(/\/\/.*$/gm, "");
     // No shape checking, no chain detection, no normalisation.
     expect(code).not.toMatch(/0x|ethereum|bitcoin|iban|isValidAddress/i);
+
+    // And the same for the module that validates an announcement, which is
+    // where a wallet-recogniser would most plausibly be added now that the
+    // schema lives somewhere of its own. A length is the only thing the
+    // platform is willing to know about this field.
+    const schema = readFileSync(
+      join(ROOT, "src", "lib", "signaling", "announcement.ts"),
+      "utf8",
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+    expect(schema).not.toMatch(/0x|ethereum|bitcoin|iban|isValidAddress/i);
+    // `.max()` and nothing else. A `.trim()`, `.toLowerCase()` or `.regex()`
+    // here would each be the platform forming an opinion about the string.
+    const payToLine = schema
+      .split("\n")
+      .find((line) => line.includes("payTo:"));
+    expect(payToLine).toBeDefined();
+    expect(payToLine).not.toMatch(/\.trim\(|\.toLowerCase\(|\.regex\(|\.url\(|\.transform\(/);
+  });
+
+  it("bounds it at 300 characters, and says so somewhere that runs", async () => {
+    // The bound existed in exactly one place — a `.max(300)` in the announce
+    // schema — and nothing asserted it. Deleting the cap passed the whole
+    // suite, and payTo is the one attacker-controlled string the platform
+    // relays to every reader of a column.
+    const { announcementSchema, PAY_TO_MAX } = await import(
+      "@/lib/signaling/announcement"
+    );
+
+    expect(PAY_TO_MAX).toBe(300);
+
+    const base = {
+      displayName: "A contributor",
+      address: "http://127.0.0.1:4600",
+      items: [],
+    };
+
+    expect(
+      announcementSchema.safeParse({ ...base, payTo: "x".repeat(300) }).success,
+    ).toBe(true);
+    expect(
+      announcementSchema.safeParse({ ...base, payTo: "x".repeat(301) }).success,
+    ).toBe(false);
+
+    // Absent is fine: "nothing" is a legitimate answer to how to pay someone.
+    expect(announcementSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("relays it byte for byte, whatever is in it", async () => {
+    // Verbatim means verbatim. No trimming, no normalising, no case folding —
+    // each is a small step towards understanding the string, and understanding
+    // it is the first step towards routing to it.
+    const { createRegistry } = await import("@/lib/signaling/registry");
+    const registry = createRegistry();
+
+    const awkward = "  ETH: 0xAbC  /  ko-fi.com/Me    or don't bother  ";
+    registry.announce({
+      sub: "s_pay",
+      displayName: "Payee",
+      address: "http://127.0.0.1:4600",
+      payTo: awkward,
+      items: [{ id: "c", title: "C", kind: "column", tags: [] }],
+    });
+
+    expect(registry.find("s_pay", "c")?.presence.payTo).toBe(awkward);
   });
 
   it("is never persisted, like everything else in the registry", () => {
@@ -164,15 +230,66 @@ describe("what a contributor announces is displayed and nothing more", () => {
 });
 
 describe("the prohibition is written down where it will be argued with", () => {
-  it("names bonuses and growth incentives as forbidden", () => {
-    const contracts = readFileSync(join(ROOT, "docs", "CONTRACTS.md"), "utf8");
-    expect(contracts).toMatch(/brokers connections, never value/i);
-    expect(contracts).toMatch(/bonuses.*growth incentives.*subsidies/i);
-    // And the reason, so a future reader does not have to re-derive it.
-    // The reason, so a future reader does not have to re-derive it. Matched
-    // across a line break, because the document is wrapped prose.
-    expect(contracts.replace(/\s+/g, " ")).toMatch(
-      /colluding parties can sign a transfer that never happened/i,
+  /**
+   * This used to read `docs/CONTRACTS.md`, and broke when the documentation
+   * was deleted — which turned out to be the useful accident.
+   *
+   * A rule recorded only in a document is a rule whose enforcement can be
+   * removed by deleting a file nobody ships. The place this particular
+   * prohibition has to survive is not a contributor-facing document; it is the
+   * page where a contributor asks why they are not being paid, because that is
+   * where the pressure to reverse it comes from. So the assertions moved to
+   * the prose the product actually serves, which cannot be deleted without
+   * somebody noticing a blank section.
+   */
+  const prose = (...parts: string[]) =>
+    readFileSync(join(ROOT, ...parts), "utf8").replace(/\s+/g, " ");
+
+  const contribute = prose("src", "app", "contribute", "page.tsx");
+  const pricing = prose("src", "app", "pricing", "page.tsx");
+
+  it("tells contributors, on the page about getting paid, that the platform never pays them", () => {
+    expect(contribute).toMatch(/never pay you ourselves/i);
+    expect(contribute).toMatch(/no bonuses/i);
+    expect(contribute).toMatch(/incentives for popular columns/i);
+  });
+
+  it("says it is a rule rather than a feature nobody has built yet", () => {
+    // The distinction is the entire point. "We don't do that yet" invites the
+    // next person to do it; "we are not allowed to do that" invites them to
+    // read why first.
+    expect(contribute).toMatch(
+      /a rule in the contracts rather than a current limitation/i,
+    );
+  });
+
+  it("carries the reason, so nobody has to re-derive it under pressure", () => {
+    // Two parties agreeing to say a transfer happened, and the platform being
+    // structurally unable to tell. Without this sentence the prohibition looks
+    // like squeamishness about payments rather than the one defence available.
+    expect(contribute).toMatch(/pays out of a pool can have that pool drained/i);
+    expect(contribute).toMatch(/agree to say a transfer happened/i);
+    expect(contribute).toMatch(/we do not watch what moves between you and a reader/i);
+  });
+
+  it("tells readers the same thing, in the place they would assume otherwise", () => {
+    expect(pricing).toMatch(/does not pay contributors/i);
+    expect(pricing).toMatch(/we take no share/i);
+    expect(pricing).toMatch(/paying out of a pool/i);
+  });
+
+  it("keeps the reasoning next to the code that would have to be written to break it", () => {
+    // The argument also lives in this file's own docstring, which is the
+    // thing a person editing the earnings machinery back in would read.
+    const self = readFileSync(
+      join(ROOT, "tests", "contracts", "brokers-connections-not-value.test.ts"),
+      "utf8",
+    ).replace(/\s+/g, " ");
+    expect(self).toMatch(
+      /two colluding parties can sign a transfer that never happened/i,
+    );
+    expect(self).toMatch(
+      /transcript of a real transfer is computable by the serving party alone/i,
     );
   });
 });

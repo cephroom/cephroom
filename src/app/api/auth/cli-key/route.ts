@@ -14,11 +14,7 @@ export async function POST() {
     );
   }
 
-  const key = await mintRefreshKey({
-    sub: viewer.sub,
-    cus: viewer.cus ?? undefined,
-    name: viewer.name ?? undefined,
-  });
+  const key = await mintRefreshKey({ sub: viewer.sub });
 
   return NextResponse.json(
     {

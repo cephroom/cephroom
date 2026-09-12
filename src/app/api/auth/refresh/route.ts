@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { noStore } from "@/lib/api/shape";
+
 import {
   accessCookie,
   clearedCookies,
@@ -23,47 +25,29 @@ export async function POST(request: Request) {
     ?.slice(REFRESH_COOKIE.length + 1);
 
   if (!token) {
-    return NextResponse.json({ tier: "reader", signedIn: false });
+    return noStore(NextResponse.json({ tier: "reader", signedIn: false }));
   }
 
   const key = await verifyRefreshKey(token);
   if (!key) {
-    const response = NextResponse.json({ tier: "reader", signedIn: false });
+    const response = noStore(
+      NextResponse.json({ tier: "reader", signedIn: false }),
+    );
     for (const cookie of clearedCookies()) response.cookies.set(cookie);
     return response;
   }
 
   let tier: "reader" | "member" | "lab" = "reader";
-  let customerId = key.cus ?? null;
   try {
-    const entitlement = await entitlementFor(key.sub);
-    tier = entitlement.tier;
-    customerId = entitlement.customerId ?? customerId;
+    tier = (await entitlementFor(key.sub)).tier;
   } catch {
     // Stripe unreachable. Renew at the free tier rather than signing the
     // reader out, and let the next renewal fix it.
     tier = "reader";
   }
 
-  const response = NextResponse.json({ tier, signedIn: true });
-  response.cookies.set(
-    accessCookie(
-      await mintAccessKey({
-        sub: key.sub,
-        tier,
-        cus: customerId ?? undefined,
-        name: key.name,
-      }),
-    ),
-  );
-  response.cookies.set(
-    refreshCookie(
-      await mintRefreshKey({
-        sub: key.sub,
-        cus: customerId ?? undefined,
-        name: key.name,
-      }),
-    ),
-  );
+  const response = noStore(NextResponse.json({ tier, signedIn: true }));
+  response.cookies.set(accessCookie(await mintAccessKey({ sub: key.sub, tier })));
+  response.cookies.set(refreshCookie(await mintRefreshKey({ sub: key.sub })));
   return response;
 }

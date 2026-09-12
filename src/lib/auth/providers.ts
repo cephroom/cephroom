@@ -1,4 +1,4 @@
-import { isDevOAuthEnabled } from "@/lib/auth/dev-oauth";
+import { isDevOAuthEnabled } from "@simulated/google/provider";
 
 
 export interface ProviderConfig {
@@ -11,7 +11,7 @@ export interface ProviderConfig {
   scope: string;
   clientId: string | undefined;
   clientSecret: string | undefined;
-  profile(raw: Record<string, unknown>): { accountId: string; name: string };
+  profile(raw: Record<string, unknown>): { accountId: string };
 }
 
 function baseUrl(): string {
@@ -30,13 +30,11 @@ export function providers(): ProviderConfig[] {
       scope: "openid profile",
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      profile: (raw) => ({
-        accountId: String(raw.sub ?? ""),
-        // No email fallback: with the scope dropped there is nothing to fall
-        // back to, and leaving the branch would be an invitation to put the
-        // scope back.
-        name: String(raw.name ?? "Reader"),
-      }),
+      // The account id and nothing else. No email, because the scope is not
+      // requested; no display name, because a name the platform learns is a
+      // name it can pass on, and it did — into every key, and from there onto
+      // a contributor's disk. Not reading it is stronger than discarding it.
+      profile: (raw) => ({ accountId: String(raw.sub ?? "") }),
     },
     {
       id: "github",
@@ -48,10 +46,7 @@ export function providers(): ProviderConfig[] {
       scope: "read:user",
       clientId: process.env.AUTH_GITHUB_ID,
       clientSecret: process.env.AUTH_GITHUB_SECRET,
-      profile: (raw) => ({
-        accountId: String(raw.id ?? ""),
-        name: String(raw.name ?? raw.login ?? "Reader"),
-      }),
+      profile: (raw) => ({ accountId: String(raw.id ?? "") }),
     },
   ];
 
@@ -68,10 +63,7 @@ export function providers(): ProviderConfig[] {
       scope: "openid profile",
       clientId: "cephroom-local",
       clientSecret: "cephroom-local-secret",
-      profile: (raw) => ({
-        accountId: String(raw.sub ?? ""),
-        name: String(raw.name ?? "Reader"),
-      }),
+      profile: (raw) => ({ accountId: String(raw.sub ?? "") }),
     });
   }
 

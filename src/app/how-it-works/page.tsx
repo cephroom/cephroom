@@ -295,24 +295,34 @@ export default function HowItWorksPage() {
 
         <h3>Where they bend</h3>
         <p>
-          Four places, all recorded. The platform holds a presence registry in
-          memory, because otherwise discovery cannot exist at all. Stripe holds
+          Five places, all recorded. The platform holds a presence registry in
+          memory, because otherwise discovery cannot exist at all. It keeps a
+          set of spent-token markers, because a blind signature cannot stop the
+          same token being spent twice unless something remembers that it was —
+          opaque hashes, no person attached, dropped within two hours. That one
+          is a real weakening of &ldquo;we store nothing&rdquo; and is{" "}
+          <Link href="/privacy">set out in full</Link>{" "}
+          rather than folded into this sentence. Stripe holds
           real personal data, because someone must hold a payment relationship.
           A simulated Stripe writes a file in development, because live keys
           need a bank account. And a contributor&rsquo;s node writes to their
           own disk, which is the entire point.
         </p>
         <p>
-          Each is bounded and written down in{" "}
+          Each is bounded, and the bound is a test rather than a promise: see{" "}
           <a
-            href="https://github.com/cephroom/cephroom/blob/main/docs/CONTRACTS.md"
+            href="https://github.com/cephroom/cephroom/blob/main/tests/contracts"
             target="_blank"
             rel="noopener noreferrer"
           >
-            docs/CONTRACTS.md
-          </a>
-          , along with the list of features that were built and then cut
-          because they could not coexist with the rules.
+            tests/contracts
+          </a>{" "}
+          for the one that holds each. The registry has to forget; the
+          spent-marker set has to be a
+          structure with no room for a payload; the simulated Stripe has to
+          stay inside its own directory. Features that were built and then cut
+          are named there too, so that reaching for one again means reading
+          why it went.
         </p>
 
         <h2>What this does not do</h2>

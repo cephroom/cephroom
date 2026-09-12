@@ -26,20 +26,31 @@ export type Scope =
   | "write:propose"
   | "serve:node";
 
+/**
+ * What a key says.
+ *
+ * A pseudonymous subject, a tier, and what that tier permits. Nothing
+ * descriptive, because a key is presented to parties the platform does not
+ * control — a contributor's node sees one on every read — and anything in it
+ * is something they learn.
+ *
+ * It carried two more fields until recently. The Google display name, which
+ * meant reading a column told a stranger your real name; and the Stripe
+ * customer id, which was a cache of Stripe's own records keyed by identity,
+ * in a credential, which is the fourth of the places Contract 1 says the
+ * platform does not mirror them. Both are gone and neither is re-derivable
+ * from what is left, which is the point.
+ */
 export interface AccessKey {
   sub: string | null;
   tier: Tier;
   scp: Scope[];
-  cus?: string;
-  name?: string;
   iat: number;
   exp: number;
 }
 
 export interface RefreshKey {
   sub: string;
-  cus?: string;
-  name?: string;
   iat: number;
   exp: number;
 }
@@ -96,14 +107,10 @@ export function publicKeyPem(): string {
 export async function mintAccessKey(input: {
   sub: string;
   tier: Tier;
-  cus?: string;
-  name?: string;
 }): Promise<string> {
   return new SignJWT({
     tier: input.tier,
     scp: scopesForTier(input.tier),
-    ...(input.cus ? { cus: input.cus } : {}),
-    ...(input.name ? { name: input.name } : {}),
   })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
@@ -119,12 +126,10 @@ export const NODE_KEY_TTL_SECONDS = 120;
 export async function mintNodeKey(input: {
   sub: string;
   tier: Tier;
-  name?: string;
 }): Promise<string> {
   return new SignJWT({
     tier: input.tier,
     scp: scopesForTier(input.tier),
-    ...(input.name ? { name: input.name } : {}),
   })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
@@ -158,7 +163,6 @@ export const SERVE_KEY_TTL_DAYS = 30;
 export async function mintServeKey(input: {
   sub: string;
   tier: Tier;
-  name?: string;
 }): Promise<string> {
   return new SignJWT({
     tier: input.tier,
@@ -167,7 +171,6 @@ export async function mintServeKey(input: {
     // usable as one. The tier rides along only so the account page can show
     // whose key it is.
     scp: ["serve:node"] satisfies Scope[],
-    ...(input.name ? { name: input.name } : {}),
   })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
@@ -178,15 +181,8 @@ export async function mintServeKey(input: {
     .sign(await signingKey());
 }
 
-export async function mintRefreshKey(input: {
-  sub: string;
-  cus?: string;
-  name?: string;
-}): Promise<string> {
-  return new SignJWT({
-    ...(input.cus ? { cus: input.cus } : {}),
-    ...(input.name ? { name: input.name } : {}),
-  })
+export async function mintRefreshKey(input: { sub: string }): Promise<string> {
+  return new SignJWT({})
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
     .setAudience(REFRESH_AUDIENCE)
@@ -210,8 +206,6 @@ export async function verifyAccessKey(token: string): Promise<AccessKey | null> 
     sub: payload.sub ?? null,
     tier,
     scp: (payload.scp as Scope[]) ?? [],
-    cus: payload.cus as string | undefined,
-    name: payload.name as string | undefined,
     iat: payload.iat!,
     exp: payload.exp!,
   };
@@ -219,10 +213,10 @@ export async function verifyAccessKey(token: string): Promise<AccessKey | null> 
 
 export async function verifyServeKey(
   token: string,
-): Promise<{ sub: string; name?: string } | null> {
+): Promise<{ sub: string } | null> {
   const payload = await verify(token, SERVE_AUDIENCE);
   if (!payload?.sub) return null;
-  return { sub: payload.sub, name: payload.name as string | undefined };
+  return { sub: payload.sub };
 }
 
 export async function verifyRefreshKey(
@@ -230,13 +224,7 @@ export async function verifyRefreshKey(
 ): Promise<RefreshKey | null> {
   const payload = await verify(token, REFRESH_AUDIENCE);
   if (!payload?.sub) return null;
-  return {
-    sub: payload.sub,
-    cus: payload.cus as string | undefined,
-    name: payload.name as string | undefined,
-    iat: payload.iat!,
-    exp: payload.exp!,
-  };
+  return { sub: payload.sub, iat: payload.iat!, exp: payload.exp! };
 }
 
 async function verify(

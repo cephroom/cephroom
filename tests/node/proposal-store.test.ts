@@ -7,13 +7,18 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ProposalStore } from "../../node/proposals";
 
 /**
- * Regression tests for the proposal-flood limiter (see docs/CONTRACTS.md,
- * Contract 3 / node hardening).
+ * Regression tests for the proposal-flood limiter.
  *
- * A proposal is written to the contributor's own disk. Attacking the local
- * node showed a member could POST unbounded bytes and unbounded proposals to
- * fill it. The node now caps body size and field lengths at the door and
- * gates on openFromSubject; this covers the count gate the node consults.
+ * A node writes to its owner's disk, which is the one place in this system
+ * where writing is the entire point. A proposal is the one thing a stranger
+ * can cause a node to write, which makes it the one disk-fill vector.
+ *
+ * Attacking the local node showed a member could POST unbounded bytes and
+ * unbounded proposals to fill it. The node now caps body size and field
+ * lengths at the door and gates on openFromSubject; this covers the count
+ * gate the node consults. Content-derived ids close the other half — see
+ * tests/contracts/content-derived-ids.test.ts — since resubmitting the same
+ * proposal used to be a way past the count.
  */
 
 let dir: string;
@@ -28,14 +33,26 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+/**
+ * Each call makes a *different* proposal.
+ *
+ * The bodies used to be identical, which stopped being the same thing as
+ * "two proposals" once ids became content-derived: the same edit submitted
+ * twice is now one edit, deliberately, so that a retry after a dropped
+ * connection does not leave a duplicate and so that resubmitting is not a way
+ * around the limit this file exists to test. Distinct bodies are also what
+ * real proposals have.
+ */
+let nth = 0;
+
 function make(sub: string, columnId = "col") {
+  nth += 1;
   return store.create({
     columnId,
-    title: "t",
+    title: `t${nth}`,
     rationale: "",
-    body: "b",
+    body: `b${nth}`,
     fromSub: sub,
-    fromName: "n",
   });
 }
 

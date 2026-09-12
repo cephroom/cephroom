@@ -45,7 +45,6 @@ export async function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {viewer.sub ? (
             <KeyMenu
-              name={viewer.name ?? "Reader"}
               subject={viewer.sub}
               tier={viewer.tier}
               tierLabel={TIER_LABEL[viewer.tier]}

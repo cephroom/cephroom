@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { noStore } from "@/lib/api/shape";
+
 import { safeNext } from "@/lib/auth/providers";
 import { accessCookie, ACCESS_COOKIE } from "@/lib/auth/session";
 import { mintAccessKey, verifyAccessKey } from "@/lib/keys/tokens";
@@ -10,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const next = safeNext(url.searchParams.get("next"));
-  const response = NextResponse.redirect(new URL(next, url.origin), 303);
+  const response = noStore(NextResponse.redirect(new URL(next, url.origin), 303));
 
   const token = request.headers
     .get("cookie")
@@ -30,14 +32,7 @@ export async function GET(request: Request) {
   try {
     const entitlement = await entitlementFor(sub);
     response.cookies.set(
-      accessCookie(
-        await mintAccessKey({
-          sub,
-          tier: entitlement.tier,
-          cus: entitlement.customerId ?? undefined,
-          name: key.name,
-        }),
-      ),
+      accessCookie(await mintAccessKey({ sub, tier: entitlement.tier })),
     );
   } catch {
     // Stripe unreachable. Leave the existing key alone; it renews on its own

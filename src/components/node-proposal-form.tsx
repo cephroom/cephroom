@@ -12,14 +12,12 @@ export function NodeProposalForm({
   columnId,
   address,
   nodeKey,
-  fromName,
   canPropose,
 }: {
   sub: string;
   columnId: string;
   address: string;
   nodeKey: string;
-  fromName: string;
   canPropose: boolean;
 }) {
   const [original, setOriginal] = useState<string | null>(null);
@@ -86,7 +84,10 @@ export function NodeProposalForm({
           "content-type": "application/json",
           authorization: `Bearer ${nodeKey}`,
         },
-        body: JSON.stringify({ columnId, title, rationale, body: draft, fromName }),
+        // No name. The node attributes this to the subject in the key it
+        // verifies, which is the only attribution the platform can vouch for
+        // and the only one a reader cannot later wish they had not given.
+        body: JSON.stringify({ columnId, title, rationale, body: draft }),
       });
       const json = (await response.json()) as { id?: string; error?: string };
       if (!response.ok) throw new Error(json.error ?? `node returned ${response.status}`);

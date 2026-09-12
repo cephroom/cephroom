@@ -14,6 +14,7 @@ import {
   openBillingPortal,
   resumeSubscription,
 } from "@/lib/stripe/actions";
+import { entitlementFor } from "@/lib/stripe/entitlement";
 import { gateway, usingRealStripe } from "@/lib/stripe/gateway";
 import { formatPrice, PLANS, priceForId } from "@/lib/stripe/plans";
 import type { SubscriptionView } from "@/lib/stripe/types";
@@ -70,13 +71,19 @@ export default async function AccountPage({
   // /api/auth/restamp, because a page cannot set a cookie while rendering.
   const fresh = viewer;
 
+  // Resolve the customer through Stripe from the subject. The key used to
+  // carry the id, which saved this round trip and made the credential a cache
+  // of Stripe's own records — the fourth of the four places Contract 1 says
+  // the platform does not mirror them.
+  let customerId: string | null = null;
   let subscriptions: SubscriptionView[] = [];
-  if (fresh.cus) {
-    try {
-      subscriptions = await (await gateway()).listSubscriptions(fresh.cus);
-    } catch {
-      subscriptions = [];
+  try {
+    customerId = (await entitlementFor(fresh.sub!)).customerId;
+    if (customerId) {
+      subscriptions = await (await gateway()).listSubscriptions(customerId);
     }
+  } catch {
+    subscriptions = [];
   }
 
   const governing = governingSubscription(subscriptions, fresh.tier);
@@ -94,8 +101,8 @@ export default async function AccountPage({
       <h1 className="font-serif text-[2rem] font-semibold tracking-[-0.025em]">
         Your key
       </h1>
-      <p className="mt-2 text-[0.95rem] text-ink-muted">
-        {fresh.name ?? "Reader"}
+      <p className="mt-2 font-mono text-[0.85rem] text-ink-muted">
+        {fresh.sub}
       </p>
 
       {}
@@ -147,7 +154,7 @@ export default async function AccountPage({
               })}
             />
           )}
-          {fresh.cus && <Row label="Stripe customer" value={fresh.cus} mono />}
+          {customerId && <Row label="Stripe customer" value={customerId} mono />}
         </dl>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -262,10 +269,10 @@ export default async function AccountPage({
           <CliKey />
         </div>
         <a
-          href="https://github.com/cephroom/cephroom/blob/main/docs/API.md"
+          href="/api/v1/live"
           className="mt-4 inline-block text-[0.85rem] font-medium text-accent hover:underline"
         >
-          The API, end to end →
+          See what the API is answering right now →
         </a>
       </section>
 

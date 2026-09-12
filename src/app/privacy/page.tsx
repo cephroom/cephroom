@@ -159,17 +159,26 @@ export default function PrivacyPage() {
           <li>
             <strong>Stripe knows.</strong>{" "}
             Your name, email and card are theirs
-            and have to be. We never copy any of it back, and the only Stripe
-            identifier we handle is a customer id we put in a token and forget.
+            and have to be. We never copy any of it back. We ask them for your
+            customer id at the moment we need it and let go of it again — it is
+            not written down, and it is not in your key either, because a key
+            that carried it would be a copy of Stripe&rsquo;s records in the one
+            place we had not thought to look.
           </li>
           <li>
             <strong>The contributor sees your network address.</strong>{" "}
             Your
             browser fetches their column from their machine, directly — that is
             the whole architecture, and a direct connection means an IP address
-            at the other end. An anonymous token stops them learning{" "}
+            at the other end. They do not see a name: the key your browser
+            presents states a tier and a pseudonymous subject, and for a while
+            it also carried the display name Google gave us, which meant
+            reading an article told its author who you were. It does not any
+            more, and neither does proposing an edit. But a direct connection
+            still means an IP address, so an anonymous token stops them
+            learning{" "}
             <em>who</em>{" "}
-            you are. It does not, and cannot, hide{" "}
+            you are and cannot hide{" "}
             <em>where</em>{" "}
             you are. If that matters to you, a VPN or Tor is the
             answer and we cannot substitute for one.
@@ -187,18 +196,49 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>We still see your Google account id at sign-in.</strong>{" "}
-            For about as long as one request takes. We turn it into a
-            one-way pseudonymous subject and forget it, and nothing is written
-            down — but we hold it, briefly, and a promise is what stops us
-            doing otherwise. Removing that would need a zero-knowledge proof
-            that you hold a valid Google token without showing it to us. We
-            measured what that costs today: the circuit is 1.1 million
+            For about as long as one request takes. We turn it into a one-way
+            pseudonymous subject and forget it, and nothing is written down —
+            but we hold it, briefly, and a promise is what stops us doing
+            otherwise. Removing that needs a zero-knowledge proof that you
+            hold a valid Google token without ever showing it to us, and there
+            are two reasons you cannot use one here today. They are worth
+            separating, because one of them might go away and the other
+            cannot.
+          </li>
+          <li>
+            <strong>The first is cost, and it may fall.</strong>{" "}
+            We measured it rather than guessing: the circuit is 1.1 million
             constraints, the proving key is about 550 megabytes for your
             browser to download, and proving takes at least half a minute on a
             fast desktop — the people who designed the scheme say it can crash
-            a browser outright. So it is not built. We have{" "}
-            <em>reduced</em>{" "}
-            what arrives with it instead: we no longer ask Google for your
+            a browser outright. Hardware and circuits both improve, so this is
+            a number with a date on it.
+          </li>
+          <li>
+            <strong>The second does not fall: we are the verifier.</strong>{" "}
+            The obvious answer to a proof too expensive for your browser is
+            that we compute it for you — and that answer is not available to
+            us at any price. A proof we generated from your token, on our
+            hardware, demonstrates nothing to us that we had not already seen;
+            the zero-knowledge property is gone the moment the party being
+            convinced is also the party doing the convincing. Any prover we
+            ran would be us. So we run no prover, and will not run one even as
+            a convenience: proving is done by you, or by a party you choose,
+            and we are strictly the side that checks the answer. The circuit
+            we pin, the signals we read and the provider keys we accept are
+            published at{" "}
+            <code>/api/zk/params</code>{" "}
+            so that anyone can write a prover we have no say over — and a
+            proof from one we have never heard of verifies exactly like a
+            proof from one we have.
+          </li>
+          <li>
+            <strong>Which leaves it published rather than available.</strong>{" "}
+            The verifier and the protocol exist and are open; no sign-in flow
+            uses them, so this is not something you can use yet. We would
+            rather say that plainly than let a page about privacy imply a
+            protection nobody is currently receiving. What we did instead is
+            reduce what arrives at sign-in: we no longer ask Google for your
             email address at all, so it is not something we forget, it is
             something we never receive.
           </li>
@@ -220,13 +260,17 @@ export default function PrivacyPage() {
         <h2>Why it is built this way</h2>
         <p>
           Because a contract that only holds while everyone behaves is not a
-          contract. The rules, the places they bend, and the features that were
-          built and then cut because they could not coexist with them are all
-          written down in{" "}
-          <a href="https://github.com/cephroom/cephroom/blob/main/docs/CONTRACTS.md">
-            docs/CONTRACTS.md
-          </a>
-          , and enforced by tests rather than by intention.
+          contract. So the rules are not written as prose that can drift away
+          from the code — they are written as tests in{" "}
+          <a href="https://github.com/cephroom/cephroom/blob/main/tests/contracts">
+            tests/contracts
+          </a>{" "}
+          — one file per claim on this page. &ldquo;No user table&rdquo; is a
+          test that fails if a schema appears; &ldquo;we never read your IP
+          address&rdquo; is a test that fails on the line that would read it.
+          Every place a rule bends is named in one of them, with the reason,
+          because an exception nobody can find is indistinguishable from a
+          rule nobody keeps.
         </p>
       </div>
 

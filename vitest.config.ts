@@ -11,6 +11,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@simulated": fileURLToPath(
+        new URL("./simulated-counterparties", import.meta.url),
+      ),
     },
   },
 });

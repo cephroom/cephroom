@@ -2,11 +2,13 @@
 
 Two things are worth reading before anything else:
 
-- **[docs/CONTRACTS.md](docs/CONTRACTS.md)** — the two constraints that govern
-  this platform. They are not preferences, and a change that violates one will
-  fail the test suite rather than reach review.
-- **[AGENTS.md](AGENTS.md)** — the bugs this repository has already had, and
-  where the invariants live.
+- **[tests/contracts/](tests/contracts)** — the constraints that govern this
+  platform, written as tests rather than as prose. They are not preferences,
+  and a change that violates one fails the suite rather than reaching review.
+  Each file's docstring says what it is defending and what went wrong before
+  it existed.
+- **[AGENTS.md](AGENTS.md)** — the bugs this repository has already had, where
+  the invariants live, and which test holds which contract.
 
 ## Running it
 
@@ -28,7 +30,7 @@ running — there is no fallback content, by design.
 ## Before you open a pull request
 
 ```bash
-npm test          # 95 tests, including the contract suite
+npm test          # the whole suite, contract tests included
 npm run build     # type errors surface here that tsc alone may not
 ```
 
@@ -50,9 +52,10 @@ only on the rendered page.
 - **Reading a client IP**, adding analytics, or adding an error reporter that
   captures identity.
 
-If you genuinely need to bend a contract, add it to the "Where the contracts
-bend" section with a reason. Widening an allowlist is a visible diff on a
-test, which is the point.
+If you genuinely need to bend a contract, widen the allowlist in the test that
+guards it, with a reason, in the test itself. Every one of them is written so
+that widening it is a visible diff — and so that the reason lives next to the
+assertion rather than in a document that can be deleted out from under it.
 
 ## Writing a column
 

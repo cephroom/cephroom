@@ -11,11 +11,7 @@ export async function POST() {
     return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   }
 
-  const key = await mintServeKey({
-    sub: viewer.sub,
-    tier: viewer.tier,
-    name: viewer.name ?? undefined,
-  });
+  const key = await mintServeKey({ sub: viewer.sub, tier: viewer.tier });
 
   return NextResponse.json(
     { key, sub: viewer.sub, expiresInDays: SERVE_KEY_TTL_DAYS },

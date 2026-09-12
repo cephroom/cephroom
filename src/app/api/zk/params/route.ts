@@ -29,8 +29,13 @@ export async function GET() {
       })),
       // Stated in the machine-readable surface too, not only in the prose, so
       // a client library has no excuse for not showing it.
+      // Everything a prover needs is in this response — the circuit, the
+      // signal layout, the accepted provider keys. There is deliberately no
+      // list of provers here and never will be: naming one would make it the
+      // default, and a default prover is the centralisation this design
+      // exists to avoid.
       notice:
-        "A prover sees the token you send it. Choose one you trust, or run your own: docs/PROVER-PROTOCOL.md.",
+        "A prover sees the token you send it. Choose one you trust, or run your own — everything needed to write one is in this response, and the platform runs no prover of its own.",
     },
     { headers: { "cache-control": "no-store" } },
   );

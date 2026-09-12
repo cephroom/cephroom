@@ -1,6 +1,51 @@
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+
+/** The fields that decide what a proposal *is*. */
+export interface ProposalContent {
+  columnId: string;
+  title: string;
+  rationale: string;
+  body: string;
+  fromSub: string;
+}
+
+/**
+ * A proposal's identifier, derived from the proposal.
+ *
+ * These were random UUIDs, which named a piece of writing after the moment it
+ * was written. In a system that keeps no index anywhere, an accidental name
+ * is particularly poor: there is nothing to look it up in afterwards, so the
+ * only way to check that an id names what you think it does is to be told.
+ * A content address can be recomputed by anyone holding the proposal.
+ *
+ * `createdAt` and `status` are excluded deliberately — they are what the
+ * author *did* about the proposal, not what it says. Including either would
+ * make the name change when the author closed it.
+ *
+ * The separator is a NUL byte, which none of these fields can contain
+ * (`parseBody` and the node's own limits reject control characters, and JSON
+ * transport would not survive one). Joining with an ordinary character means
+ * a title ending in it and a rationale beginning with it produce the same
+ * digest as the reverse, which is a real, if unlikely, collision.
+ */
+export function proposalId(content: ProposalContent): string {
+  const digest = createHash("sha256")
+    .update(
+      [
+        content.columnId,
+        content.title,
+        content.rationale,
+        content.body,
+        content.fromSub,
+      ].join("\0"),
+      "utf8",
+    )
+    .digest("hex");
+  return `p_${digest.slice(0, 32)}`;
+}
 
 export interface Proposal {
   id: string;
@@ -8,8 +53,18 @@ export interface Proposal {
   title: string;
   rationale: string;
   body: string;
+  /**
+   * Who to answer, and nothing more.
+   *
+   * This sat next to a `fromName` carrying the proposer's Google display
+   * name, written here permanently with no expiry and no way to withdraw it.
+   * A proposal has to be attributable — an anonymous one lands on somebody's
+   * disk with nobody to answer for it — but it has to be attributable to a
+   * subject, which is stable and unforgeable and says nothing about a person.
+   * Two proposals from the same subject are visibly the same person; who that
+   * is stays with them.
+   */
   fromSub: string;
-  fromName: string;
   status: "open" | "merged" | "closed";
   createdAt: string;
   resolvedAt: string | null;
@@ -41,9 +96,21 @@ export class ProposalStore {
   }
 
   create(input: Omit<Proposal, "id" | "status" | "createdAt" | "resolvedAt">) {
+    const id = proposalId(input);
+
+    // The same edit, proposed twice, is one edit. A retry after a dropped
+    // connection used to leave a duplicate behind, and pressing the button
+    // again was a way around the per-subject flood limit.
+    //
+    // Returning the existing record rather than overwriting it matters more
+    // than it looks: overwriting would let anyone reopen a proposal the
+    // author had already closed, simply by submitting it again.
+    const existing = this.get(id);
+    if (existing) return existing;
+
     const proposal: Proposal = {
       ...input,
-      id: `p_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`,
+      id,
       status: "open",
       createdAt: new Date().toISOString(),
       resolvedAt: null,

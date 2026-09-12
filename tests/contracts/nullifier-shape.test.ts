@@ -9,10 +9,12 @@ import { NullifierStore } from "@/lib/tokens/nullifiers";
 /**
  * The bounded exception, held to its bounds.
  *
- * The nullifier set is the first durable-ish thing this platform has. Contract
- * 2 is restated in docs/CONTRACTS.md as "no person-linkable data at rest" to
- * accommodate it, which is a real weakening of the old wording and has to be
- * paid for by keeping the exception exactly as narrow as it was argued to be.
+ * The nullifier set is the first durable-ish thing this platform has, and to
+ * accommodate it the storage contract is stated as "no person-linkable data
+ * at rest" rather than "nothing at rest". That is a real weakening of the
+ * older wording, and it is paid for by keeping the exception exactly as
+ * narrow as it was argued to be — here, and on /privacy, which describes the
+ * set to readers in full.
  *
  * The failure mode these tests exist to prevent is not dramatic. Nobody is
  * going to add a user table here. Somebody is going to add a timestamp for

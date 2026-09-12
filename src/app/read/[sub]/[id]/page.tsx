@@ -55,11 +55,7 @@ export default async function ReadItemPage({
   }
 
   const nodeKey = viewer.sub
-    ? await mintNodeKey({
-        sub: viewer.sub,
-        tier: viewer.tier,
-        name: viewer.name ?? undefined,
-      })
+    ? await mintNodeKey({ sub: viewer.sub, tier: viewer.tier })
     : null;
 
   return (

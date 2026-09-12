@@ -14,20 +14,25 @@ export const REFRESH_COOKIE = "cephroom_renew";
 
 const LEGACY_COOKIES = ["receptorome_key", "receptorome_renew"];
 
+/**
+ * Everything the platform knows about whoever is asking.
+ *
+ * A subject, a tier, and when the key expires. There is nothing else to know,
+ * because there is nothing else in the key and nowhere to look it up. The
+ * display name and the Stripe customer id used to be here; both were read
+ * straight back out of the credential, which made them feel like facts the
+ * platform held rather than data it was carrying around on someone's behalf.
+ */
 export interface Viewer {
   sub: string | null;
-  name: string | null;
   tier: Tier;
-  cus: string | null;
   key: AccessKey | null;
   expiresIn: number;
 }
 
 export const ANONYMOUS: Viewer = {
   sub: null,
-  name: null,
   tier: "reader",
-  cus: null,
   key: null,
   expiresIn: 0,
 };
@@ -41,9 +46,7 @@ export async function getViewer(): Promise<Viewer> {
 
   return {
     sub: key.sub,
-    name: key.name ?? null,
     tier: key.tier,
-    cus: key.cus ?? null,
     key,
     expiresIn: Math.max(0, key.exp - Math.floor(Date.now() / 1000)),
   };

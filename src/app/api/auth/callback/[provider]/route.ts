@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { noStore } from "@/lib/api/shape";
+
 import { FLOW_COOKIE } from "@/app/api/auth/start/route";
 import {
   isConfigured,
@@ -55,12 +57,9 @@ export async function GET(
   if (!code) return fail(url.origin, "denied");
 
   let accountId: string;
-  let name: string;
   try {
     const accessToken = await exchange(provider, code, flow.v);
-    const profile = await fetchProfile(provider, accessToken);
-    accountId = profile.accountId;
-    name = profile.name;
+    accountId = (await fetchProfile(provider, accessToken)).accountId;
   } catch {
     // Deliberately not logged. An auth failure that recorded who failed
     // would be exactly the identity retention Contract 1 forbids.
@@ -73,37 +72,25 @@ export async function GET(
 
   // Ask Stripe, do not remember. If Stripe is unreachable the reader is
   // signed in as a free reader rather than not signed in at all.
-  let entitlement;
+  //
+  // Only the tier is taken. The customer id used to be read here too and
+  // stamped into the key; it is re-derived from the subject wherever billing
+  // actually needs it, so nothing has to carry it around.
+  let tier: "reader" | "member" | "lab" = "reader";
   try {
-    entitlement = await entitlementFor(sub);
+    tier = (await entitlementFor(sub)).tier;
   } catch {
-    entitlement = { tier: "reader" as const, customerId: null };
+    tier = "reader";
   }
 
-  const response = NextResponse.redirect(
-    new URL(safeNext(flow.n), url.origin),
-    302,
+  const response = noStore(
+    NextResponse.redirect(new URL(safeNext(flow.n), url.origin), 302),
   );
 
   response.cookies.set(
-    accessCookie(
-      await mintAccessKey({
-        sub,
-        tier: entitlement.tier,
-        cus: entitlement.customerId ?? undefined,
-        name,
-      }),
-    ),
+    accessCookie(await mintAccessKey({ sub, tier })),
   );
-  response.cookies.set(
-    refreshCookie(
-      await mintRefreshKey({
-        sub,
-        cus: entitlement.customerId ?? undefined,
-        name,
-      }),
-    ),
-  );
+  response.cookies.set(refreshCookie(await mintRefreshKey({ sub })));
   response.cookies.set({ name: FLOW_COOKIE, value: "", path: "/", maxAge: 0 });
 
   return response;
@@ -151,5 +138,7 @@ async function fetchProfile(provider: ProviderConfig, accessToken: string) {
 }
 
 function fail(origin: string, reason: string) {
-  return NextResponse.redirect(new URL(`/signin?error=${reason}`, origin), 302);
+  return noStore(
+    NextResponse.redirect(new URL(`/signin?error=${reason}`, origin), 302),
+  );
 }

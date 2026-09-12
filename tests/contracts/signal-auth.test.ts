@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { createRegistry } from "@/lib/signaling/registry";
 
 /**
- * Regression tests for a real vulnerability found by attacking the local
- * dev server (see docs/CONTRACTS.md, "Signaling is authenticated").
+ * Regression tests for a real vulnerability found by attacking the local dev
+ * server — the only thing this project's adversarial step is ever pointed at.
+ * See AGENTS.md, "Attacking this thing".
  *
  * The connectionId was rendered into the /read page HTML as a React key, and
  * the heartbeat and withdraw endpoints accepted it with no authentication.

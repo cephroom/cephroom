@@ -6,17 +6,64 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Working on Cephroom
 
-## Read docs/CONTRACTS.md first
+## Read tests/contracts/ first
 
 Two constraints govern this platform: it persists nothing about users, and it
 stores nothing anyone writes. They are not preferences. When a feature and a
 contract conflict, the contract wins and the feature is cut.
 
-`tests/contracts/` enforces them. If you can make those tests pass while
-violating the spirit of a contract, the test is wrong - fix the test. If you
-genuinely need to bend a contract, add it to the "Where the contracts bend"
-list with a reason, and expect the allowlist assertions to make that a visible
-diff.
+The contracts used to be prose in `docs/CONTRACTS.md`. They are not any more —
+that file was deleted, and the deletion took with it the only assertion
+guarding the prohibition on platform-funded payouts, which had been written as
+"this sentence appears in that document". A rule whose enforcement can be
+removed by deleting a file nobody ships was never enforced. So the contracts
+now live where they are executed:
+
+| Contract | Where it is held |
+| --- | --- |
+| No persistence layer, no identity at rest | `tests/contracts/no-user-data.test.ts` |
+| Identity stays in a named set of modules | `tests/contracts/identity-surface.test.ts` |
+| A key states a tier and names nobody | `tests/contracts/key-carries-nothing.test.ts` |
+| A proposal is attributed to a subject, never a person | `tests/contracts/attribution-is-pseudonymous.test.ts` |
+| No content at rest, no proxying | `tests/contracts/no-content-at-rest.test.ts` |
+| No durable state over HTTP, no content proxy | `tests/contracts/no-remote-state.test.ts` |
+| Presence is never cached or prerendered | `tests/contracts/presence-is-not-an-archive.test.ts` |
+| Not a social network | `tests/contracts/thesis.test.ts` |
+| The bounded nullifier exception | `tests/contracts/nullifier-shape.test.ts` |
+| Layer 1 unlinkability, and its wiring | `tests/contracts/unlinkability.test.ts`, `tests/contracts/anonymous-access.test.ts` |
+| The platform verifies and never proves | `tests/contracts/prover-neutrality.test.ts` |
+| Brokers connections, never value | `tests/contracts/brokers-connections-not-value.test.ts` |
+| Money is integer minor units | `tests/contracts/money-is-integer.test.ts` |
+| Identifiers derive from content | `tests/contracts/content-derived-ids.test.ts` |
+| What the product claims matches what it does | `tests/contracts/stated-limits.test.ts` |
+| The rules can actually fail | `tests/contracts/scanner.test.ts` |
+| Continuity is the endpoints' job | `tests/node/presence-loop.test.ts` |
+
+If you can make those tests pass while violating the spirit of a contract, the
+test is wrong - fix the test. If you genuinely need to bend a contract, add it
+to the allowlist that guards it, with a reason, in the test itself - every one
+of them is written so that widening it is a visible diff.
+
+**A source rule that has stopped matching looks exactly like a source rule
+that is passing.** `tests/contracts/rules.ts` holds the scanning rules and
+`scanner.test.ts` feeds each one known violations in the spellings somebody
+would actually write. Four rules were silently inert for a long time because
+`scan()` strips string literals before matching, so anything spelled as a
+literal - a header name, a hostname - could never be seen. If you add a rule
+about a literal, set `raw: true`, and add it to the scanner test. A rule with
+no proof that it bites is decoration.
+
+## Attacking this thing
+
+Step 4 of the loop is to attack the running system from inside every role -
+stranger, free-tier reader, contributor, former subscriber, colluding pair.
+
+**Local dev server only.** The targets are `localhost:3000` and a node on
+`127.0.0.1:4600`. Real sites are visited as a reader and never probed: not
+scanned, not fuzzed, not tested for authorization bugs, however tempting the
+finding. This is the one rule here that is about other people rather than
+about the code, and the reason it is written down is that a competitive visit
+and a penetration test start out looking identical from the inside.
 
 There is no database. Do not add one, do not add an ORM, and do not add a
 cache keyed by identity. If something seems to need durable state, it almost
@@ -52,6 +99,16 @@ evidence is churn.)
 **mdast `hProperties` keys reach hast verbatim**, not camelCased. The claim
 element's key is read as `node.properties.claimkey`, lowercase, not
 `dataClaimKey`.
+
+**A key is handed to parties we do not control.** A reader's browser presents
+a freshly minted node key to a *contributor's machine* on every read. So
+anything in a key is something a stranger learns. It carried the Google
+display name for a while, which meant reading a column told its author who you
+were, and proposing an edit wrote that name to their disk permanently as
+`fromName`. It also carried the Stripe customer id, which made the credential
+a fourth copy of Stripe's records. Both are gone; a key now states a subject,
+a tier and its scopes, and `tests/contracts/key-carries-nothing.test.ts` pins
+the claim set exactly. Before adding a field, ask who ends up holding it.
 
 **Server actions are public endpoints.** Every one of them re-derives the
 viewer from their key and re-checks authorisation against Stripe; none trust a
@@ -136,7 +193,7 @@ same standard as the columns.
   than one analysis, a claim that names none resolves `broken` and lists them.
   Not a warning and not a pooled average, because both are slower ways of not
   being told. The evidence for making it hard rather than optional is in
-  docs/COMPETITIVE-NOTES.md: NeuroVault's schema has ~60 pipeline fields and
+  the competitive review: NeuroVault's schema has ~60 pipeline fields and
   they are empty on NARPS's own submissions. Optional provenance is not
   collected.
 - If you ever ship values that are not from the upstream source, label them in

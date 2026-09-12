@@ -27,7 +27,6 @@ export default async function ProposalsPage({
     ? await mintNodeKey({
         sub: viewer.sub,
         tier: viewer.tier,
-        name: viewer.name ?? undefined,
       })
     : null;
 

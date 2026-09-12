@@ -34,12 +34,7 @@ beforeAll(async () => {
 
 describe("a genuine key round-trips", () => {
   it("verifies a freshly minted access key", async () => {
-    const token = await tokens.mintAccessKey({
-      sub: "s_reader",
-      tier: "member",
-      cus: "cus_1",
-      name: "Reader",
-    });
+    const token = await tokens.mintAccessKey({ sub: "s_reader", tier: "member" });
     const key = await tokens.verifyAccessKey(token);
     expect(key?.sub).toBe("s_reader");
     expect(key?.tier).toBe("member");

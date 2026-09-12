@@ -2,6 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
+import { noStore } from "@/lib/api/shape";
+
 import {
   isConfigured,
   providerById,
@@ -18,11 +20,13 @@ export async function GET(request: Request) {
   const provider = providerById(url.searchParams.get("provider") ?? "");
 
   if (!provider) {
-    return NextResponse.redirect(new URL("/signin?error=unknown", url.origin));
+    return noStore(
+      NextResponse.redirect(new URL("/signin?error=unknown", url.origin)),
+    );
   }
   if (!isConfigured(provider)) {
-    return NextResponse.redirect(
-      new URL("/signin?error=unconfigured", url.origin),
+    return noStore(
+      NextResponse.redirect(new URL("/signin?error=unconfigured", url.origin)),
     );
   }
 
@@ -43,7 +47,7 @@ export async function GET(request: Request) {
   authorize.searchParams.set("code_challenge", challenge);
   authorize.searchParams.set("code_challenge_method", "S256");
 
-  const response = NextResponse.redirect(authorize, 302);
+  const response = noStore(NextResponse.redirect(authorize, 302));
   response.cookies.set({
     name: FLOW_COOKIE,
     value: JSON.stringify({ p: provider.id, s: state, v: verifier, n: next }),

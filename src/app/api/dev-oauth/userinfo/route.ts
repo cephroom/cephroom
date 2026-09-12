@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isDevOAuthEnabled, issuedTokens } from "@/lib/auth/dev-oauth";
+import { isDevOAuthEnabled, personaForToken } from "@simulated/google/provider";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     ? header.slice(7).trim()
     : "";
 
-  const persona = issuedTokens.get(token);
+  const persona = personaForToken(token);
   if (!persona) {
     return NextResponse.json({ error: "invalid_token" }, { status: 401 });
   }

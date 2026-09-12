@@ -8,6 +8,7 @@ import { parseBody } from "../src/lib/claims/syntax";
 import { tierAllows, type Access } from "../src/lib/access";
 import { gateColumnBody } from "./column-gate";
 import { foldForScope } from "./fold-facts";
+import { PresenceLoop } from "./presence";
 import { ProposalStore } from "./proposals";
 import { verifyKeyWithPlatform } from "./verify";
 
@@ -459,7 +460,6 @@ const server = createServer(async (request, response) => {
     const body = String(payload?.body ?? "");
     const title = String(payload?.title ?? "").trim();
     const rationale = String(payload?.rationale ?? "").trim();
-    const fromName = String(payload?.fromName ?? "A reader").slice(0, 120);
 
     if (!title) return send(400, { error: "Give the proposal a title." });
     if (title.length > 300 || rationale.length > 4000 || body.length > MAX_BODY_CHARS) {
@@ -487,7 +487,6 @@ const server = createServer(async (request, response) => {
         rationale,
         body,
         fromSub,
-        fromName,
       }),
     );
   }
@@ -586,9 +585,9 @@ async function readJson(
 
 
 let connectionId: string | null = null;
-let heartbeat: NodeJS.Timeout | null = null;
 
 async function serveKey(): Promise<string> {
+
   if (process.env.NODE_KEY) return process.env.NODE_KEY;
   if (!process.env.CEPHROOM_SIGNING_KEY) {
     throw new Error(
@@ -598,10 +597,21 @@ async function serveKey(): Promise<string> {
   const { mintServeKey } = await import("../src/lib/keys/tokens");
   // A serve key, not an access key: the node only ever announces to the
   // platform, so this matches what a contributor's pasted NODE_KEY is.
-  return mintServeKey({ sub: SUB, tier: "reader", name: DISPLAY_NAME });
+  // The byline travels on the announcement body, where the contributor
+  // chose it, rather than inside the key. A key states a subject and a
+  // capability; it is not the place to carry a name.
+  return mintServeKey({ sub: SUB, tier: "reader" });
 }
 
-async function announce() {
+/**
+ * One announce attempt. Returns the lease length; throws if it did not land.
+ *
+ * Retrying, backing off and re-announcing after a lapsed lease are all
+ * `PresenceLoop`'s problem now. They used to live in here, which is why a
+ * failed first attempt was terminal: the retry was scheduled by the success
+ * path it never reached.
+ */
+async function announceOnce(): Promise<number> {
   const response = await fetch(`${PLATFORM}/api/signal`, {
     method: "POST",
     headers: {
@@ -625,25 +635,29 @@ async function announce() {
     leaseSeconds: number;
   };
   connectionId = json.connectionId;
+  return json.leaseSeconds;
+}
 
-  heartbeat ??= setInterval(async () => {
-    if (!connectionId) return;
-    const beat = await fetch(
+const presence = new PresenceLoop({
+  announce: async () => {
+    const leaseSeconds = await announceOnce();
+    console.log(
+      `announced ${manifest().length} items to ${PLATFORM} as "${DISPLAY_NAME}"`,
+    );
+    return leaseSeconds;
+  },
+  beat: async () => {
+    if (!connectionId) return null;
+    const response = await fetch(
       `${PLATFORM}/api/signal?connection=${connectionId}`,
       { method: "PUT", headers: { authorization: `Bearer ${await serveKey()}` } },
     ).catch(() => null);
-    // A lapsed lease means the platform restarted. Re-announce rather than
-    // silently disappearing.
-    if (!beat || beat.status === 410) await announce().catch(() => {});
-  }, Math.max(2000, (json.leaseSeconds * 1000) / 3));
-
-  console.log(
-    `announced ${manifest().length} items to ${PLATFORM} as "${DISPLAY_NAME}"`,
-  );
-}
+    return response?.status ?? null;
+  },
+});
 
 async function withdraw() {
-  if (heartbeat) clearInterval(heartbeat);
+  presence.stop();
   if (!connectionId) return;
   await fetch(`${PLATFORM}/api/signal?connection=${connectionId}`, {
     method: "DELETE",
@@ -656,12 +670,11 @@ server.listen(PORT, "127.0.0.1", async () => {
   console.log(
     `node serving ${columns.length} columns + ${datasets.length} dataset${datasets.length === 1 ? "" : "s"} on ${ADDRESS}`,
   );
-  try {
-    await announce();
-  } catch (error) {
+  await presence.start();
+  if (!presence.connected()) {
     console.error(
-      `could not announce to ${PLATFORM}. The node is still serving; it is just not discoverable.`,
-      error instanceof Error ? error.message : error,
+      `could not reach ${PLATFORM} yet. Still serving, and still trying — ` +
+        `this resolves itself when the platform comes up.`,
     );
   }
 });

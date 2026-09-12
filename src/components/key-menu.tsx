@@ -6,14 +6,21 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Tier } from "@/lib/access";
 
+/**
+ * The signed-in control, which shows a key rather than a person.
+ *
+ * It used to greet you by your Google display name. The name is gone from the
+ * key — it was reaching contributors' machines — and nothing here missed it:
+ * what a reader needs from this menu is which key they are holding, what it
+ * permits, and how long it lasts. The subject was already shown, and is the
+ * only handle the platform has.
+ */
 export function KeyMenu({
-  name,
   subject,
   tier,
   tierLabel,
   expiresIn,
 }: {
-  name: string;
   subject: string;
   tier: Tier;
   tierLabel: string;
@@ -78,10 +85,10 @@ export function KeyMenu({
         className="flex items-center gap-2 rounded-full border border-rule py-1 pl-1 pr-2.5 transition-colors hover:border-field-border"
       >
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[0.72rem] font-semibold text-accent-ink">
-          {name.charAt(0).toUpperCase()}
+          {tierLabel.charAt(0)}
         </span>
         <span className="hidden text-[0.8rem] text-ink-muted sm:block">
-          {name.split(" ")[0]}
+          {tierLabel}
         </span>
         <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 text-ink-faint" aria-hidden>
           <path
@@ -100,7 +107,7 @@ export function KeyMenu({
         className="absolute right-0 top-[calc(100%+8px)] w-72 rounded-lg border border-rule bg-paper-raised py-1.5 shadow-lg"
       >
         <div className="border-b border-rule px-3.5 pb-2.5 pt-1.5">
-          <p className="truncate text-[0.85rem] font-medium">{name}</p>
+          <p className="text-[0.85rem] font-medium">Your key</p>
           <p
             className={`mt-1 text-[0.72rem] font-medium ${
               tier === "reader" ? "text-ink-faint" : "text-accent"
