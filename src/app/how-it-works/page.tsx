@@ -327,6 +327,17 @@ export default function HowItWorksPage() {
 
         <h2>What this does not do</h2>
         <p>
+          It checks against the author&rsquo;s own data. The dataset a claim is
+          resolved against is served from the same machine as the column, by the
+          same person. So a green check means the sentence is consistent with
+          the data its author stands behind and is current with it &mdash; not
+          that either the number or the data is independently correct. What it
+          removes is the case where a figure has quietly drifted from the
+          author&rsquo;s own source; what it gives everyone else is the data in
+          the open, to check for themselves. That is worth having and it is not
+          the same as being right.
+        </p>
+        <p>
           It does not check reasoning. A column can be entirely green and still
           draw a conclusion the numbers do not support. Checked claims remove
           the silent-rot class of error and leave every other class where it

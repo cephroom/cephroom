@@ -275,7 +275,8 @@ export function ColumnReader({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <CheckBadge conclusion={conclusion} counts={counts} size="md" />
             <span className="text-[0.8rem] text-ink-muted">
-              checked in your browser at {checkedAt}
+              checked in your browser at {checkedAt}, against the dataset{" "}
+              {servedBy} serves
             </span>
             <span
               className="inline-flex items-center gap-1.5 rounded-full border border-counter/30 bg-counter-wash px-2 py-0.5 text-[0.7rem] font-medium text-counter"
