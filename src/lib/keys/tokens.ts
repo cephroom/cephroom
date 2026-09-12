@@ -255,9 +255,21 @@ export async function mintServeKey(input: {
   sub: string;
   tier: Tier;
   name?: string;
+  /**
+   * The settlement watermark — periods at or before this are already paid.
+   *
+   * Carried in the contributor's own key so the platform holds no
+   * paid-through record of its own. Re-presenting receipts from a settled
+   * period against a newer key proves nothing, which is what makes "no
+   * pending balances between settlements" true rather than aspirational.
+   */
+  settledThroughPeriod?: number;
 }): Promise<string> {
   return new SignJWT({
     tier: input.tier,
+    ...(input.settledThroughPeriod !== undefined
+      ? { stp: input.settledThroughPeriod }
+      : {}),
     // No read scopes. The only capability a serve key carries is announcing a
     // node under its subject; it is not a reader session and must never be
     // usable as one. The tier rides along only so the account page can show
@@ -321,10 +333,18 @@ export async function verifyAccessKey(token: string): Promise<AccessKey | null> 
  */
 export async function verifyServeKey(
   token: string,
-): Promise<{ sub: string; name?: string } | null> {
+): Promise<{
+  sub: string;
+  name?: string;
+  settledThroughPeriod?: number;
+} | null> {
   const payload = await verify(token, SERVE_AUDIENCE);
   if (!payload?.sub) return null;
-  return { sub: payload.sub, name: payload.name as string | undefined };
+  return {
+    sub: payload.sub,
+    name: payload.name as string | undefined,
+    settledThroughPeriod: payload.stp as number | undefined,
+  };
 }
 
 export async function verifyRefreshKey(
