@@ -85,6 +85,26 @@ function describeStat(select: ParsedClaim["select"]): string {
   }
 }
 
+/**
+ * Imports no react and no node: built-ins, and must not start.
+ *
+ * This is the mechanism of contract 1 - an author writes the query, and the
+ * reader re-runs it at read time - so it has to run in all three places that
+ * check a claim: the browser, the CLI, and the tests. A React import would
+ * exclude the CLI; a node: import would exclude the browser. Either would end
+ * with a second copy of the judging logic, and two copies of a drift rule drift
+ * apart, which means a badge that is green in one reader and not the other.
+ *
+ * api-surface.test.ts asserts the absence of both and that both readers import
+ * this module rather than reimplementing it.
+ *
+ * The datasets map is supplied by the caller, and every caller must fill it
+ * from the node that served the claim - see
+ * datasets-come-from-the-same-node.test.ts. Resolving a dataset from whichever
+ * node happens to announce that slug would let a stranger substitute the
+ * numbers a claim is checked against, and a green badge would then mean
+ * nothing.
+ */
 export function resolveClaims(
   claims: ParsedClaim[],
   datasets: Map<string, Dataset>,

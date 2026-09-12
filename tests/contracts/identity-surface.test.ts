@@ -6,6 +6,16 @@ import { describe, expect, it } from "vitest";
 import { ROOT, stripCommentsAndStrings, walk } from "./scan";
 
 
+/**
+ * The names a person can appear under. Confined to a countable set of modules
+ * so the identity surface can be read in one sitting - contract 2.
+ *
+ * These are not banned; they are contained. Email is the exception and is
+ * banned outright everywhere, including on the allowlist, because the platform
+ * no longer requests an email scope from any provider - it is not something
+ * that gets forgotten, it is something never received. A reference to it
+ * anywhere would mean that had changed.
+ */
 const IDENTITY_TOKENS = [
   "email",
   "customerId",
@@ -17,6 +27,22 @@ const IDENTITY_TOKENS = [
   "preferences",
 ];
 
+/**
+ * Why each of these may touch identity.
+ *
+ * keys/tokens.ts mints the subject and is the only place an account id becomes
+ * an identifier. auth/providers.ts and the OAuth callback are where an account
+ * id arrives and is dropped inside one request. The four stripe modules exist
+ * because contract 3 puts subscription truth in Stripe and nowhere else, so
+ * something has to hold a customer id long enough to ask. account/page.tsx
+ * shows a reader their own subject and their own customer id, which is theirs
+ * to see.
+ *
+ * The list is capped at nine by a test. That is arbitrary as a number and not
+ * as a mechanism: a cap means widening the identity surface requires raising a
+ * limit in the same diff, which is the moment somebody asks whether it should
+ * be widened at all.
+ */
 const ALLOWED = [
   "src/lib/keys/tokens.ts",
   "src/lib/auth/providers.ts",
@@ -99,6 +125,19 @@ describe("Contract 1: identity stays in a small, named set of modules", () => {
   });
 });
 
+/**
+ * A hash of anything about a person is a new name for that person, so every
+ * hash in the platform is enumerated with what goes in and what comes out.
+ *
+ * The entries are not interchangeable. One turns an identity into an
+ * identifier; two derive values from material the platform has never seen,
+ * which is what makes them unlinkable rather than merely opaque; one is about a
+ * single in-flight authorization rather than about anybody.
+ *
+ * Checked in both directions, like the other exemption lists: a module that
+ * stops hashing has to leave, so nobody inherits a justification for something
+ * they are about to add.
+ */
 const PERMITTED_HASHING: Record<string, string> = {
   "src/lib/keys/tokens.ts":
     "HMAC(provider:accountId) under a server secret → the pseudonymous subject. The one identity-to-identifier step.",

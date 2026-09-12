@@ -21,6 +21,19 @@ function appFiles(): AppFile[] {
     }));
 }
 
+/**
+ * Prerendering is how presence becomes an archive by omitting one line.
+ *
+ * A page that reads the registry at build time ships a snapshot of who was
+ * online when the build ran, and serves it to everybody afterwards. Nothing
+ * about that looks like storage in a diff - the storage is the build output.
+ * The same applies to a page that reads the viewer: a prerendered one would be
+ * one reader's session shown to the next.
+ *
+ * So the requirement is structural rather than a review habit, and it covers
+ * every API route unconditionally, because a route added without it inherits
+ * whatever the framework's default happens to be that release.
+ */
 const FORCE_DYNAMIC = /export\s+const\s+dynamic\s*=\s*["']force-dynamic["']/;
 
 describe("nothing that reads presence can be prerendered", () => {
@@ -64,6 +77,11 @@ describe("nothing that reads presence can be cached downstream", () => {
     const offenders = appFiles()
       .filter((file) => file.rel.startsWith("src/app/api/"))
       .filter((file) => file.rel.endsWith("/route.ts"))
+      // The one endpoint allowed to be cached. It serves the platform's public
+      // signing key, which is the same bytes for everybody and is about nobody
+      // - a contributor's node fetches it to verify reader keys offline. Every
+      // other endpoint here answers a question about who is online or who is
+      // asking, and a cached answer to either is an archive with a short lease.
       .filter((file) => !file.rel.includes(".well-known"))
       .filter((file) => !/no-store|\bNO_STORE\b|\bnoStore\b|\bHEADERS\b/.test(file.code))
       .map((file) => file.rel);

@@ -103,6 +103,12 @@ describe("the product does not point readers at things that are not there", () =
       });
     }
 
+      // Configuration is scanned as well as source. The rule existed and
+      // looked only at src/app/, which is exactly why it missed a pointer to a
+      // document that had never existed sitting in .env.example - the first
+      // file a deployment owner opens. A dangling reference in configuration
+      // costs more than one in code, because the person following it has no
+      // way to tell it was stale.
     for (const rel of [".env.example", "package.json", "README.md"]) {
       const path = join(ROOT, rel);
       if (!existsSync(path)) continue;

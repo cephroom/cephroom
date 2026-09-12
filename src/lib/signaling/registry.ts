@@ -1,4 +1,19 @@
 
+/**
+ * Fifteen seconds, because presence has to expire faster than anyone can treat
+ * it as a record - contract 4.
+ *
+ * This is the number that makes "when they stop, it is gone" true rather than
+ * aspirational. A contributor who closes their laptop is off the listing within
+ * fifteen seconds whether or not they withdrew cleanly, whether or not the
+ * network dropped, and whether or not the platform noticed. Lengthening it to a
+ * minute would be invisible in normal use and would quietly turn the registry
+ * into a short archive: an item could still be listed most of a minute after
+ * the machine serving it had gone.
+ *
+ * The node heartbeats at a third of this (see node/presence.ts), so the lease
+ * tolerates two lost beats before dropping.
+ */
 export const LEASE_SECONDS = 15;
 
 export type ItemKind = "column" | "dataset";
@@ -12,6 +27,18 @@ export interface ManifestItem {
   openProposals?: number;
 }
 
+/**
+ * The complete list of what the platform learns from a contributor, and it is
+ * short on purpose - contracts 2 and 4.
+ *
+ * A subject, a name they chose, an address they state, an unparsed payment
+ * string, and a manifest of ids and titles. No reader counts, no last-seen, no
+ * history, no totals. what-each-side-learns.test.ts asserts the absence of
+ * readers, requests, lastSeen, history and count by name, because the tempting
+ * additions are all things that would be useful once and then permanent.
+ *
+ * address is a claim, not a fact the platform verified - see serving.ts.
+ */
 export interface Announcement {
   sub: string;
   displayName: string;
@@ -46,6 +73,22 @@ export interface Registry {
   size(): number;
 }
 
+/**
+ * Named in PERMITTED_GLOBAL_STATE. Process-global, and this is the exception
+ * that has to keep earning its place.
+ *
+ * What makes it survivable is not that it is small - it is that it forgets
+ * without being asked. Every entry carries an expiry, list() filters on it, and
+ * nothing here writes to disk or reaches the network, so a restart loses
+ * exactly the thing that should be lost. no-user-data.test.ts proves the
+ * forgetting on a fake clock rather than trusting the lease to be honoured.
+ *
+ * announce() drops any previous presence for the same subject before adding the
+ * new one, so a contributor reconnecting cannot accumulate ghost entries -
+ * which would be an archive assembled one dropped connection at a time.
+ *
+ * The clock is injectable only so expiry can be tested without sleeping.
+ */
 export function createRegistry(now: () => number = Date.now): Registry {
   const live = new Map<string, Presence>();
 

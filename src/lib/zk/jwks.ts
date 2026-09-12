@@ -1,4 +1,17 @@
 
+/**
+ * Named in PERMITTED_GLOBAL_STATE. The identity provider's published moduli.
+ *
+ * These are public keys about nobody - the same bytes anyone can fetch from
+ * Google. They are held at all because a proof has to be checked against the
+ * key that was current when the token was minted, and a provider rotates on its
+ * own schedule: verifying only against the newest would reject honest proofs
+ * made minutes earlier.
+ *
+ * The window is what keeps it bounded. A key not seen in a fortnight is dropped
+ * rather than kept in case it comes back, so this cannot silently become a
+ * permanent archive of everything a provider has ever published.
+ */
 export const RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 
 export const REFRESH_MS = 60 * 60 * 1000;

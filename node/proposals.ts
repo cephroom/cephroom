@@ -7,10 +7,48 @@ export function proposalRootFor(contentDir: string): string {
   return dirname(resolve(contentDir));
 }
 
+/**
+ * What a subject becomes when it should no longer be held.
+ *
+ * Redaction rather than deletion, because the proposal's title, body and
+ * rationale are the contributor's to read and destroying them would be a worse
+ * answer than dropping the identifier. It is a constant rather than a
+ * per-record value so that two redacted proposals cannot be told apart, which
+ * is the point: a unique placeholder would still be a pseudonym.
+ */
 export const REDACTED_SUB = "n_withdrawn";
 
+/**
+ * A pseudonym does not need to outlive the exchange it was for.
+ *
+ * A node-scoped pseudonym is legitimate while a proposal is open: the
+ * contributor needs to reply, and to stop one reader filing twenty without
+ * knowing who they are. Once the proposal is merged or closed there is no
+ * further exchange to support, and what is left is a durable identifier on
+ * somebody's disk with no job.
+ *
+ * Ninety days is a judgement, not a derivation. Open proposals keep theirs,
+ * because the exchange is still live.
+ */
 export const SUBJECT_RETENTION_DAYS = 90;
 
+/**
+ * Why a platform subject must never reach a contributor's disk - contract 2.
+ *
+ * An s_ subject is the same identifier at every contributor, so two of them
+ * comparing proposal files could reconstruct one reader across the network -
+ * exactly what node-scoping exists to prevent. An n_ pseudonym is derived per
+ * contributor and cannot be joined to anything next door.
+ *
+ * This shipped the wrong way round: proposals written before node-scoping
+ * carried raw platform subjects and the node served them on a public page.
+ * Person-linkable data at rest, with no expiry and no deletion path. The store
+ * now refuses one on write, redacts one it finds on disk, and redacts again on
+ * read so a hand-edited file cannot smuggle one back out.
+ *
+ * If you write a fixture, write n_. The suite used to use s_ in its own
+ * fixtures, which is part of why the leak went unnoticed for so long.
+ */
 export function isNodeScoped(sub: string): boolean {
   return /^n_/.test(sub);
 }
@@ -77,6 +115,14 @@ export class ProposalStore {
     }
   }
 
+/**
+ * Rewrites the file rather than filtering on read.
+ *
+ * Hiding a subject at read time leaves it on disk, where the next tool to open
+ * the directory finds it. The migration has to be destructive to be a
+ * migration, and it runs on open so a node picks it up by starting rather than
+ * by anyone remembering to run something.
+ */
   private redactExpiredSubjects(now: number = Date.now()): void {
     const cutoff = now - SUBJECT_RETENTION_DAYS * 86_400_000;
 

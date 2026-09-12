@@ -25,6 +25,21 @@ function priceId(name: string, fallback: string): string {
 }
 
 
+/**
+ * Every amount below is an integer of minor units - contract 7.
+ *
+ * Not style. "Payout never exceeds intake" once failed by about two parts in a
+ * hundred million million, in the direction of overpaying. The size is not the
+ * interesting part: the obvious repair is a tolerance, and an invariant that
+ * needs a tolerance is not an invariant - it is a heuristic with a confidence
+ * interval that will be wrong at some scale nobody tested.
+ *
+ * money-is-integer.test.ts bans fractional literals in this module outright,
+ * bans scaling any money value by one anywhere in the platform, and
+ * demonstrates the failure rather than asserting the rule, so the next person
+ * under time pressure can see it rather than take it on trust. Division happens
+ * only to render, and returns a string.
+ */
 export const DISCOVERY_REACH: Record<DiscoveryTier, number> = {
   browse: 50,
   query: 200,

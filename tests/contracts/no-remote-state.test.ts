@@ -34,6 +34,24 @@ function platformModules(): Module[] {
 const NETWORK_CALL =
   /\bfetch\s*\(|\bfetchImpl\s*\(|\bXMLHttpRequest\b|\baxios\b|\bgot\s*\(|\bundici\b|\b(https?)\.request\s*\(|\bnavigator\.sendBeacon\b|\bnew\s+Stripe\s*\(/;
 
+/**
+ * The three server modules permitted to reach the network, and the party each
+ * talks to.
+ *
+ * A server-side request is how both a hosted store and a content proxy get in,
+ * and neither looks like a contract violation while you are writing it - one is
+ * "just caching", the other is "just fixing CORS". Naming the counterparty in
+ * the entry forces the question the diff would otherwise skip: who is at the
+ * other end, and why may they be stateful?
+ *
+ * Stripe is here because contract 3 makes it the one party permitted to
+ * remember a person. The other two fetch public material on fixed URLs about
+ * nobody.
+ *
+ * Like PERMITTED_GLOBAL_STATE, this is checked in both directions: a module
+ * that stops reaching the network has to leave the list, so a standing
+ * permission cannot outlive its use.
+ */
 const SERVER_NETWORK_ALLOWED: Record<string, string> = {
   "src/app/api/auth/callback/[provider]/route.ts":
     "Exchanges an OAuth code and reads the profile, both at the provider's own published endpoints. The profile is turned into a subject and dropped.",

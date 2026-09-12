@@ -1,6 +1,20 @@
 import { z } from "zod";
 
 
+/**
+ * Contract 5. The only thing done to a payment string is bounding its length.
+ *
+ * The moment the platform validates one it has an opinion about which payment
+ * methods are real, which is a policy, which is a relationship with a payment
+ * network - and that is the first step toward holding funds. So it is relayed
+ * byte for byte: leading spaces, a wallet address, a sentence of doubt,
+ * whatever is in it.
+ *
+ * brokers-connections-not-value.test.ts asserts the schema line below carries
+ * no .trim(, .toLowerCase(, .regex( or .transform(, and that neither this file
+ * nor the registry names a payment network. A cap is not validation: it bounds
+ * what a stranger can push through the listing, and nothing else.
+ */
 export const PAY_TO_MAX = 300;
 
 export const manifestItemSchema = z.object({
@@ -12,6 +26,16 @@ export const manifestItemSchema = z.object({
   openProposals: z.number().int().min(0).max(100000).optional(),
 });
 
+/**
+ * There is deliberately no access field, and zod strips one if it arrives.
+ *
+ * An access level on an announced item would be the platform's half of a
+ * paywall - somewhere for a tier to be declared and therefore somewhere for a
+ * node to check one. a-key-unlocks-nothing.test.ts submits an item carrying
+ * access: "member" and asserts it parses successfully AND that the field is
+ * absent from the result, so the gate has nowhere to land even if a client
+ * starts sending one.
+ */
 export const announcementSchema = z.object({
   displayName: z.string().min(1).max(120),
   address: z

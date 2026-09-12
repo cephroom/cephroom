@@ -82,6 +82,19 @@ async function isStale(wallet: Wallet): Promise<boolean> {
   return !live.has(wallet.issuer);
 }
 
+/**
+ * Reports usable separately from holding, because they came apart in practice.
+ *
+ * The key page used to render a count of tokens held and call it stock. When
+ * the issuer key behind them was retired that number stayed cheerfully
+ * accurate about the wrong thing, and a reader had no way to know their
+ * searches had gone back to arriving with their subscription attached.
+ *
+ * When the published key set is unreachable this reports the holding as usable
+ * rather than blocking - an outage should not make the product unusable - so
+ * "usable" means "not known to be dead". That weaker claim is stated on
+ * /privacy rather than smoothed over.
+ */
 export async function walletHealth(): Promise<WalletHealth> {
   const wallet = read();
   const holding = wallet?.tokens.length ?? 0;
@@ -163,6 +176,26 @@ export async function stockUp(): Promise<
   return { ok: false, error: "No key would sign for this account." };
 }
 
+/**
+ * The token is removed only after redemption has actually succeeded.
+ *
+ * This popped first and returned null on failure, which is how a dead batch
+ * became invisible: every search consumed a token, failed quietly, and fell
+ * through to the identified path, so the wallet drained while reporting health
+ * and the mechanism that severs paying from searching degraded into the thing
+ * it prevents.
+ *
+ * The outcomes are distinguished because they need different answers. An
+ * unreachable platform keeps the token, since nothing is known to be wrong with
+ * it. A refusal drops that one token, since it is worthless and retrying it
+ * would loop. A stale batch is discarded whole without a redemption attempt at
+ * all - there is nothing to learn from spending one, and trying would leak a
+ * redemption attempt for a token that cannot work.
+ *
+ * Callers must surface anything that is not "spent". The reader is told after
+ * the query has gone rather than before, which is a real residual and is on
+ * /privacy in those words.
+ */
 export async function spendToken(): Promise<SpendOutcome> {
   const wallet = read();
   if (!wallet || wallet.tokens.length === 0) return { kind: "empty" };

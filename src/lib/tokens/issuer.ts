@@ -5,6 +5,21 @@ import type { DiscoveryTier } from "@/lib/access";
 const { Client, Issuer, Origin, BlindRSAMode, getPublicKeyBytes } = publicVerif;
 
 
+/**
+ * Rotation is what makes forgetting a spend safe, and it is the reason a
+ * nullifier set is a bounded exception rather than a growing record.
+ *
+ * A spent-token marker only has to outlive the token it marks. Once the key
+ * that signed a token is retired, that token can no longer be redeemed at all,
+ * so remembering it was spent buys nothing and the marker is dropped. With two
+ * live epochs the set depends on the last two hours of traffic rather than on
+ * all traffic ever - which is the difference between a bound and a database.
+ *
+ * The length itself is an open business decision, not a tuned parameter. See
+ * docs/RESEARCH-NOTES.md: shortening it raises a farmer's continuous cost
+ * without storing anything, which is a rare shape here, and costs honest
+ * readers a shorter-lived batch.
+ */
 export const EPOCH_SECONDS = 60 * 60;
 
 export const LIVE_EPOCHS = 2;
@@ -41,6 +56,15 @@ const RSA_PARAMS: RsaHashedKeyGenParams = {
   hash: "SHA-384",
 };
 
+/**
+ * Named in PERMITTED_GLOBAL_STATE. Keypairs, not people.
+ *
+ * Two epochs live at a time and anything older is dropped on the next mint.
+ * These keys are deliberately NOT persisted: a stored signing key is storage,
+ * and reaching for it is the move contract 9 says to stop at. The cost of not
+ * persisting them is real and is handled on the client rather than here - see
+ * keyFingerprint below and src/lib/tokens/wallet.ts.
+ */
 const globalForKeys = globalThis as unknown as {
   __cephroomIssuerKeys?: Map<string, Promise<EpochKey>>;
 };
@@ -143,6 +167,15 @@ export interface Redemption {
   nullifier: string;
 }
 
+/**
+ * Every failure returns the same null, and the caller turns it into the same
+ * message.
+ *
+ * A redemption endpoint that distinguished "not a valid token" from "already
+ * spent" from "wrong epoch" would answer questions about other people's tokens.
+ * The route above it collapses all of them into one refusal for that reason;
+ * anonymous-access.test.ts asserts a replay is refused rather than explained.
+ */
 export async function redeem(
   serializedToken: Uint8Array,
   now: number = Date.now(),
@@ -176,6 +209,23 @@ export async function redeem(
 
 export const ISSUER_FINGERPRINT_CHARS = 32;
 
+/**
+ * How a browser notices its batch has died without the platform storing
+ * anything to tell it.
+ *
+ * Keypairs live in memory and are cached by epoch NUMBER, so a restart replaces
+ * the keypair behind an epoch that is still listed as live. Every outstanding
+ * token stops verifying while still looking current: the epoch matches, the
+ * token is well formed, and nothing about it is stale. That shipped, and the
+ * result was a key page reporting ten healthy tokens of which none could be
+ * spent, with each search silently falling back to the identified path.
+ *
+ * Privacy Pass is publicly verifiable and the issuer public key is already
+ * published at /api/tokens/keys, so the client can detect the rotation itself.
+ * The wallet stores this fingerprint beside the batch and compares it against
+ * the published set before spending. Zero platform-side storage, which is why
+ * this is the fix and persisting the keys is not.
+ */
 export async function keyFingerprint(publicKeyBase64: string): Promise<string> {
   const bytes = Uint8Array.from(Buffer.from(publicKeyBase64, "base64"));
   const digest = await crypto.subtle.digest(

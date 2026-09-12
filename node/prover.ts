@@ -9,6 +9,24 @@ const flag = (name: string, fallback: string) => {
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 };
 
+/**
+ * A reference prover, and the reason it is a separate process in node/ rather
+ * than a module the platform could call.
+ *
+ * Contract 8: the platform verifies and never proves. A proof generated on the
+ * platform's hardware, from material the platform was shown, demonstrates
+ * nothing it had not already seen - the zero-knowledge property is about what
+ * the verifier learns, and it is void when the verifier is also the prover.
+ *
+ * So this ships as something a reader runs, or has somebody they trust run. It
+ * lives under node/ with the contributor's own tooling because that is the
+ * boundary: everything in node/ is somebody else's process, on somebody else's
+ * machine, doing work the platform must not do on their behalf.
+ *
+ * It is a reference, not a requirement. The circuit pin at /api/zk/params is
+ * the interface, and a prover written against it from scratch is as acceptable
+ * as this one.
+ */
 const PORT = Number.parseInt(flag("port", "4700"), 10);
 const CIRCUIT_DIR = resolve(flag("circuit", "./circuit"));
 const SYSTEM = flag("system", "plonk") as "plonk" | "groth16";

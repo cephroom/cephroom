@@ -37,6 +37,16 @@ interface IssuedChallenge {
   epoch: number;
 }
 
+/**
+ * Named in PERMITTED_GLOBAL_STATE. Random bytes and an epoch, about nobody.
+ *
+ * A challenge exists so a proof cannot be replayed, which means it has to be
+ * remembered between being issued and being spent. What is stored is the random
+ * value itself and the epoch it was issued in - no subject, no address, nothing
+ * that outlives two epochs, and a hard cap that evicts the oldest rather than
+ * growing. That cap matters because this endpoint is reachable without signing
+ * in.
+ */
 const globalForChallenges = globalThis as unknown as {
   __cephroomChallenges?: Map<string, IssuedChallenge>;
 };
@@ -114,6 +124,33 @@ function parseSignals(signals: string[]): bigint[] | null {
   }
 }
 
+/**
+ * Contract 8. This exists, is tested, and nothing calls it - deliberately.
+ *
+ * The platform checks proofs and never produces them. The reason is structural
+ * rather than about cost: a proof generated from a reader's token, on the
+ * platform's hardware, demonstrates nothing to the platform it had not already
+ * seen, because proving requires seeing the token. Zero-knowledge is a claim
+ * about what the verifier learns, and it is void when the verifier is also the
+ * prover. Any prover run here would be the platform.
+ *
+ * So proving belongs to the reader or to a party the reader chooses, and the
+ * circuit pin, signal layout and accepted provider keys are published at
+ * /api/zk/params so anyone can write one. A proof from a prover nobody here has
+ * heard of verifies exactly like a proof from one they have -
+ * prover-neutrality.test.ts asserts the submission type carries no prover
+ * identity and that this path contains no allowlist.
+ *
+ * Building the verifier before any sign-in flow was the point: adding a list of
+ * trusted provers looks like an operational improvement once a flow exists and
+ * somebody is complaining about proof quality, and is much harder to argue
+ * against then than now. The unbuilt half is stated on /privacy as published
+ * rather than available, and stated-limits.test.ts fails if that claim and the
+ * code ever disagree in either direction.
+ *
+ * The challenge is spent BEFORE the pairing check, so a caller cannot replay one
+ * submission to make the platform do unbounded verification work.
+ */
 export async function verifySubmission(
   submission: ZkProofSubmission,
   options: {

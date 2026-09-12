@@ -15,6 +15,16 @@ import {
 
 const PLATFORM_ROOTS = ["src"];
 
+/**
+ * The write scan covers the exempt directory too, on purpose.
+ *
+ * An allowlist over a directory nobody scans hides nothing and protects
+ * nothing, and it would look identical to one that works. Including the exempt
+ * root here is what lets the negative control below prove the rule still bites:
+ * remove the allowlist, and the simulated counterparty must be the ONLY thing
+ * caught. Empty would mean the rule had stopped matching; anything under src/
+ * would mean the platform had started writing.
+ */
 const WRITE_ROOTS = ["src", "simulated-counterparties"];
 
 describe("Contract 1: no persistence layer exists", () => {
@@ -88,6 +98,20 @@ describe("Contract 1: nothing is written as a result of signing in", () => {
   });
 });
 
+/**
+ * Every module in this process that remembers anything, with why it may.
+ *
+ * The assertion below runs in BOTH directions, and the second direction is the
+ * one that matters. A module holding state that is not listed fails, which is
+ * the obvious half. A module that is listed but no longer holds state ALSO
+ * fails - because a stale exemption is indistinguishable from permission for
+ * something nobody is doing any more, and the next person to add state to that
+ * module finds a written justification already sitting above it.
+ *
+ * Adding an entry is deliberately a visible diff carrying a sentence somebody
+ * has to be willing to write. If the sentence is hard to write, that is the
+ * finding.
+ */
 const PERMITTED_GLOBAL_STATE: Record<string, string> = {
   "src/lib/signaling/registry.ts":
     "Presence. Fifteen-second leases, dropped on withdraw or expiry. An address and a manifest, never a person.",

@@ -22,6 +22,23 @@ export interface VerificationParams {
   providers: readonly string[];
 }
 
+/**
+ * Published so that anyone can write a prover this platform has no say over.
+ *
+ * Contract 8 means proving belongs to the reader or to a party the reader
+ * chooses, and that is only true if the thing to prove is public. A circuit
+ * pinned to a commit, a fixed signal layout and a named set of accepted
+ * provider keys are the whole interface: a proof from a prover nobody here has
+ * heard of verifies exactly like one from a prover they have.
+ *
+ * Pinning to a commit rather than a version is the point. "The latest audited
+ * circuit" is a moving target, and a verifier that follows one is a verifier
+ * whose behaviour changes without a diff here.
+ *
+ * The audit is recorded rather than summarised as "audited", because who
+ * audited it, when, and what they found are the facts a reader would need to
+ * disagree with the choice.
+ */
 export const CIRCUIT: CircuitPin = {
   id: "jwt-tx-validation@27cda6e",
   repository: "https://github.com/Moonsong-Labs/zksync-social-login-circuit",
@@ -36,6 +53,16 @@ export const CIRCUIT: CircuitPin = {
   },
 };
 
+/**
+ * The layout is pinned because the verifier reads signals by index.
+ *
+ * A circuit that reordered its outputs would still produce valid proofs, and
+ * this verifier would read a modulus limb where it expected a digest and accept
+ * or reject on the wrong field. Nothing about that would look like a failure.
+ * prover-neutrality.test.ts asserts the derived indices stay consistent with
+ * the chunk count, so a change to one without the other fails here rather than
+ * in production.
+ */
 export const PUBLIC_SIGNAL_LAYOUT = [
   ...Array.from({ length: 17 }, (_, i) => `rsaModulusChunk[${i}]`),
   "oidcDigest",

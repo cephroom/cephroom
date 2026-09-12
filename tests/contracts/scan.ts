@@ -11,6 +11,15 @@ export interface Hit {
   rule: string;
 }
 
+/**
+ * Directories skipped by every scan.
+ *
+ * Build output and dependencies are not this project's code, and scanning them
+ * would make every rule fire on somebody else's. The risk is the opposite one:
+ * a source directory added here would silently exempt itself from every
+ * contract at once, with no allowlist entry and no diff anybody would read as a
+ * contract change. Nothing but generated output belongs in this set.
+ */
 const IGNORED_DIRS = new Set([
   "node_modules",
   ".next",
@@ -38,6 +47,21 @@ export function walk(dir: string, extensions = [".ts", ".tsx"]): string[] {
   return out;
 }
 
+/**
+ * Two strippers, and choosing the wrong one is how a rule goes quietly inert.
+ *
+ * This one removes string CONTENTS as well as comments, which is right for
+ * rules about identifiers: a banned function name inside a string is not a call
+ * to it, and a rule that fired on prose would be silenced rather than heeded.
+ *
+ * It is wrong for rules about literals - a header name, a hostname, a
+ * connection URL - because it erases exactly the thing being looked for. Those
+ * rules set raw: true and get stripCommentsOnly instead. Four rules in this
+ * repository were inert for a long time because of this distinction, and
+ * scanner.test.ts exists to prove each one still bites.
+ *
+ * Both strippers preserve newlines so reported line numbers stay true.
+ */
 export function stripCommentsAndStrings(source: string): string {
   let out = "";
   let i = 0;

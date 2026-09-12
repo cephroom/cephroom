@@ -6,6 +6,19 @@ export interface PresenceLoopOptions {
   cancel?: (handle: ReturnType<typeof setTimeout>) => void;
 }
 
+/**
+ * A node that cannot reach the platform keeps serving and keeps trying.
+ *
+ * Contract 4 means a contributor's work is theirs to serve whether or not
+ * discovery is up: the platform brokers the connection and holds no copy, so an
+ * outage there must not stop the node answering readers who already know its
+ * address. It backs off rather than hammering, and resets on success.
+ *
+ * The heartbeat runs at a third of the lease so two beats can be lost before
+ * presence lapses. A 410 means the platform has forgotten this connection -
+ * usually because it restarted - and the answer is to announce again rather
+ * than to keep beating against a lease that no longer exists.
+ */
 export const FIRST_BACKOFF_MS = 1_000;
 export const MAX_BACKOFF_MS = 30_000;
 

@@ -366,6 +366,17 @@ const server = createServer(async (request, response) => {
     return send(200, { proposals: proposals.list(columnId) });
   }
 
+  /**
+   * Two refusals, and the second one is the contract.
+   *
+   * A proposal has to be attributable, so an anonymous search token cannot file
+   * one - the author needs somebody to answer. And the subject it is attributed
+   * to must be scoped to THIS node: a platform-wide subject is the same
+   * identifier at every contributor, so writing one here would put a
+   * network-wide identifier on a stranger's disk permanently. Refused at the
+   * door rather than sanitised on the way out, because a file that was never
+   * written needs no migration.
+   */
   if (url.pathname === "/proposals" && request.method === "POST") {
     const key = await keyFromRequest(request.headers.authorization);
     if (!key?.scopes.includes("write:propose")) {
