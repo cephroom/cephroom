@@ -35,6 +35,12 @@ export async function GET(
       sub: presence.sub,
       servedBy: presence.displayName,
       address: base,
+      // Exactly what the contributor announced, or absent if they announced
+      // nothing. Relaying this verbatim is the whole of the platform's
+      // involvement in money, and it used to reach browsers only — so a
+      // reader on the API could not find out how to pay somebody while a
+      // reader on the site could.
+      ...(presence.payTo ? { payTo: presence.payTo } : {}),
       item: {
         id: item.id,
         title: item.title,

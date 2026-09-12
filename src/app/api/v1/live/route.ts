@@ -25,6 +25,10 @@ export async function GET(request: Request) {
     .map((entry) => ({
       sub: entry.presence.sub,
       servedBy: entry.presence.displayName,
+      // Announced by the contributor, passed on unread. Absent when they set
+      // none: "nothing" is a legitimate answer to how to pay somebody, and an
+      // empty string invites a client to render an empty payment box.
+      ...(entry.presence.payTo ? { payTo: entry.presence.payTo } : {}),
       // The address is the point of this endpoint: a client fetches the bytes
       // from here, directly, and the platform is not in that request.
       address: entry.presence.address,

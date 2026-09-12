@@ -3,7 +3,9 @@ import { join, relative, sep } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ROOT, walk } from "./scan";
+import { ROOT, stripCommentsOnly as stripComments, walk } from "./scan";
+
+const NEWLINE = String.fromCharCode(10);
 
 /**
  * The API, held to the contracts it is easiest to break from.
@@ -105,6 +107,70 @@ describe("liveness answers about now, and nothing else", () => {
     // The registry is a Map that dies with the process. If this endpoint ever
     // reads from anywhere else, that is the archive appearing.
     expect(live).not.toMatch(/readFile|database|\bdb\b|redis/i);
+  });
+});
+
+describe("the API relays what the contributor announced", () => {
+  /**
+   * Found by running two contributors, one with `--pay-to` set and one
+   * without, and reading from both through the API instead of the page.
+   *
+   * The payment string reached the browser and stopped there. `/api/v1/live`
+   * and `/api/v1/read` both dropped it, so a reader using the API could not
+   * discover how to pay a contributor — while a reader using the site could.
+   *
+   * That matters more here than a missing field usually would. Relaying this
+   * string, verbatim and unexamined, is the *entire* extent of the platform's
+   * involvement in money; a contributor who sets `--pay-to` has announced
+   * something and asked for it to be passed on. Half-relaying it is the one
+   * job failing quietly for anyone not using a browser, and /account promises
+   * the opposite: "Nothing here is browser-only."
+   */
+  it("carries payTo on the read locator", () => {
+    const locator = readFileSync(
+      join(ROOT, "src", "app", "api", "v1", "read", "[sub]", "[id]", "route.ts"),
+      "utf8",
+    );
+    expect(locator).toContain("payTo");
+  });
+
+  it("carries payTo on the liveness listing", () => {
+    const live = readFileSync(
+      join(ROOT, "src", "app", "api", "v1", "live", "route.ts"),
+      "utf8",
+    );
+    expect(live).toContain("payTo");
+  });
+
+  it("passes it through unexamined, exactly as the registry does", () => {
+    // The API is a second place a wallet-recogniser could appear. It must be
+    // as incurious as the registry: no parsing, no shape check, no
+    // normalisation. See brokers-connections-not-value.test.ts.
+    for (const path of [
+      ["src", "app", "api", "v1", "live", "route.ts"],
+      ["src", "app", "api", "v1", "read", "[sub]", "[id]", "route.ts"],
+    ]) {
+      const code = stripComments(readFileSync(join(ROOT, ...path), "utf8"));
+      expect(code).not.toMatch(/0x|ethereum|bitcoin|iban|isValidAddress/i);
+      const line = code.split(NEWLINE).find((l) => l.includes("payTo"));
+      expect(line).toBeDefined();
+      expect(line).not.toMatch(/trim\(|toLowerCase\(|slice\(|replace\(/);
+    }
+  });
+
+  it("omits it entirely when a contributor announced none", async () => {
+    // Absent, not an empty string: "nothing" is a legitimate answer to how to
+    // pay somebody, and an empty field invites a client to render a blank
+    // payment box.
+    const { createRegistry } = await import("@/lib/signaling/registry");
+    const registry = createRegistry();
+    registry.announce({
+      sub: "s_no_payto",
+      displayName: "Ines",
+      address: "http://127.0.0.1:4601",
+      items: [{ id: "c", title: "C", kind: "column", tags: [] }],
+    });
+    expect(registry.find("s_no_payto", "c")?.presence.payTo).toBeUndefined();
   });
 });
 
