@@ -2,6 +2,7 @@
 slug: histamine-h1-and-the-sedation-question
 title: H1 affinity predicts sedation better than any of us would like
 subtitle: A crude single-receptor story explains more of the observed sedation ranking than the multi-receptor models that replaced it.
+tags: neuropharmacology, receptors, binding-affinity, behaviour
 access: lab
 author: elena
 repo: https://github.com/juitindev/h1-sedation

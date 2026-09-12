@@ -2,6 +2,7 @@
 slug: muscarinic-liability-is-a-clozapine-problem
 title: Muscarinic liability is mostly a clozapine problem
 subtitle: The anticholinergic burden of second-generation antipsychotics is discussed as a class property. In binding terms it is almost entirely two drugs.
+tags: neuropharmacology, receptors, binding-affinity
 access: member
 author: marcus
 repo: https://github.com/juitindev/muscarinic-burden

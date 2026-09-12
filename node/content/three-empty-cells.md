@@ -2,6 +2,7 @@
 slug: three-empty-cells
 title: Three empty cells
 subtitle: A coverage number is a claim about what you know. Most published affinity matrices report one number and quietly imputes the rest.
+tags: neuropharmacology, data-quality, chembl
 access: public
 author: marcus
 repo: https://github.com/juitindev/coverage-ladder

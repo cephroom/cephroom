@@ -197,6 +197,28 @@ could not enforce it if it wanted to, because it is not in the request path.
 Publishing costs nothing. Run a node and your work is discoverable for as long
 as you serve it.
 
+## The API
+
+One API, both roles, and no API keys — an API key is a stable identifier issued
+to a person, which is the thing Contract 1 refuses to hold. Authentication is
+the same anonymous token scheme the site uses, and it works identically from a
+shell.
+
+```bash
+npm run cli live "motor imagery"
+npm run cli read s_localnode_marcus which-protocol-produced-that-number
+npm run cli check ./my-columns/draft.md
+```
+
+`read` fetches the column from its author's node and checks every claim with
+the same pure module the website runs, then exits non-zero if anything drifted
+or broke — so it composes into CI, which is the premise of the platform applied
+to itself. The platform is never in the content path: `/api/v1/read/...`
+returns an address, not bytes.
+
+Full walkthrough, both roles, in [docs/API.md](docs/API.md) — including the
+half of rate limiting that the token scheme solves and the half it does not.
+
 ## Stack
 
 - **Next.js 16** — App Router, Turbopack, React Server Components

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { SimulatedBillingControls } from "@/components/simulated-billing-controls";
 import { ServeKey } from "@/components/serve-key";
 import { SubmitButton } from "@/components/submit-button";
+import { CliKey } from "@/components/cli-key";
 import { TokenWallet } from "@/components/token-wallet";
 import { governingSubscription, TIER_LABEL } from "@/lib/access";
 import { getViewer } from "@/lib/auth/session";
@@ -246,6 +247,26 @@ export default async function AccountPage({
         <div className="mt-4">
           <TokenWallet entitled={fresh.tier !== "reader"} />
         </div>
+      </section>
+
+      {/* -------------------------------------------------- Work from a script */}
+      <section className="mt-8 rounded-xl border border-rule p-5">
+        <h2 className="text-[0.95rem] font-semibold">Use it from a script</h2>
+        <p className="mt-2 max-w-[62ch] text-[0.88rem] leading-relaxed text-ink-muted">
+          Everything the site does, the API does — discovery, fetching a
+          column, checking its claims with the same code this page runs, and
+          serving your own work. Nothing here is browser-only, and nothing in
+          the API is unavailable here.
+        </p>
+        <div className="mt-4">
+          <CliKey />
+        </div>
+        <a
+          href="https://github.com/cephroom/cephroom/blob/main/docs/API.md"
+          className="mt-4 inline-block text-[0.85rem] font-medium text-accent hover:underline"
+        >
+          The API, end to end →
+        </a>
       </section>
 
       {/* ------------------------------------------- Run a node as yourself */}

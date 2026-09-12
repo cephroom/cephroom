@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "node:serve": "tsx node/server.ts",
     "keys:generate": "tsx scripts/generate-keys.ts",
-    "prover:serve": "tsx node/prover.ts"
+    "prover:serve": "tsx node/prover.ts",
+    "cli": "tsx scripts/cephroom.ts"
   },
   "dependencies": {
     "@cloudflare/privacypass-ts": "^0.9.0",

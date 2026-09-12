@@ -3,34 +3,15 @@
 import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
-export interface ClaimView {
-  key: string;
-  /** The value as it stands in the dataset right now. */
-  display: string;
-  verdict: "verified" | "drifted" | "broken";
-  authored: string;
-  observed: string;
-  deltaPct: number | null;
-  tolerance: string;
-  note: string | null;
-  query: {
-    dataset: string;
-    datasetSlug: string;
-    /** The pseudonymous subject serving the dataset, for the explorer link. */
-    owner: string;
-    metric: string;
-    subject: string;
-    object: string;
-    scope: string;
-    /** The analysis the claim named, or null when it named none. */
-    method: string | null;
-    select: string;
-  };
-  release: string | null;
-  checkedAt: string | null;
-  nPoints: number | null;
-  nDocs: number | null;
-}
+/**
+ * What the chip renders.
+ *
+ * Re-exported from the pure resolver rather than declared again: the reader
+ * and the API both produce this shape, and two declarations of it would drift
+ * the moment somebody added a field to one.
+ */
+export type { ResolvedClaim as ClaimView } from "@/lib/claims/resolve";
+import type { ResolvedClaim as ClaimView } from "@/lib/claims/resolve";
 
 /** A plain-language gloss of what the claim's `select` actually asserts. */
 function describeSelect(select: string): string {

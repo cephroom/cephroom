@@ -84,6 +84,28 @@ export function challengeEpoch(now: number = Date.now()): number {
   return Math.floor(now / CHALLENGE_TTL_MS);
 }
 
+/**
+ * A hard ceiling on outstanding challenges.
+ *
+ * The epoch bound alone limits the set to twenty minutes of traffic, which is
+ * bounded in principle and not in practice: this endpoint is anonymous, by
+ * necessity, so anybody can ask for challenges as fast as they can open
+ * sockets and the set grows until the process dies.
+ *
+ * A cap converts that into a bounded failure instead. It is not a fix, and the
+ * tradeoff is real and stated rather than glossed: past the ceiling, the
+ * oldest outstanding challenges are evicted, so somebody flooding this
+ * endpoint can push out a legitimate sign-in that is in flight and make it
+ * fail. Degraded service under attack beats an out-of-memory crash under
+ * attack, and that is the whole of the argument.
+ *
+ * The thing that would actually solve it — rate limiting per caller — needs an
+ * identity for the caller, and the platform does not read client IPs and has
+ * no identity for someone who has not signed in yet. See docs/API.md, which
+ * says so where an API consumer will read it.
+ */
+const MAX_OUTSTANDING = 50_000;
+
 export function issueChallenge(now: number = Date.now()): string {
   const value = randomBytes(32).toString("hex");
   const epoch = challengeEpoch(now);
@@ -94,9 +116,24 @@ export function issueChallenge(now: number = Date.now()): string {
     if (issued.epoch < epoch - 1) challenges().delete(key);
   }
 
+  // Then the backstop. Map iterates in insertion order, so this evicts oldest
+  // first — which is the least-bad choice available without knowing who asked.
+  while (challenges().size >= MAX_OUTSTANDING) {
+    const oldest = challenges().keys().next();
+    if (oldest.done) break;
+    challenges().delete(oldest.value);
+  }
+
   challenges().set(value, { epoch });
   return value;
 }
+
+/** Outstanding challenges, for a health check. Never per-caller. */
+export function outstandingChallenges(): number {
+  return challenges().size;
+}
+
+export const MAX_OUTSTANDING_CHALLENGES = MAX_OUTSTANDING;
 
 export function knownChallenge(value: string, now: number = Date.now()): boolean {
   const issued = challenges().get(value);

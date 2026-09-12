@@ -49,8 +49,27 @@ const ADDRESS = flag("address", `http://127.0.0.1:${PORT}`);
 const CONTENT_DIR = resolve(
   flag("content", process.env.CONTENT_DIR ?? join(import.meta.dirname, "content")),
 );
+
+/**
+ * Where datasets come from.
+ *
+ * When `--content` is given and `--data` is not, this follows the content
+ * directory rather than falling back to the demo data in the repository.
+ *
+ * That fallback was the old behaviour and it was wrong in a way only visible
+ * from the outside: pointing the node at your own columns still announced the
+ * shipped example datasets **under your subject**, so the API listed a
+ * contributor as serving work that was not theirs. Found by wiring serving
+ * into a script and then asking the API what it thought was live.
+ */
+const contentGiven =
+  args.includes("--content") || Boolean(process.env.CONTENT_DIR);
 const DATA_DIR = resolve(
-  flag("data", process.env.DATA_DIR ?? join(import.meta.dirname, "data")),
+  flag(
+    "data",
+    process.env.DATA_DIR ??
+      (contentGiven ? CONTENT_DIR : join(import.meta.dirname, "data")),
+  ),
 );
 const HAS_DATASET = existsSync(join(DATA_DIR, "gap_report.json"));
 
@@ -72,6 +91,16 @@ interface Column {
   title: string;
   subtitle: string;
   access: Access;
+  /**
+   * The contributor's own labels, from the column's front matter.
+   *
+   * Every column used to be announced as `["pharmacology"]`, hardcoded — which
+   * was wrong the moment the subject widened past one receptor family, and
+   * stayed invisible until the API listed a motor-imagery decoding column
+   * under it. Modality first, following the facets OpenNeuro leads with: what
+   * was measured, before what it is about.
+   */
+  tags: string[];
   repo?: string;
   commit?: string;
   body: string;
@@ -97,6 +126,10 @@ function readColumns(): Column[] {
         title: meta.title,
         subtitle: meta.subtitle ?? "",
         access: (meta.access as Access) ?? "public",
+        tags: (meta.tags ?? "")
+          .split(",")
+          .map((tag) => tag.trim().toLowerCase())
+          .filter(Boolean),
         repo: meta.repo,
         commit: meta.commit,
         body: match[2].trim(),
@@ -563,7 +596,7 @@ function manifest() {
       id: column.id,
       title: column.title,
       kind: "column" as const,
-      tags: ["pharmacology"],
+      tags: column.tags,
       access: column.access,
       summary: column.subtitle,
       openProposals: proposals.countOpen(column.id),
