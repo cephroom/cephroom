@@ -148,9 +148,29 @@ function settle(sessionId: string, status: string): void {
   save(store);
 }
 
-export function recoverPayment(subscriptionId: string): void {
+export function failRenewal(subscriptionId: string): void {
+  // A renewal charge failed AFTER a prior success: the subscription enters
+  // dunning (past_due), which still entitles while Stripe retries - the grace
+  // period is deliberate (see an-outage-does-not-downgrade). It only applies to
+  // a live subscription; it must never move a canceled or incomplete one into an
+  // entitling state, or a dead subscription could be revived into free reach.
   mutate(subscriptionId, (subscription) => {
-    subscription.status = "active";
+    if (subscription.status === "active" || subscription.status === "trialing") {
+      subscription.status = "past_due";
+    }
+  });
+}
+
+export function recoverPayment(subscriptionId: string): void {
+  // A retry succeeded: a subscription in dunning returns to active. It only
+  // applies to a dunning subscription (past_due/unpaid); recovering a canceled
+  // or incomplete one would conjure a live subscription out of a dead one, which
+  // is reach from nothing. A real "recover" in Stripe is a paid invoice on a
+  // still-open subscription, never a resurrection.
+  mutate(subscriptionId, (subscription) => {
+    if (subscription.status === "past_due" || subscription.status === "unpaid") {
+      subscription.status = "active";
+    }
   });
 }
 

@@ -25,6 +25,13 @@ async function guard(formData: FormData): Promise<string> {
   return subscriptionId;
 }
 
+export async function failRenewalAction(formData: FormData) {
+  const id = await guard(formData);
+  const store = await import("@simulated/stripe/store");
+  store.failRenewal(id);
+  await restampKey();
+}
+
 export async function recoverPaymentAction(formData: FormData) {
   const id = await guard(formData);
   const store = await import("@simulated/stripe/store");

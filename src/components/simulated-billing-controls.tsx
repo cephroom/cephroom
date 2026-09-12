@@ -2,6 +2,7 @@ import { SubmitButton } from "@/components/submit-button";
 import {
   advancePeriodAction,
   exhaustDunningAction,
+  failRenewalAction,
   recoverPaymentAction,
 } from "@/lib/stripe/simulated-actions";
 
@@ -24,6 +25,17 @@ export function SimulatedBillingControls({
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2.5">
+        {(status === "active" || status === "trialing") && (
+          <form action={failRenewalAction}>
+            <input type="hidden" name="subscriptionId" value={subscriptionId} />
+            <SubmitButton
+              label="Renewal fails → past due"
+              pendingLabel="Applying…"
+              variant="outline"
+            />
+          </form>
+        )}
+
         {status === "past_due" && (
           <form action={recoverPaymentAction}>
             <input type="hidden" name="subscriptionId" value={subscriptionId} />
