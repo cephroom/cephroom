@@ -84,6 +84,7 @@ describe("the simulated billing controls verify ownership too", () => {
 
   it("routes every control through the ownership guard", () => {
     for (const action of [
+      "failRenewalAction",
       "recoverPaymentAction",
       "exhaustDunningAction",
       "advancePeriodAction",
