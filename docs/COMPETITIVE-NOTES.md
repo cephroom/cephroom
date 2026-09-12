@@ -131,3 +131,110 @@ Observed on the page itself:
   moment the contributor goes offline. This is the citability gap, already
   recorded honestly in CONTRACTS.md — OWID is the concrete thing a reader
   gives up in exchange for "no data at rest".
+
+## Visit: IUPHAR/BPS Guide to PHARMACOLOGY and ChEMBL, read as a reader (2026-09-12, cycle 2)
+
+Went looking for how professional pharmacology databases present the
+*provenance* of a binding number — the question this cycle's research made
+urgent. Found one cautionary tale and one adoptable pattern.
+
+### GtoPdb — an open-access resource that grew a login wall
+
+`guidetopharmacology.org` now redirects to `login.jsp` before it will show a
+receptor page. The stated reason, verbatim on that screen:
+
+> "The IUPHAR/BPS Guide to Pharmacology now requires all users to register and
+> login in order to access the database. This change is necessary so that we
+> can collect accurate user access data, which helps us maintain GtoPdb as an
+> open-access, freely available resource."
+
+This is worth recording carefully, because it is the most sympathetic possible
+version of the thing our contracts forbid. GtoPdb is not a startup harvesting
+emails — it is a curated public good, and it needs usage numbers to justify its
+funding. The account exists to produce **analytics**, and the analytics exist to
+keep it free.
+
+- **Reject, and note what it costs.** Contract 1 forbids the user table and
+  Contract 1's analytics row forbids the access log that would justify it. We
+  cannot count our readers, so we can never make GtoPdb's argument to a funder.
+  That is a real, non-hypothetical cost of the design and it belongs next to
+  the citability gap rather than hidden.
+- **The framing is the lesson.** "Register so we can stay open-access" is how a
+  resource ends up with an identity database it never wanted. Ours is
+  structurally unable to take that step, which is the point of enforcing the
+  contract in tests rather than in a policy.
+- Sharp irony worth keeping: GtoPdb is the *independent judge* the vendored
+  pipeline checks its numbers against (36 known-value anchors). Our upstream
+  source of truth is now behind a login. Nothing to fix here — the anchors were
+  already extracted into the dataset — but it is a good argument for the
+  PDSP cross-check shipping last cycle: a second independent judge matters when
+  the first one can change its access terms.
+
+### ChEMBL — the number is prominent, the provenance is three clicks away
+
+Read the D(2) dopamine receptor target card (`CHEMBL217`) and its activity
+charts.
+
+**The misreading our whole cycle is about is right there in their header.**
+The target card states, in the summary block near the top:
+
+```
+organism: Homo sapiens
+Species Group: No
+```
+
+That is the **target's** organism — the protein was curated as the human gene
+product. It says nothing whatsoever about where any experiment ran, and
+rat-brain measurements sit under this exact header. `docs/VERIFICATION.md`
+flags this as the trap that manufactures human provenance; seeing it rendered
+as a clean two-word fact at the top of the page is a much stronger argument
+than reading about it. A careful researcher clicks through to `/assay`. A
+hurried one reads "Homo sapiens" and moves on.
+
+- **Adopt the warning, not the pattern.** Any place we render a species word
+  next to a value, it must be the *assay* organism, and it must be legible
+  which one it is. This is the concrete reason the `organism_verdict` claim
+  being built this cycle is worth a categorical select rather than a footnote.
+
+**Adopt: show the composition of the evidence, not only the summary.**
+Their "Activity Charts" section is genuinely good. Two pies:
+
+- *Associated Bioactivities* — 32,602 points broken down by activity type:
+  Ki, IC50, EC50, Kd, AC50, Inhibition, Emax, Kb, pKb, Ka, Ratio, T1/2, …
+- *Associated Assays* — 2,481 assays by format: B-Binding, F-Functional,
+  A-ADME, U-Unassigned.
+
+Before you read a single number you can see that this target's data is a
+*mixture of incompatible measurement types*, and roughly in what proportion.
+That is exactly the honesty our "no conversion between activity types" rule
+enforces in the pipeline — but we enforce it silently. A reader of our matrix
+sees a clean Ki grid and has no idea it was carved out of a much larger,
+heterogeneous pile.
+
+- **What we should take:** the analogue for us is not activity type (we are
+  Ki-only by construction) but **organism**. Every cell already carries
+  `n_human` / `n_non_human` / `n_unknown_organism`. ChEMBL breaks its evidence
+  down by type and *not at all by species*; that is the axis they leave open
+  and the one that matters most for extrapolating to people. Surfacing the
+  organism composition of a cell is a place we can be straightforwardly better
+  than the upstream source, using data we already ship.
+
+**Rejected on the same page:** "See all activities used in this plot (12611)
+⚠ (Showing first 1000 data points out of 12611)" — a silent-ish truncation
+that changes what the chart means, disclosed in small grey text under the
+link. And one panel rendered `Error: Request failed with status code 500` in
+red where a chart should be, with the rest of the page carrying on as normal.
+Both are the failure mode our reader already avoids for the right reason: our
+verification runs client-side over the facts the node actually served, so a
+partial answer cannot masquerade as a whole one — there is no server-side
+sampling step to under-disclose. Worth re-checking each cycle that our own
+error states never degrade to a red string inside an otherwise-normal page.
+
+### Net this visit
+
+- Adopt: evidence *composition* shown alongside the summary statistic —
+  applied to organism, which ChEMBL does not break down at all.
+- Adopt (as a hard rule): a species word next to a value must be the assay
+  organism, never the target's.
+- Reject: accounts-for-analytics, however good the cause. Recorded with its
+  real cost — we can never report a reader count to a funder.
