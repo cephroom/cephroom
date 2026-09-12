@@ -410,7 +410,10 @@ const server = createServer(async (request, response) => {
     const wanted = decodeURIComponent(url.pathname.slice("/dataset/".length));
     const found = datasets.find((candidate) => candidate.id === wanted);
     if (!found) return send(404, { error: "not served here" });
-    return send(200, found);
+    // Same reasoning as the column response: the reader checks that this
+    // machine is the contributor the registry named. A dataset matters more
+    // than most, since a claim is checked against it.
+    return send(200, { servedBySub: SUB, ...found });
   }
 
   // Proposals live here, on the author's disk. The platform never sees them.
@@ -519,6 +522,12 @@ const server = createServer(async (request, response) => {
       repo: column.repo ?? null,
       commit: column.commit ?? null,
       author: DISPLAY_NAME,
+      // Who is actually answering. The registry holds an address that
+      // arrived in an announcement, and nothing there connects the address to
+      // the subject announcing it — one contributor can announce another's
+      // node. The reader compares this with the contributor they went looking
+      // for; see src/lib/signaling/serving.ts.
+      servedBySub: SUB,
       ...gated,
       servedAt: new Date().toISOString(),
     });

@@ -45,6 +45,7 @@ export default async function ReadItemPage({
       subject && object ? { subject, object } : null;
     return (
       <DatasetReader
+        sub={sub}
         address={located.presence.address}
         servedBy={located.presence.displayName}
         datasetId={id}

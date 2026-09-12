@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DatasetMatrix, type MatrixCell } from "@/components/dataset-matrix";
 import { formatValue } from "@/lib/claims/syntax";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { servingMismatch } from "@/lib/signaling/serving";
 
 
 interface Fact {
@@ -61,12 +62,14 @@ const METRICS = [
 ] as const;
 
 export function DatasetReader({
+  sub,
   address,
   servedBy,
   datasetId,
   canExplore,
   highlight = null,
 }: {
+  sub: string;
   address: string;
   servedBy: string;
   datasetId: string;
@@ -85,7 +88,12 @@ export function DatasetReader({
           `${address}/dataset/${encodeURIComponent(datasetId)}`,
         );
         if (!response.ok) throw new Error(`node returned ${response.status}`);
-        const json = (await response.json()) as Dataset;
+        const json = (await response.json()) as Dataset & { servedBySub?: string };
+        // A dataset is what every claim in a column is checked against, so a
+        // machine answering for one it does not own is the most valuable
+        // address to have stolen.
+        const impostor = servingMismatch(sub, json.servedBySub);
+        if (impostor) throw new Error(impostor);
         if (!cancelled) setDataset(json);
       } catch (caught) {
         if (!cancelled) {
@@ -96,7 +104,9 @@ export function DatasetReader({
     return () => {
       cancelled = true;
     };
-  }, [address, datasetId]);
+    // `sub` included: see the column reader — it is the value the node's
+  // own claim is compared with.
+  }, [address, datasetId, sub]);
 
   const metric = METRICS[selected];
 

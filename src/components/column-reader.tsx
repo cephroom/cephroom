@@ -18,10 +18,13 @@ import {
 import { type Conclusion } from "@/lib/claims/verdict";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { servingMismatch } from "@/lib/signaling/serving";
 import { spendToken } from "@/lib/tokens/wallet";
 
 
 interface ServedColumn {
+  /** Who this machine says it is. Checked against the contributor asked for. */
+  servedBySub?: string;
   id: string;
   title: string;
   subtitle: string;
@@ -41,6 +44,11 @@ interface ServedColumn {
 type Phase =
   | { state: "loading" }
   | { state: "offline"; reason: string }
+  // Kept separate from `offline` on purpose. A node that answered promptly
+  // and truthfully, and simply is not the contributor the registry named, has
+  // not "stopped answering" — and saying so would put a wrong explanation
+  // above a right one.
+  | { state: "impostor"; detail: string }
   | { state: "ready"; column: ServedColumn; datasets: Map<string, Dataset> };
 
 export function ColumnReader({
@@ -83,6 +91,16 @@ export function ColumnReader({
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const column = (await response.json()) as ServedColumn;
 
+        // Before anything is rendered, and before any further request to this
+        // machine: is it the contributor the registry said it was? An address
+        // in the registry is a string somebody announced, and one contributor
+        // can announce another's node.
+        const impostor = servingMismatch(sub, column.servedBySub);
+        if (impostor) {
+          if (!cancelled) setPhase({ state: "impostor", detail: impostor });
+          return;
+        }
+
         const needed = [...new Set(column.claims.map((claim) => claim.datasetSlug))];
         const datasets = new Map<string, Dataset>();
         for (const slug of needed) {
@@ -115,7 +133,9 @@ export function ColumnReader({
     return () => {
       cancelled = true;
     };
-  }, [address, id, nodeKey]);
+    // `sub` included: it is what the fetched content is checked against,
+  // so a stale one would verify against the wrong contributor.
+  }, [address, id, nodeKey, sub]);
 
   const resolved = useMemo(() => {
     if (phase.state !== "ready") return null;
@@ -128,6 +148,38 @@ export function ColumnReader({
         <p className="text-[0.9rem] text-ink-muted">
           Fetching from {servedBy}&rsquo;s machine…
         </p>
+      </main>
+    );
+  }
+
+  if (phase.state === "impostor") {
+    return (
+      <main className="mx-auto max-w-[40rem] px-5 py-20">
+        <h1 className="font-serif text-[1.8rem] font-semibold tracking-[-0.025em]">
+          This is not {servedBy}&rsquo;s machine
+        </h1>
+        <p className="mt-4 text-[0.98rem] leading-relaxed text-ink-muted">
+          Somebody announced an address that answers for a different
+          contributor. Nothing from it is shown here: whatever is at that
+          address may be perfectly good work, but it is not the work you asked
+          for and not from the person you asked for it from.
+        </p>
+        <p className="mt-2 font-mono text-[0.78rem] text-ink-faint">
+          {address} — {phase.detail}
+        </p>
+        <p className="mt-4 max-w-[52ch] text-[0.86rem] leading-relaxed text-ink-faint">
+          The platform cannot catch this for you. It is handed an address by
+          whoever announces it and never visits one — staying out of that
+          request is the reason nothing you read passes through it. So the
+          check happens here, in your browser, against what the machine itself
+          says it is.
+        </p>
+        <Link
+          href="/read"
+          className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
+        >
+          See what is online
+        </Link>
       </main>
     );
   }
