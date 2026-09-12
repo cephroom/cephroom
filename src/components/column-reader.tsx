@@ -15,6 +15,7 @@ import {
 } from "@/lib/claims/resolve";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { safeExternalUrl } from "@/lib/safe-url";
 import { servingMismatch } from "@/lib/signaling/serving";
 
 
@@ -41,6 +42,43 @@ type Phase =
   // above a right one.
   | { state: "impostor"; detail: string }
   | { state: "ready"; column: ServedColumn; datasets: Map<string, Dataset> };
+
+/**
+ * A repository link is a URL from a file on a stranger's machine, so it is
+ * checked before it becomes an href - contract 4.
+ *
+ * When it does not survive the check the text is still shown, unlinked. A
+ * contributor who mistyped should be able to see what they typed, and a reader
+ * should be able to see what they were nearly sent to; silently dropping it
+ * would hide both.
+ */
+function RepoLink({ repo, commit }: { repo: string; commit: string | null }) {
+  const label = (
+    <>
+      <span className="text-ink-faint">repo</span>{" "}
+      {repo.replace("https://github.com/", "")}
+      {commit && <span className="font-mono"> @{commit}</span>}
+    </>
+  );
+
+  const safe = safeExternalUrl(repo);
+  if (!safe) {
+    return (
+      <span
+        className="text-ink-faint line-through decoration-broken/60"
+        title="This node gave a repository link that is not an ordinary web address, so it has not been made clickable."
+      >
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <a href={safe} target="_blank" rel="noopener noreferrer" className="hover:text-ink">
+      {label}
+    </a>
+  );
+}
 
 export function ColumnReader({
   sub,
@@ -281,18 +319,7 @@ export function ColumnReader({
                 )}
               </span>
             ))}
-            {column.repo && (
-              <a
-                href={column.repo}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-ink"
-              >
-                <span className="text-ink-faint">repo</span>{" "}
-                {column.repo.replace("https://github.com/", "")}
-                {column.commit && <span className="font-mono"> @{column.commit}</span>}
-              </a>
-            )}
+            {column.repo && <RepoLink repo={column.repo} commit={column.commit} />}
           </div>
         </section>
 
