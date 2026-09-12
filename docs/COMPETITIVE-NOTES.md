@@ -368,3 +368,88 @@ willingness to keep paying for it. What replaced it is worse than absence: a
 - Adopt: an honest dead end beats a redirect that pretends. Say it in the copy.
 - Reject: version-pinned DOIs (cannot; cost recorded), click-through consent
   (cannot record it honestly, so will not fake it).
+
+---
+
+## 2026-09-12 (cycle 4) — Evidence weight as a first-class field, and a null sentinel on a public page
+
+Visited OpenGWAS (`opengwas.io`, MRC IEU at Bristol), because it indexes tens
+of thousands of genome-wide association datasets and therefore has to answer
+the question this cycle is about: where does the weight of the evidence go on
+the page.
+
+### Adopt: sample size sits in the index, not in the record
+
+The all-datasets table's columns are **OpenGWAS ID · Trait · Author · Year ·
+Population · Sex · Sample Size · Consortium · Category · Subcategory**. Sample
+size is a sort key on the listing, beside the title — not something you learn
+after clicking in.
+
+Our `/read` listing shows a title, a summary and tags. Nothing about how much
+is standing behind a column. We already have the raw material: every claim
+carries `n_points` and `n_docs`, and the check badge already counts claims.
+"3 claims verified" says the checks passed; it does not say whether they passed
+over four measurements or four hundred. Worth carrying evidence weight into the
+listing the way OpenGWAS does.
+
+On the dataset page itself the same instinct, done well: `sample_size 46351`,
+`ncase 18382`, `ncontrol 27969`, `nsnp 9112386`, in the same table as the trait
+and the population, at the top.
+
+### Adopt: the wording of an honest unknown
+
+```
+is_nc   Unknown (commercial use might or might not be permitted -
+        check with the author, not OpenGWAS)
+```
+
+An unknown that says whose question it is and where the answer lives. Compare
+our offline page, which is deliberately uninformative and does *not* currently
+say what a reader could do instead. Same shape, and theirs is better at the
+last step.
+
+### Reject, and it is the sharpest thing on the page
+
+The same table renders:
+
+```
+unit        \N
+author      NA
+ontology    NA
+note        NA
+pmid        0
+```
+
+`\N` is a **database null sentinel**, leaking through to a public record page.
+`NA` three times. And `pmid 0` — a publication id of zero, which is not a
+publication id, presented in the same visual weight as `sample_size 46351`.
+
+This is the failure our data-honesty rule exists to prevent, and it is worth
+recording that it happens to a well-run, publicly funded resource. AGENTS.md:
+*"Empty dataset cells are dropped when the node reads them, never null-filled,
+so a claim against one fails loudly instead of resolving to 'no data'."* Here
+the null is not dropped and not labelled — it is rendered as a value, and
+`pmid 0` will parse as a number in anything that scrapes this page.
+
+Checked ourselves against it while here, and found we are only half clean.
+`node/server.ts` genuinely drops empty cells. But `mi_decoders_2025.json`
+carries a standard deviation for every value and **the node serves the mean
+alone** — so the page shows `59.45 %` for a number whose SD is 3.33 at n = 4.
+That is not a null rendered as a value; it is worse in one specific way, which
+is that nothing on the page indicates anything is missing at all. `\N` at least
+announces itself.
+
+### Also: the cold-load pattern again, second site running
+
+`/datasets` renders the full table header — all ten column names — above an
+empty body with a `9%` progress bar, for several seconds. Same as OpenNeuro's
+"Showing all available datasets" over a spinner. Two of two data-heavy research
+sites assert the shape of a result set before they have one. Re-confirmed our
+`/read` is server-rendered so its count and its rows arrive together.
+
+### Net this visit
+
+- Adopt: evidence weight in the listing, not only in the record.
+- Adopt: an unknown that names whose question it is.
+- Reject: null sentinels rendered as values — and note we fail the spirit of
+  our own version of this rule by serving a mean without its dispersion.

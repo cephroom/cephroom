@@ -469,3 +469,102 @@ built is everything that needed no such decision: the false sentence removed,
 the obstacle stated on the pricing page where a prospective contributor will
 see it, the imaginary paywall on publishing deleted, and the reduced rate
 shipped.
+
+---
+
+## 2026-09-12 (cycle 4) — A point estimate is not a result, and I shipped nine of them
+
+### What the literature says
+
+**Calin-Jageman & Cumming, *eNeuro* 6(4) ENEURO.0205-19 (2019), "Estimation for
+Better Inference in Neuroscience."** The case against reporting a number
+without its uncertainty, in this field specifically.
+
+- The prescription: *"Pose quantitative research questions and report
+  quantitative answers (effect sizes). Countenance uncertainty in all
+  statistical conclusions by reporting and interpreting the potential for error
+  (interval estimates)."*
+- The scale of the problem: *"Median sample size in this field is only 49 total
+  participants, meaning expected sampling error is much larger (∼0.55 SD) than
+  the typical reported effect"* — for the oxytocin literature they analyse, an
+  effect of about 0.28 SD. **The noise is twice the signal.**
+- The named failure mode, and it is the one that matters here: a result
+  significant in trust games and not in risk games, where *"there is
+  substantial overlap in the interval estimates… many compatible effect sizes
+  in common."* Two numbers look different. The difference is not one.
+
+### The finding, which is against this repository
+
+Cycle 3 shipped `mi-decoders-2025` and a column built on it. The dataset file
+carries `offline_sd` and `online_sd` for every row. **The node serves the means
+and drops the standard deviations on the floor.** A reader sees `59.45 %` and
+has no way to learn that its SD is 3.33 and n is 4.
+
+Computing what the served numbers cannot say (SE of the difference from the two
+reported SDs at n = 4):
+
+| decoder | online − offline | SE of difference | ratio | bigger than its own spread? |
+| --- | --- | --- | --- | --- |
+| EEG-TCNet | +10.55 | 3.13 | 3.38 | **yes** |
+| EEGNet | +7.90 | 4.30 | 1.84 | no |
+| Shallow FBCSP Net | +6.89 | 4.53 | 1.52 | no |
+| EEG Conformer | +6.65 | 3.53 | 1.88 | no |
+| MSVTNet | +4.22 | 3.93 | 1.07 | no |
+| SCCNet | +3.24 | 2.91 | 1.11 | no |
+| FBCNet | −2.02 | 2.99 | 0.68 | no |
+| Attention BaseNet | +1.89 | 4.11 | 0.46 | no |
+| FBLight ConvNet | +1.44 | 2.23 | 0.65 | no |
+| IFNet | +1.00 | 3.66 | 0.27 | no |
+
+**One of ten.** Nine protocol gaps are smaller than, or comparable to, the
+noise in the numbers that produced them.
+
+And the column says this, in a section heading:
+
+> **The direction is not fixed either.** FBCNet goes the other way: 67.57%
+> offline against 65.55% online, a model that gets *worse* when a person is in
+> the loop.
+
+A gap of 2.02 against a standard error of 2.99. That sentence asserts a
+direction the data does not carry — which is the exact thing this platform was
+built to catch, committed by this platform, one cycle after building the
+mechanism that was supposed to prevent it.
+
+(Stated carefully: this is computed from the two reported SDs treating the
+groups as independent. The paper may well have run a paired test with more
+power, and I am not claiming it found nothing. The claim is narrower and
+sufficient: **from the numbers this dataset serves, that gap does not support a
+direction**, so a column built on this dataset must not assert one.)
+
+### Why the mechanism did not catch it
+
+Because a claim has no idea what an interval is. `tolerance:` looks like
+uncertainty and is not: it is **how far the author will let the dataset drift
+before flagging the sentence**, a statement about editorial patience. The
+measurement's own dispersion is a different quantity and there is nowhere to
+put it. Conflating the two is worse than omitting one, because a `± 15%`
+sitting next to a number reads like error bars.
+
+The gap this leaves is the same shape as the previous two cycles, which is
+starting to look like the real pattern in this subject area:
+
+- cycle 2: a number pooled over organisms, rendered as though it had one.
+- cycle 3: a number produced by one pipeline, rendered as though it had none.
+- cycle 4: a number with a distribution behind it, rendered as a point.
+
+Each time, the platform displayed a summary and silently discarded the thing
+that says how much to trust it.
+
+### Building this cycle
+
+- The node serves **dispersion** alongside the value, wherever the dataset has
+  it, and drops it where it does not rather than substituting zero.
+- **`select: dispersion`** — a claim asserting the spread the dataset reports,
+  so the uncertainty is checkable on the same terms as the value.
+- **The chip shows it.** A value with a known dispersion renders as
+  `59.45 ± 3.33 %`, not `59.45 %`, because the honest rendering of a
+  distribution is not its centre.
+- The decoder column is rewritten to say what the numbers support. The honest
+  version is a better column than the one it replaces: the paper's headline is
+  that rankings reorder between protocols, and at n = 4 exactly one of ten gaps
+  is larger than its own noise.
