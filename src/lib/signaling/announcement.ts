@@ -48,6 +48,26 @@ export const announcementSchema = z.object({
 
 export type AnnouncementInput = z.infer<typeof announcementSchema>;
 
+/**
+ * The platform is never a serving node, so an announcement naming it is either
+ * a mistake or an attempt to aim readers at it - contract 4.
+ *
+ * Refused rather than relayed. The reader-side defence in fetchWithTimeout
+ * already stops the session travelling, but a listing entry that points at the
+ * platform is false on its face: nothing is served from here, and handing one
+ * out would have the platform advertising itself as the host it says it is not.
+ *
+ * Compared by origin, so a contributor on the same machine and a different port
+ * - the normal development case - is unaffected.
+ */
+export function isPlatformOrigin(address: string, platform: string): boolean {
+  try {
+    return new URL(address).origin === new URL(platform).origin;
+  } catch {
+    return false;
+  }
+}
+
 export function withinCapacity(
   announcement: AnnouncementInput,
   capacity: number,

@@ -5,6 +5,7 @@ import { NO_STORE } from "@/lib/api/shape";
 import { verifyAccessKey, verifyServeKey } from "@/lib/keys/tokens";
 import {
   announcementSchema,
+  isPlatformOrigin,
   withinCapacity,
 } from "@/lib/signaling/announcement";
 import { LEASE_SECONDS, registry } from "@/lib/signaling/registry";
@@ -43,6 +44,16 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "invalid announcement" },
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
+  if (isPlatformOrigin(parsed.data.address, new URL(request.url).origin)) {
+    return NextResponse.json(
+      {
+        error:
+          "That address is this platform. Nothing is served from here — a node runs on your own machine and states its own address, and a listing entry pointing back at us would be false.",
+      },
       { status: 400, headers: NO_STORE },
     );
   }
