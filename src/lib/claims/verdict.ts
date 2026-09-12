@@ -101,8 +101,19 @@ export function concludeRun(verdicts: Verdict[]): Conclusion {
   return "passing";
 }
 
+/**
+ * Trims whitespace and nothing else, because a unit's case is its meaning.
+ *
+ * nM (nanomolar) and nm (nanometre), mM and mm, M and m differ only in case and
+ * mean entirely different quantities - SI is explicit that the capital is not
+ * decoration. This once lowercased, which made "nm" and "nM" compare equal and
+ * silently accepted a length where a concentration was claimed. The judge's job
+ * is to catch a unit mismatch (contract 1: the check is the product), so the
+ * one class of mismatch a pharmacology reader most needs is exactly the one
+ * that must survive comparison. Whitespace is not meaning; case is.
+ */
 function normaliseUnit(unit: string | null | undefined): string {
-  return (unit ?? "").trim().toLowerCase();
+  return (unit ?? "").trim();
 }
 
 function trimNumber(value: number): string {

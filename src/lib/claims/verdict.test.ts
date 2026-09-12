@@ -86,11 +86,22 @@ describe("judge", () => {
     expect(result.note).toContain("No conversion");
   });
 
-  it("compares units case- and whitespace-insensitively", () => {
+  it("ignores surrounding whitespace, which carries no meaning", () => {
     expect(
-      judge({ value: 1.5, unit: "nM" }, { value: 1.5, unit: " nm " }, pct(10))
+      judge({ value: 1.5, unit: "nM" }, { value: 1.5, unit: " nM " }, pct(10))
         .verdict,
     ).toBe("verified");
+  });
+
+  it("treats a unit that differs only in case as a mismatch, because case is meaning", () => {
+    // nM (nanomolar) is not nm (nanometre). This test previously asserted the
+    // opposite - that "nM" and " nm " matched - which was a scientific-
+    // correctness bug: it accepted a length where a concentration was claimed.
+    // See units-are-case-sensitive.test.ts and verdict.ts::normaliseUnit.
+    expect(
+      judge({ value: 1.5, unit: "nM" }, { value: 1.5, unit: "nm" }, pct(10))
+        .verdict,
+    ).toBe("broken");
   });
 
   it("treats a missing unit on both sides as a match", () => {
