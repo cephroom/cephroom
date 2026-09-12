@@ -343,3 +343,44 @@ nothing attached" — with a nonce'd `script-src` and zero console CSP
 violations. The header shape is guarded by
 `tests/contracts/csp-locks-scripts.test.ts`, which fails if `script-src`
 reacquires `'unsafe-inline'` or if the open fetch directives silently close.
+
+## What the platform pays for as it grows
+
+A recurring question about this architecture is how it can afford scale: more
+readers, more contributors, more content. The answer is that the platform's cost
+is deliberately a function of *what is happening now*, never of *how much has
+ever happened* - and the one place that quietly stopped being true has been
+fixed.
+
+Where cost actually lives, and what bounds it:
+
+- **Content: zero.** Contributors serve columns, datasets and figures from their
+  own machines; the platform never stores or proxies a byte of it (contract 4,
+  and no API route fetches a node - the browser does, directly). A millionth
+  column costs the platform nothing.
+- **Readers at rest: zero.** There is no user table, profile, or session store
+  (contract 2). A reader is a signed key, verified statelessly. A millionth
+  reader adds no row anywhere.
+- **Active contributors: one registry entry each, reclaimed when they stop.**
+  Presence is in-memory, leased for 15 seconds, and now *deleted* when the lease
+  lapses rather than only filtered from the view (see the registry fix). So this
+  tracks who is serving now, not everyone who ever served - a few hundred bytes
+  per online node, returned within 15 seconds of them going away.
+- **Search volume: one opaque hash per redemption, for two epochs.** The
+  Privacy Pass nullifier set is the single structure that grows with usage, and
+  it grows with *searches per hour*, not with users: ~32 bytes per anonymous
+  search, held for two one-hour epochs and then pruned. A busy hour of a million
+  searches is on the order of tens of megabytes, and it shrinks the moment the
+  hour passes. This is contract 2's named exception, and its bound is time, not
+  headcount.
+- **Request rate: CPU for signature verification, O(1) each, no storage.**
+
+The thing that previously broke this was the registry retaining every entry that
+ever lapsed - so platform memory grew with the cumulative number of contributors
+who had ever served, which is exactly the "how do you afford it" failure. It now
+reclaims lapsed presence, so the bound is the live set. Revenue is ordinary
+subscriptions held at Stripe (contracts 3, 5); the platform never holds funds or
+pays contributors (contracts 5, 6), so there is no pool whose cost scales with
+the network either. The marginal cost of one more participant is a signature
+check plus, while they are actively present or searching, a bounded and
+self-expiring scrap of memory.
