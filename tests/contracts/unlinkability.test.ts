@@ -139,6 +139,41 @@ describe("Layer 1 protects a search history, not a paywall", () => {
     }
   });
 
+  it("spends them on the search, not on a node", async () => {
+    /**
+     * The CLI was spending a token to read a column: `readKey()` pops one,
+     * redeems it, and puts the resulting key in an `authorization` header on
+     * a request to a contributor's node. That is wrong twice over now.
+     *
+     * A node asks for nothing to serve a column, so the token bought nothing
+     * — it was destroyed on a request that would have succeeded without it,
+     * while the search it could have paid for ran at the free reach because
+     * `cmdLive` sent no token at all. And it put a platform-issued key on a
+     * request to somebody else's machine for no reason, which is one more
+     * thing a contributor could be handed and did not need.
+     */
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { ROOT, stripCommentsOnly } = await import("./scan");
+
+    const cli = stripCommentsOnly(
+      readFileSync(join(ROOT, "scripts", "cephroom.ts"), "utf8"),
+    );
+    const body = (name: string) => {
+      const start = cli.indexOf(`async function ${name}(`);
+      expect(start, `no ${name}`).toBeGreaterThan(-1);
+      const next = cli.indexOf("\nasync function ", start + 1);
+      return cli.slice(start, next === -1 ? undefined : next);
+    };
+
+    // Reading reaches a contributor's machine carrying nothing.
+    const read = body("cmdRead");
+    expect(read).not.toMatch(/readKey|authorization/);
+
+    // Searching reaches ours, and is where a token is worth spending.
+    expect(body("cmdLive")).toMatch(/readKey/);
+  });
+
   it("does not offer them where they would buy nothing", async () => {
     // A free consumer has no subscription for their searching to be linked
     // to, so the wallet has nothing to offer them and says so rather than

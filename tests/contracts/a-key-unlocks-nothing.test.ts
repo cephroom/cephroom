@@ -164,7 +164,9 @@ describe("the reader asks a node for nothing it no longer sends", () => {
    * seam between them: what the client expects a node to say.
    */
   function readerSources() {
-    return walk(join(ROOT, "src"))
+    // Both readers. The CLI fetches the same endpoint as the browser and had
+    // the same stale expectation, which no scan of `src/` would have found.
+    return [...walk(join(ROOT, "src")), ...walk(join(ROOT, "scripts"))]
       .filter((f) => (f.endsWith(".ts") || f.endsWith(".tsx")) && !f.includes(".test."))
       .map((file) => ({
         rel: relative(ROOT, file).split(sep).join("/"),
@@ -185,6 +187,29 @@ describe("the reader asks a node for nothing it no longer sends", () => {
       readFileSync(join(ROOT, "node", "server.ts"), "utf8"),
     );
     expect(server).not.toMatch(/\bentitled\b/);
+  });
+
+  it("expects no withheld sections in either reader", () => {
+    // The preview mechanism: a gated column came back with a count of what
+    // had been removed, and both readers printed "preview only". There is no
+    // preview, so a reader still describing one is describing nothing.
+    for (const { rel, code } of readerSources()) {
+      expect(code, `${rel} expects a preview`).not.toMatch(
+        /\bhiddenBlocks\b|\bwithheldClaimCount\b/,
+      );
+    }
+  });
+
+  it("renders no access marker beside a listed item", () => {
+    // `cephroom live` printed `[${item.access}]` next to anything not
+    // "public". The listing endpoint stopped sending `access`, so every row
+    // in the CLI read `[undefined]` — the badge outliving the thing it was
+    // a badge for, in the one reader nobody looks at in a browser.
+    for (const { rel, code } of readerSources()) {
+      expect(code, `${rel} still reads an access level`).not.toMatch(
+        /item\.access|\.access === |accessLabel/i,
+      );
+    }
   });
 
   it("refuses a proposal for a reason a reader can act on", () => {

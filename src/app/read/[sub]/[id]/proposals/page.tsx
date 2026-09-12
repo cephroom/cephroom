@@ -20,9 +20,10 @@ export default async function ProposalsPage({
   const located = registry().find(sub, id);
   const viewer = await getViewer();
 
-  // The node now gates /proposals with the same entitlement as /column, so
-  // the reader must present a key the node can verify. Same short-lived node
-  // key the column reader uses.
+  // Reading proposals is open — the node checks nothing — but a signed-in
+  // reader still gets a node key, because the same page offers to write one
+  // and a proposal has to be attributable. Same short-lived key the column
+  // reader uses.
   const nodeKey = viewer.sub
     ? await mintNodeKey({
         sub: viewer.sub,

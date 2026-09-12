@@ -60,15 +60,15 @@ export async function stockUp(): Promise<
     (response) => response.json() as Promise<{ keys: PublishedKey[] }>,
   );
 
-  // The newest key for whichever tier the issuer will sign for. The client
-  // does not know its own tier here — it asks, and the issuer decides.
+  // The newest key for whichever plan the issuer will sign for. The client
+  // does not state its own plan here — it asks, and the issuer decides.
   const newest = [...directory.keys].sort((a, b) => b.epoch - a.epoch);
   const candidate = newest[0];
   if (!candidate) return { ok: false, error: "No issuer keys are published." };
 
-  // Try each tier's newest key, best first: the issuer signs with the tier the
-  // caller is actually entitled to, so a request blinded against the lab key
-  // is refused for a member and vice versa.
+  // Try each plan's newest key, best first: the issuer signs with the
+  // discovery plan the caller actually holds, so a request blinded against
+  // the Sweep key is refused for somebody on Query, and the other way round.
   for (const key of newest) {
     const publicKeyBytes = Uint8Array.from(
       atob(key.publicKey)

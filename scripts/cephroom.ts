@@ -169,7 +169,7 @@ async function cmdLogin(argument?: string): Promise<void> {
 async function cmdTokens(): Promise<void> {
   const count = await stockUp();
   console.log(
-    `${count} anonymous tokens. Each buys one read that carries your tier and nothing else.`,
+    `${count} anonymous tokens. Each spends one search at your plan's reach, carrying nothing else.`,
   );
 }
 
@@ -177,15 +177,26 @@ async function cmdLive(query?: string): Promise<void> {
   const url = new URL(`${BASE}/api/v1/live`);
   if (query) url.searchParams.set("q", query);
 
-  const body = (await (await fetch(url)).json()) as {
+  // Searching is the one thing that happens on the platform's own surface, so
+  // it is the one thing worth spending a token on: the query runs at the
+  // reach the plan bought, with nothing tying it to the subscription. Without
+  // a token it still runs, at the free reach.
+  const key = await readKey();
+  const body = (await (
+    await fetch(url, {
+      headers: key ? { authorization: `Bearer ${key}` } : {},
+    })
+  ).json()) as {
     count: number;
     contributors: number;
+    truncated?: boolean;
+    matching?: number;
+    reach: { plan: string; results: number; concurrentNodes: number };
     results: {
       sub: string;
       id: string;
       title: string;
       kind: string;
-      access: string;
       servedBy: string;
       tags: string[];
     }[];
@@ -195,10 +206,17 @@ async function cmdLive(query?: string): Promise<void> {
     `${body.count} item${body.count === 1 ? "" : "s"} from ${body.contributors} contributor${body.contributors === 1 ? "" : "s"}, right now:\n`,
   );
   for (const item of body.results) {
-    const gate = item.access === "public" ? "" : ` [${item.access}]`;
-    console.log(`  ${item.kind.padEnd(7)} ${item.id}${gate}`);
+    console.log(`  ${item.kind.padEnd(7)} ${item.id}`);
     console.log(`          ${item.title}`);
     console.log(`          ${item.servedBy} · ${item.sub} · ${item.tags.join(", ")}\n`);
+  }
+
+  // Said plainly rather than left as a short list somebody reads as a quiet
+  // network: this is the plan's reach, not everything being served.
+  if (body.truncated) {
+    console.log(
+      `${body.matching} matched. ${body.reach.plan} returns ${body.reach.results}; crawl up to ${body.reach.concurrentNodes} nodes at once.`,
+    );
   }
 }
 
@@ -218,21 +236,16 @@ async function cmdRead(sub?: string, id?: string): Promise<void> {
     item: { id: string; title: string; kind: string };
   };
 
-  const key = await readKey();
-  const headers: Record<string, string> = key
-    ? { authorization: `Bearer ${key}` }
-    : {};
-
+  // Nothing is sent to the node. It serves a column to whoever asks and has
+  // nothing to check, so a key here would buy nothing and hand a contributor
+  // one more thing about the reader than they needed.
   const column = (await (
-    await fetch(`${address}/column/${encodeURIComponent(item.id)}`, { headers })
+    await fetch(`${address}/column/${encodeURIComponent(item.id)}`)
   ).json()) as {
     servedBySub?: string;
     title: string;
-    entitled: boolean;
     prose: string;
     claims: Parameters<typeof resolveClaims>[0];
-    hiddenBlocks: number;
-    withheldClaimCount?: number;
   };
 
   // The registry hands out an address that somebody announced, and nothing
@@ -265,17 +278,10 @@ Nothing from ${address} is shown. The platform is not in this request and cannot
   );
 
   console.log(`${column.title}\n`);
-  console.log(
-    `served from ${address}${key ? " with an anonymous token" : " anonymously, no token"}`,
-  );
+  console.log(`served from ${address}, which was told nothing about you`);
   console.log(
     `${run.counts.verified} verified · ${run.counts.drifted} drifted · ${run.counts.broken} broken`,
   );
-  if (!column.entitled) {
-    console.log(
-      `preview only — ${column.hiddenBlocks} sections and ${column.withheldClaimCount ?? 0} numbers withheld`,
-    );
-  }
   console.log();
 
   for (const claim of run.views.values()) {
