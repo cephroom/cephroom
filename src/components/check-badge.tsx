@@ -1,4 +1,4 @@
-import type { Conclusion } from "@/lib/claims/verdict";
+import { VERDICT_GLYPH, type Conclusion } from "@/lib/claims/verdict";
 
 const TONE: Record<
   Conclusion,
@@ -63,7 +63,7 @@ export function CheckBadge({
           : "px-2 py-0.5 text-[0.7rem]"
       } font-medium`}
     >
-      <span className={`h-[6px] w-[6px] rounded-full ${tone.dot}`} aria-hidden />
+      <span aria-hidden className="font-sans">{VERDICT_GLYPH[conclusion]}</span>
       {label}
     </span>
   );

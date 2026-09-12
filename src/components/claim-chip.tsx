@@ -5,6 +5,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 export type { ResolvedClaim as ClaimView } from "@/lib/claims/resolve";
 import type { ResolvedClaim as ClaimView } from "@/lib/claims/resolve";
+import { VERDICT_GLYPH } from "@/lib/claims/verdict";
 
 function describeSelect(select: string): string {
   switch (select) {
@@ -105,11 +106,9 @@ export function ClaimChip({ claim }: { claim: ClaimView | undefined }) {
         className={`inline-flex items-baseline gap-1 rounded px-1 py-px font-mono text-[0.88em] tnum ${tone.text} ${tone.wash} decoration-dotted underline-offset-[3px] transition-opacity hover:opacity-80`}
         title={`${tone.label} — click for provenance`}
       >
-        <span
-          aria-hidden
-          className={`inline-block h-[5px] w-[5px] shrink-0 translate-y-[-2px] rounded-full ${tone.dot}`}
-        />
-        {}
+        <span aria-hidden className="shrink-0 font-sans text-[0.85em]">
+          {VERDICT_GLYPH[claim.verdict]}
+        </span>
         <span className="sr-only">{tone.label}: </span>
         {claim.display}
       </button>
@@ -127,7 +126,7 @@ export function ClaimChip({ claim }: { claim: ClaimView | undefined }) {
       >
         <span className="mb-2.5 flex items-center justify-between gap-2">
           <span className={`flex items-center gap-1.5 font-medium ${tone.text}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
+            <span aria-hidden>{VERDICT_GLYPH[claim.verdict]}</span>
             {tone.label}
           </span>
           <code className="text-[0.72rem] text-ink-faint">{claim.key}</code>

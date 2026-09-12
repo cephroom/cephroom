@@ -3,6 +3,32 @@ import type { ClaimTolerance } from "./syntax";
 export type Verdict = "verified" | "drifted" | "broken";
 export type Conclusion = "passing" | "drifted" | "broken" | "empty";
 
+/**
+ * A shape per verdict, so the check is legible without colour - WCAG 1.4.1.
+ *
+ * The product's whole value is that "verified" reads at a glance. Signalling it
+ * with a red-or-green dot of one shape fails that glance for the ~8% of men
+ * with red-green colour deficiency, on the exact number they came to check. So
+ * each verdict gets a distinct character - not a coloured dot - and colour
+ * becomes reinforcement rather than the signal:
+ *
+ *   verified  a check
+ *   drifted   approximately-equal, because the value moved but is present
+ *   broken    a cross, because it could not be resolved
+ *   passing   a check, the whole-column form of verified
+ *   empty     a dash, nothing to check
+ *
+ * Keyed by both Verdict and Conclusion so the inline chip and the summary
+ * badge draw from one source and cannot drift apart.
+ */
+export const VERDICT_GLYPH: Record<Verdict | Conclusion, string> = {
+  verified: "✓",
+  passing: "✓",
+  drifted: "≈",
+  broken: "✕",
+  empty: "–",
+};
+
 export interface Judgement {
   verdict: Verdict;
   deltaPct: number | null;
