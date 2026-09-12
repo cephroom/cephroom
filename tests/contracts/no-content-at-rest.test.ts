@@ -1,19 +1,25 @@
-import { mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { describeHits, ROOT, scan, walk, type Rule } from "./scan";
+import {
+  describeHits,
+  ROOT,
+  scan,
+  stripCommentsOnly,
+  walk,
+  type Rule,
+} from "./scan";
 
-/**
- * Contract 2 — the platform never stores shared content.
- *
- * Two kinds of check. A static one, that no code in the platform can write
- * bytes anywhere. And a behavioural one: exercise the signaling server the
- * way a contributor and a reader would, and assert that nothing appeared on
- * disk as a result.
- */
 
 const PLATFORM_ROOTS = ["src"];
 
@@ -44,9 +50,6 @@ describe("Contract 2: the platform cannot write content", () => {
   });
 
   it("never proxies a fetch of contributor content through the server", () => {
-    // A server-side fetch of a node's content endpoint would put the bytes in
-    // the platform's memory and make it a proxy. Readers fetch nodes directly
-    // from the browser.
     const rules: Rule[] = [
       {
         name: "server-side-node-fetch",
@@ -58,24 +61,81 @@ describe("Contract 2: the platform cannot write content", () => {
   });
 });
 
-describe("Contract 2: content is not durable in the repository either", () => {
-  it("ships no stored column bodies", () => {
-    // content/ held the seeded columns when the platform stored them. They
-    // belong to a node now, under node/.
-    const strays = walk(join(ROOT, "content"), [".md", ".mdx"]).map((file) =>
-      relative(ROOT, file).split(sep).join("/"),
-    );
+function isColumn(source: string): boolean {
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!match) return false;
+  return /^slug:/m.test(match[1]) && /^title:/m.test(match[1]);
+}
+
+describe("Contract 2: the platform ships no column bodies of its own", () => {
+  it("has no column anywhere in the platform tree", () => {
+    const strays = walk(join(ROOT, "src"), [".md", ".mdx", ".txt", ".json"])
+      .filter((file) => isColumn(readFileSync(file, "utf8")))
+      .map((file) => relative(ROOT, file).split(sep).join("/"));
+
     expect(
       strays,
-      "Column bodies live in a contributor's node, not in the platform repository.",
+      [
+        "A column is a Markdown file with front matter naming a slug and a title.",
+        "One under src/ is a column the platform is shipping rather than brokering,",
+        "which is the same thing as hosting it.",
+        "",
+        "node/content/ is deliberately NOT scanned here: those files are a",
+        "contributor's own disk, served by their own process. That is the",
+        "architecture working, not a violation. The platform is src/.",
+        "",
+        ...strays,
+      ].join("\n"),
     ).toEqual([]);
+  });
+
+  it("names no content directory it could read one from", () => {
+    const offenders: string[] = [];
+    for (const file of walk(join(ROOT, "src"))) {
+      if (!file.endsWith(".ts") && !file.endsWith(".tsx")) continue;
+      if (file.includes(".test.")) continue;
+      const code = stripCommentsOnly(readFileSync(file, "utf8"));
+      if (/["'`][^"'`]*\bnode\/content\b|CONTENT_DIR|contentDir/.test(code)) {
+        offenders.push(relative(ROOT, file).split(sep).join("/"));
+      }
+    }
+    expect(
+      offenders,
+      `These name a content directory. The platform has no business knowing where a column lives on anybody's disk.\n${offenders.join("\n")}\n`,
+    ).toEqual([]);
+  });
+
+  it("would notice a column that appeared under src/", () => {
+    const scratch = mkdtempSync(join(tmpdir(), "cephroom-column-"));
+    try {
+      const stray = join(scratch, "smuggled.md");
+      writeFileSync(
+        stray,
+        "---\nslug: smuggled\ntitle: A column the platform is hosting\n---\n\nBody.\n",
+      );
+      expect(isColumn(readFileSync(stray, "utf8"))).toBe(true);
+      expect(isColumn("# Just a heading\n\nNot a column.\n")).toBe(false);
+      expect(isColumn("---\nfoo: bar\n---\n\nFront matter, but not a column.\n")).toBe(
+        false,
+      );
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  it("confirms the contributor's own columns are still where they belong", () => {
+    const columns = walk(join(ROOT, "node", "content"), [".md"]).filter((file) =>
+      isColumn(readFileSync(file, "utf8")),
+    );
+    expect(
+      columns.length,
+      "node/content/ holds the demo columns a fresh clone serves with no arguments. Empty means `npm run node:serve` now announces nothing, and /contribute says otherwise.",
+    ).toBeGreaterThan(0);
   });
 });
 
 describe("Contract 2: exercising the platform leaves nothing behind", () => {
   it("writes no files while registering, announcing, and disconnecting", async () => {
-    // A scratch working directory, so a stray relative-path write lands
-    // somewhere observable rather than in the repo.
     const scratch = mkdtempSync(join(tmpdir(), "cephroom-contract-"));
     const before = snapshot(scratch);
 
@@ -101,8 +161,6 @@ describe("Contract 2: exercising the platform leaves nothing behind", () => {
 
       handle.close();
 
-      // The whole of Contract 2 in three assertions: the moment the
-      // connection ends the content is gone, and nothing was written.
       expect(registry.list()).toHaveLength(0);
       expect(registry.find("sub_contract_test", "a-column")).toBeNull();
     } finally {
