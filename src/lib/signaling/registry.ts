@@ -94,10 +94,28 @@ export function createRegistry(now: () => number = Date.now): Registry {
 
   const fresh = (presence: Presence) => presence.expiresAt > now();
 
+  /**
+   * Delete every lapsed entry, rather than only filtering it out of the view.
+   *
+   * Filtering on read made list() honest but left the record in memory, so a
+   * contributor who announced once and never came back stayed held - their
+   * subject, address, pay-to and manifest - until the process restarted. Across
+   * many contributors that is an archive assembled one dropped connection at a
+   * time (contract 4), and it makes platform memory grow with everyone who ever
+   * served rather than with who is serving now. Sweeping on every read and
+   * write bounds the Map to the currently-live set.
+   */
+  const sweep = () => {
+    for (const [id, presence] of live) {
+      if (!fresh(presence)) live.delete(id);
+    }
+  };
+
   const registry: Registry = {
     announce(announcement) {
       const connectionId = `c_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
 
+      sweep();
       for (const [id, presence] of live) {
         if (presence.sub === announcement.sub) live.delete(id);
       }
@@ -130,6 +148,7 @@ export function createRegistry(now: () => number = Date.now): Registry {
     },
 
     list() {
+      sweep();
       return [...live.values()]
         .filter(fresh)
         .sort((a, b) => a.displayName.localeCompare(b.displayName));
