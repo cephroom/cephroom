@@ -214,12 +214,18 @@ export default async function AccountPage() {
         </Link>
       </section>
 
-      {!usingRealStripe() && subscriptions.length > 0 && (
-        <SimulatedBillingControls
-          subscriptionId={subscriptions[0].id}
-          status={subscriptions[0].status}
-        />
-      )}
+      {(() => {
+        // Drive the subscription the page is ABOUT - the governing discovery
+        // plan, falling back to a serving one - not subscriptions[0], which may
+        // be a lapsed subscription listed ahead of the live one.
+        const target = discoverySub ?? servingSub;
+        return !usingRealStripe() && target ? (
+          <SimulatedBillingControls
+            subscriptionId={target.id}
+            status={target.status}
+          />
+        ) : null;
+      })()}
     </main>
   );
 }
