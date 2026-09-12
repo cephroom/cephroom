@@ -130,3 +130,105 @@ describe("nothing that reads presence can be cached downstream", () => {
     expect(offline).not.toMatch(/lastSeen|previously|was serving|title=|servedBy/);
   });
 });
+
+/**
+ * Expired presence is reclaimed, not merely hidden - contract 4.
+ *
+ * The registry filters expired entries out of list() with a freshness check,
+ * but nothing deleted them: an entry only left the Map when the SAME subject
+ * re-announced or withdrew cleanly. A contributor who announces once and
+ * vanishes - a dropped connection, a closed laptop, no clean withdraw - left
+ * its subject, address, pay-to string and manifest in memory until the process
+ * restarted. Across many DIFFERENT contributors that is exactly the thing the
+ * registry's own comment says must not happen: "an archive assembled one
+ * dropped connection at a time". It also means platform memory grows with the
+ * number of contributors who have EVER served, not the number serving now,
+ * which is the opposite of what makes this architecture cheap to run.
+ *
+ * size() hid it, because it reports list().length - the filtered view - so the
+ * data could be gone from sight while still held. These assertions reach past
+ * the view: a withdraw of an entry that has expired must find nothing to
+ * withdraw, because it should already be gone.
+ */
+describe("expired presence is actually forgotten, not just filtered", () => {
+  it("reclaims an expired entry rather than leaving it in memory", async () => {
+    const { createRegistry, LEASE_SECONDS } = await import(
+      "@/lib/signaling/registry"
+    );
+    let clock = 1_000_000;
+    const registry = createRegistry(() => clock);
+
+    const handle = registry.announce({
+      sub: "s_gone",
+      displayName: "Gone",
+      address: "http://127.0.0.1:4600",
+      payTo: "ko-fi.com/gone",
+      items: [{ id: "c", title: "C", kind: "column", tags: [] }],
+    });
+
+    clock += LEASE_SECONDS * 1000 + 1; // the lease lapses
+    registry.list(); // a read happens, as it does on every search
+
+    // The entry has expired. If it were truly gone there is nothing to
+    // withdraw; if it is merely filtered, its record is still in the Map and
+    // withdraw finds and deletes it - returning true, which is the leak.
+    expect(
+      registry.withdraw(handle.connectionId, "s_gone"),
+      "An expired entry was still in memory - withdraw found a record that should have been reclaimed.",
+    ).toBe(false);
+  });
+
+  it("does not grow with contributors who came and went", async () => {
+    const { createRegistry, LEASE_SECONDS } = await import(
+      "@/lib/signaling/registry"
+    );
+    let clock = 1_000_000;
+    const registry = createRegistry(() => clock);
+
+    // A hundred contributors each announce once and vanish.
+    const handles = [];
+    for (let i = 0; i < 100; i += 1) {
+      handles.push(
+        registry.announce({
+          sub: `s_transient_${i}`,
+          displayName: `T${i}`,
+          address: "http://127.0.0.1:4600",
+          items: [],
+        }),
+      );
+      clock += LEASE_SECONDS * 1000 + 1; // each lapses before the next
+    }
+
+    registry.list(); // a read reclaims the lapsed entries
+
+    // None of the hundred should still be held: withdrawing any of them finds
+    // nothing. If the Map still carries them, this is an archive of everyone
+    // who ever served.
+    handles.forEach((handle, i) => {
+      expect(
+        registry.withdraw(handle.connectionId, `s_transient_${i}`),
+        `s_transient_${i} was still held after its lease lapsed - the registry is accumulating everyone who ever served.`,
+      ).toBe(false);
+    });
+    expect(registry.size()).toBe(0);
+  });
+
+  it("still forgets a subject whose lease lapses without any later read", async () => {
+    // size() must report what is actually retained, so it cannot report a live
+    // count while holding a dead one.
+    const { createRegistry, LEASE_SECONDS } = await import(
+      "@/lib/signaling/registry"
+    );
+    let clock = 1_000_000;
+    const registry = createRegistry(() => clock);
+    registry.announce({
+      sub: "s_solo",
+      displayName: "Solo",
+      address: "http://127.0.0.1:4600",
+      items: [],
+    });
+    expect(registry.size()).toBe(1);
+    clock += LEASE_SECONDS * 1000 + 1;
+    expect(registry.size()).toBe(0);
+  });
+});
