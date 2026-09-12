@@ -184,6 +184,66 @@ describe("capacity buys presence, never prominence", () => {
     expect(sweeping.length).toBeGreaterThan(browsing.length);
   });
 
+  it("says so in the copy a contributor is deciding from", async () => {
+    /**
+     * Found by reading the page rather than the code. `/contribute` said the
+     * listing "gives every contributor an equal share, and a plan changes the
+     * size of your share", which is a contradiction in one sentence, and the
+     * Shelf plan advertised "An equal share of the listing, at ten times the
+     * size" — a promise of prominence that `fairShare` does not keep and must
+     * not, because prominence is the consumer's product.
+     *
+     * A plan that cannot deliver what its own card promises is the old model
+     * with the roles swapped: money taken for something the mechanism was
+     * never going to do.
+     */
+    const { SERVING_PLANS } = await import("@/lib/stripe/plans");
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { ROOT } = await import("./scan");
+
+    const surfaces = [
+      Object.values(SERVING_PLANS)
+        .flatMap((p) => [p.name, p.tagline, ...p.features])
+        .join(" "),
+      readFileSync(join(ROOT, "src", "app", "contribute", "page.tsx"), "utf8"),
+    ];
+
+    for (const copy of surfaces) {
+      for (const promise of [
+        "times the size",
+        "bigger share",
+        "larger share",
+        "priority",
+        "ranked higher",
+        "more visible",
+        "prominen",
+        "top of the listing",
+        "reach more readers",
+      ]) {
+        expect(copy.toLowerCase(), `serving copy promises "${promise}"`).not.toContain(
+          promise,
+        );
+      }
+    }
+  });
+
+  it("does not tell a contributor to write an access level", async () => {
+    // The front matter a contributor is told to write has to be the front
+    // matter the node reads. `access` was dropped from `readColumnFile` when
+    // the gate went; the page still listed it beside `slug` and `title`, so
+    // somebody following the instructions would write a field that silently
+    // does nothing — and would reasonably believe it was doing something.
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { ROOT } = await import("./scan");
+    const contribute = readFileSync(
+      join(ROOT, "src", "app", "contribute", "page.tsx"),
+      "utf8",
+    );
+    expect(contribute).not.toMatch(/>access\s*</);
+  });
+
   it("keeps the free capacity generous enough to never be met in practice", () => {
     // A researcher with their columns and the datasets behind them.
     expect(FREE_SERVING_CAPACITY).toBeGreaterThanOrEqual(20);

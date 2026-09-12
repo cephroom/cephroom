@@ -61,12 +61,15 @@ npm run node:serve                       # serves the demo content`}
       <div className="prose mt-8">
         <h3>Serve your own work</h3>
         <p>
-          A column is a Markdown file with front matter (a <code>slug</code>,{" "}
-          <code>title</code>, and <code>access</code>). Put your columns in a
+          A column is a Markdown file with front matter (a <code>slug</code>{" "}
+          and a <code>title</code>; a <code>subtitle</code>, <code>repo</code>{" "}
+          and <code>commit</code>{" "}
+          if you have them). Put your columns in a
           directory and point the node at it. That directory <em>is</em>{" "}
           your
           manifest — the node serves every <code>.md</code>{" "}
-          file it finds.
+          file it finds, whole, to whoever asks. There is no field for
+          withholding part of one.
         </p>
       </div>
 
@@ -205,8 +208,11 @@ npm run node:serve                       # serves the demo content`}
         <p>
           One subscription exists on this side, and it buys exactly one thing:
           how many items you can have listed at once. Not reach, not ranking,
-          not readers — the listing gives every contributor an equal share, and
-          a plan changes the size of your share, nothing else.
+          not readers. Every contributor who is online gets the same share of
+          whatever listing is being built, whatever they pay; what a plan
+          changes is how much of your work is eligible to fill your share, not
+          how large the share is. If it did change the share, we would be
+          selling somebody else&rsquo;s search results.
         </p>
         <p>
           The free plan announces{" "}

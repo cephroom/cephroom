@@ -185,7 +185,7 @@ export const SERVING_PLANS: Record<ServingTier, PlanDefinition<ServingTier>> = {
     tagline: "For a group or an archive with more online than one desk holds.",
     features: [
       `Announce up to ${SERVING_CAPACITY.shelf} items at once`,
-      "An equal share of the listing, at ten times the size",
+      "Ten times as much of it eligible for any given listing",
     ],
     prices: {
       month: {
