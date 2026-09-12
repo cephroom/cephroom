@@ -23,6 +23,8 @@ against which base — is inescapable. The scientific translation is the spine
 of this product:
 
 - a number in prose is a **query against a versioned dataset**, not a literal;
+- a number that depends on **how it was computed** says which analysis
+  produced it, and will not resolve without one;
 - a **reader re-runs** every query on the way in, so a stale value says so;
 - a **proposal is a diff** the author reviews, delivered to their own machine;
 - everything carries its **provenance** — dataset release, evidence count,

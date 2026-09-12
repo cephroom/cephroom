@@ -1,0 +1,42 @@
+{
+  "id": "mi-decoders-2025",
+  "name": "Motor-imagery decoders, offline benchmark against online use",
+  "source": "Front. Syst. Neurosci. 17:1718390 (2025)",
+  "source_url": "https://doi.org/10.3389/fnsys.2025.1718390",
+  "release": "transcribed-2026-09-12",
+  "generated_at_utc": "2026-09-12",
+  "provenance": {
+    "how": "Values transcribed by hand from Tables 2 and 3 of the paper named in `source`, retrieved 2026-09-12, and cross-checked by re-reading four rows and the two threshold claims independently before recording.",
+    "not_ours": "Nothing here is computed by this project. These are the authors' reported figures; where a cell is absent it is because the paper does not report it, and it is omitted rather than filled.",
+    "scope": "Four healthy participants, aged 20-28, four-class motor imagery, 2 s windows at 256 Hz. A small study. The point of shipping it is the offline/online contrast, not the leaderboard."
+  },
+  "notes": [
+    "Accuracy in percent, mean over participants, with the paper's reported standard deviation alongside.",
+    "The two methods are evaluation protocols, not models: `offline` replays recorded data, `online` is live closed-loop BCI operation with the same decoder.",
+    "Ten decoders were run under both protocols; ten more were run offline only, and those carry no `online` row rather than an imputed one.",
+    "No value is converted, rescaled or averaged across protocols. A claim that does not name a protocol does not resolve.",
+    "Four participants. Treat every number here as an illustration of protocol sensitivity rather than as a ranking of decoders."
+  ],
+  "rows": [
+    { "decoder": "MSVTNet", "offline": 64.11, "offline_sd": 3.34, "online": 68.33, "online_sd": 7.12 },
+    { "decoder": "Attention BaseNet", "offline": 60.33, "offline_sd": 1.22, "online": 62.22, "online_sd": 8.12 },
+    { "decoder": "FBLight ConvNet", "offline": 70.23, "offline_sd": 3.92, "online": 71.67, "online_sd": 2.13 },
+    { "decoder": "IFNet", "offline": 63.45, "offline_sd": 3.29, "online": 64.45, "online_sd": 6.54 },
+    { "decoder": "EEG Conformer", "offline": 56.68, "offline_sd": 4.69, "online": 63.33, "online_sd": 5.29 },
+    { "decoder": "FBCNet", "offline": 67.57, "offline_sd": 1.07, "online": 65.55, "online_sd": 5.88 },
+    { "decoder": "EEG-TCNet", "offline": 59.45, "offline_sd": 3.33, "online": 70.0, "online_sd": 5.29 },
+    { "decoder": "SCCNet", "offline": 62.87, "offline_sd": 4.02, "online": 66.11, "online_sd": 4.21 },
+    { "decoder": "EEGNet", "offline": 53.77, "offline_sd": 6.04, "online": 61.67, "online_sd": 6.12 },
+    { "decoder": "Shallow FBCSP Net", "offline": 61.45, "offline_sd": 3.4, "online": 68.34, "online_sd": 8.39 },
+    { "decoder": "TCANet", "offline": 56.56, "offline_sd": 1.38, "online": null, "online_sd": null },
+    { "decoder": "MSCFormer", "offline": 63.43, "offline_sd": 5.16, "online": null, "online_sd": null },
+    { "decoder": "CTNet", "offline": 57.11, "offline_sd": 4.02, "online": null, "online_sd": null },
+    { "decoder": "EEGNeX", "offline": 56.89, "offline_sd": 3.94, "online": null, "online_sd": null },
+    { "decoder": "EEG SimpleConv", "offline": 58.55, "offline_sd": 1.73, "online": null, "online_sd": null },
+    { "decoder": "EEG-ITNet", "offline": 50.77, "offline_sd": 2.13, "online": null, "online_sd": null },
+    { "decoder": "ATCNet", "offline": 58.87, "offline_sd": 6.72, "online": null, "online_sd": null },
+    { "decoder": "EEG-inception", "offline": 57.55, "offline_sd": 6.72, "online": null, "online_sd": null },
+    { "decoder": "TIDNet", "offline": 41.09, "offline_sd": 4.82, "online": null, "online_sd": null },
+    { "decoder": "Deep ConvNet", "offline": 49.9, "offline_sd": 2.26, "online": null, "online_sd": null }
+  ]
+}

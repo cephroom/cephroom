@@ -83,6 +83,7 @@ separated from anything that touches a network or a cookie:
 | Who can read what | `src/lib/access.ts` |
 | The claim grammar | `src/lib/claims/syntax.ts` |
 | Verified / drifted / broken | `src/lib/claims/verdict.ts` |
+| Which analysis a number came from | `src/lib/claims/method.ts` |
 | Presence, and when it lapses | `src/lib/signaling/registry.ts` |
 | Minting and verifying keys | `src/lib/keys/tokens.ts` |
 | Diffing a proposal | `src/lib/diff.ts` |
@@ -121,6 +122,14 @@ same standard as the columns.
   so a claim against one fails loudly instead of resolving to "no data".
 - The judge never converts between units or activity types. A unit mismatch is
   `broken`.
+- **A number that depends on how it was computed carries the analysis that
+  produced it, and `method:` has no default.** Where a cell exists under more
+  than one analysis, a claim that names none resolves `broken` and lists them.
+  Not a warning and not a pooled average, because both are slower ways of not
+  being told. The evidence for making it hard rather than optional is in
+  docs/COMPETITIVE-NOTES.md: NeuroVault's schema has ~60 pipeline fields and
+  they are empty on NARPS's own submissions. Optional provenance is not
+  collected.
 - If you ever ship values that are not from the upstream source, label them in
   the dataset's own release string and notes, and restore the real snapshot
   afterwards.

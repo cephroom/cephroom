@@ -9,6 +9,7 @@ import { CheckBadge } from "@/components/check-badge";
 import { ClaimChip, type ClaimView } from "@/components/claim-chip";
 import { Paywall } from "@/components/paywall";
 import type { Access, Tier } from "@/lib/access";
+import { methodSpread, selectByMethod } from "@/lib/claims/method";
 import { formatValue, isFoldSelect, type ParsedClaim } from "@/lib/claims/syntax";
 import { concludeRun, judge, type Conclusion } from "@/lib/claims/verdict";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
@@ -59,6 +60,8 @@ interface Fact {
   object: string;
   metric: string;
   scope: string;
+  /** The analysis that produced this number, or null when there is one. */
+  method?: string | null;
   value: number;
   unit: string | null;
   nPoints: number | null;
@@ -254,8 +257,15 @@ export function ColumnReader({
           {conclusion === "broken" && (
             <p className="mt-3 border-t border-rule pt-3 text-[0.82rem] leading-relaxed text-broken">
               {counts.broken} claim{counts.broken === 1 ? "" : "s"} could not be
-              resolved. Either the dataset moved, or nobody is currently serving
-              the dataset it needs.
+              resolved.{" "}
+              {/* The banner used to assert a cause — "either the dataset moved,
+                  or nobody is serving it" — which is wrong for every failure
+                  that is not about availability. A claim that does not name
+                  which analysis it means breaks while the dataset is right
+                  there, and telling the reader to go looking for a missing
+                  node sends them somewhere there is nothing to find. Each
+                  claim knows its own reason; the banner counts and points. */}
+              Open one to see why — each says what went wrong with it.
             </p>
           )}
 
@@ -385,15 +395,45 @@ function resolveClaims(
 
   for (const claim of claims) {
     const dataset = datasets.get(claim.datasetSlug);
-    const fact = dataset?.facts.find(
-      (candidate) =>
-        candidate.subject === claim.subject &&
-        candidate.object === claim.object &&
-        candidate.metric === claim.metric &&
-        candidate.scope === claim.scope,
-    );
+    // Everything matching the query except the analysis. Usually one row; for
+    // a dataset that holds the same cell under several pipelines, several.
+    const candidates = (dataset?.facts ?? [])
+      .filter(
+        (candidate) =>
+          candidate.subject === claim.subject &&
+          candidate.object === claim.object &&
+          candidate.metric === claim.metric &&
+          candidate.scope === claim.scope,
+      )
+      .map((candidate) => ({ ...candidate, method: candidate.method ?? null }));
 
-    const observed: { value: number | null; unit: string | null } = !fact
+    const picked = selectByMethod(candidates, claim.method);
+    const fact = picked.kind === "resolved" ? picked.fact : undefined;
+
+    // A cell with several analyses and a claim that names none is the case
+    // this whole mechanism exists for. It resolves broken and says which
+    // analyses there are, rather than choosing one or averaging them into a
+    // number no experiment produced. See src/lib/claims/method.ts.
+    // ...except for method_spread, which is a question *about* the set of
+    // analyses. Demanding that it name one would be demanding it answer a
+    // different question.
+    const methodProblem =
+      claim.select === "method_spread"
+        ? null
+        : picked.kind === "ambiguous"
+          ? `This cell exists under ${picked.methods.length} analyses (${picked.methods.join(", ")}). A claim has to name which one it means — add a "method:" line.`
+          : picked.kind === "unknown"
+            ? `No analysis called "${claim.method}" here. This cell has: ${picked.methods.join(", ")}.`
+            : null;
+
+    // method_spread is a statement about *all* the analyses of a cell, so it
+    // resolves from the candidate set rather than from one picked fact — and
+    // is the one select that does not need a `method:` line, because naming a
+    // single analysis would defeat the question it asks.
+    const observed: { value: number | null; unit: string | null } =
+      claim.select === "method_spread"
+        ? { value: methodSpread(candidates), unit: null }
+        : !fact
       ? { value: null, unit: null }
       : claim.select === "n_points"
         ? { value: fact.nPoints, unit: null }
@@ -434,6 +474,8 @@ function resolveClaims(
           deltaPct: null,
           note: `Nobody is serving the dataset "${claim.datasetSlug}" right now, so this number cannot be checked.`,
         }
+      : methodProblem
+        ? { verdict: "broken" as const, deltaPct: null, note: methodProblem }
       : judge(
           { value: claim.expectedValue, unit: claim.expectedUnit },
           observed,
@@ -447,11 +489,20 @@ function resolveClaims(
     // judge sees a null observed value and reports "no cell matches this query".
     // The cell is there; only the statistic is absent. Say what is actually
     // missing rather than implying the query found nothing.
-    const statMissing = Boolean(dataset) && Boolean(fact) && observed.value === null;
+    const statMissing =
+      Boolean(dataset) &&
+      Boolean(fact) &&
+      observed.value === null &&
+      !methodProblem;
     const note = statMissing
       ? `This cell reports no ${describeStat(claim.select)} to check — the statistic is not available for this query.`
       : (judgement.note ??
-        (fact ? null : `No cell for ${claim.subject} × ${claim.object}.`));
+        // Keyed on the candidate set, not on one picked fact: method_spread
+        // resolves from every analysis of a cell and never picks one, so
+        // testing `fact` here reported "no cell" under a green verdict.
+        (candidates.length > 0
+          ? null
+          : `No cell for ${claim.subject} × ${claim.object}.`));
 
     views.set(claim.key, {
       key: claim.key,
@@ -475,6 +526,7 @@ function resolveClaims(
         metric: claim.metric,
         subject: claim.subject,
         object: claim.object,
+        method: claim.method,
         scope: claim.scope,
         select: claim.select,
       },

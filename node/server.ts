@@ -191,6 +191,8 @@ function readDataset() {
     object: string;
     metric: string;
     scope: string;
+    /** The analysis that produced this number. Null: this cell has one. */
+    method: string | null;
     value: number;
     unit: string | null;
     nPoints: number | null;
@@ -236,7 +238,19 @@ function readDataset() {
           { all: foldAll, iqrAll: foldIqrAll, human: foldHuman },
           scope,
         );
-        facts.push({ ...shared, metric, scope, value, unit, foldSpread, foldSpreadIqr });
+        facts.push({
+          ...shared,
+          metric,
+          scope,
+          // A median Ki is computed one way. The ChEMBL matrix genuinely has
+          // a single analysis per cell, so its facts say so rather than
+          // inventing a method name nobody would type.
+          method: null,
+          value,
+          unit,
+          foldSpread,
+          foldSpreadIqr,
+        });
       };
 
       add("median_ki_nm", "all", round4(cells[index]), "nM");
@@ -276,8 +290,86 @@ function readDataset() {
   };
 }
 
+/**
+ * A benchmark whose cells exist under more than one analysis.
+ *
+ * Ships alongside the binding matrix to make the point the binding matrix
+ * cannot: the same decoder scores 59.45% under one evaluation protocol and
+ * 70.00% under another. `method` is the protocol, and a claim that does not
+ * name one does not resolve. See src/lib/claims/method.ts.
+ *
+ * Every number is the paper's, transcribed and cross-checked; none is
+ * computed here. The file states its own provenance and its own smallness.
+ */
+function readDecoderBenchmark() {
+  const path = join(DATA_DIR, "mi_decoders_2025.json");
+  if (!existsSync(path)) return null;
+
+  const raw = JSON.parse(readFileSync(path, "utf8")) as {
+    id: string;
+    name: string;
+    source: string;
+    source_url: string;
+    release: string;
+    generated_at_utc: string;
+    provenance: Record<string, string>;
+    notes: string[];
+    rows: {
+      decoder: string;
+      offline: number | null;
+      offline_sd: number | null;
+      online: number | null;
+      online_sd: number | null;
+    }[];
+  };
+
+  const facts = [];
+  for (const row of raw.rows) {
+    for (const method of ["offline", "online"] as const) {
+      const value = row[method];
+      // An absent protocol is absent. The ten offline-only decoders get no
+      // `online` fact, so a claim against one fails loudly rather than
+      // resolving to a number the paper never reported.
+      if (value === null) continue;
+      facts.push({
+        subject: row.decoder,
+        object: "four-class-motor-imagery",
+        metric: "accuracy_pct",
+        scope: "all",
+        method,
+        value,
+        unit: "%",
+        nPoints: 4,
+        nDocs: 1,
+        foldSpread: null,
+        foldSpreadIqr: null,
+        nMeasurements: null,
+        nCensored: null,
+        pdspFold: null,
+      });
+    }
+  }
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    description:
+      "Ten motor-imagery decoders run under two evaluation protocols, and ten more offline only. The same decoder moves by up to 10.6 points between protocols, which is the number this dataset exists to make checkable.",
+    source: raw.source,
+    release: raw.release,
+    generatedAt: raw.generated_at_utc,
+    coverage: null,
+    notes: [...raw.notes, `Source: ${raw.source_url}`, raw.provenance.how],
+    facts,
+  };
+}
+
 const columns = readColumns();
-const dataset = HAS_DATASET ? readDataset() : null;
+const datasets = [
+  ...(HAS_DATASET ? [readDataset()] : []),
+  ...(readDecoderBenchmark() ? [readDecoderBenchmark()!] : []),
+];
+const dataset = datasets[0] ?? null;
 const proposals = new ProposalStore(import.meta.dirname);
 
 /* ------------------------------------------------------------------ *
@@ -327,10 +419,9 @@ const server = createServer(async (request, response) => {
   // rather than silently borrowing a stranger's numbers.
   if (url.pathname.startsWith("/dataset/")) {
     const wanted = decodeURIComponent(url.pathname.slice("/dataset/".length));
-    if (!dataset || wanted !== dataset.id) {
-      return send(404, { error: "not served here" });
-    }
-    return send(200, dataset);
+    const found = datasets.find((candidate) => candidate.id === wanted);
+    if (!found) return send(404, { error: "not served here" });
+    return send(200, found);
   }
 
   // Proposals live here, on the author's disk. The platform never sees them.
@@ -463,19 +554,31 @@ function manifest() {
       summary: column.subtitle,
       openProposals: proposals.countOpen(column.id),
     })),
-    ...(dataset
-      ? [
-          {
-            id: dataset.id,
-            title: dataset.name,
-            kind: "dataset" as const,
-            tags: ["chembl", "binding"],
-            access: "public" as const,
-            summary: dataset.description,
-          },
-        ]
-      : []),
+    ...datasets.map((served) => ({
+      id: served.id,
+      title: served.name,
+      kind: "dataset" as const,
+      tags: datasetTags(served.id),
+      access: "public" as const,
+      summary: served.description,
+    })),
   ];
+}
+
+/**
+ * Facets a reader can search on.
+ *
+ * Modality-first, following OpenNeuro — MRI, PET, EEG, iEEG, MEG, NIRS before
+ * task or disease. Now that the subject is the nervous system rather than one
+ * receptor family, "how was this measured" is the first question a reader
+ * asks. These are the contributor's own labels; the platform never invents or
+ * stores them.
+ */
+function datasetTags(id: string): string[] {
+  if (id === "mi-decoders-2025") {
+    return ["eeg", "bci", "decoding", "comparative-methods"];
+  }
+  return ["pharmacology", "receptors", "chembl", "binding"];
 }
 
 async function keyFromRequest(header: string | undefined) {
@@ -593,7 +696,7 @@ async function withdraw() {
 
 server.listen(PORT, "127.0.0.1", async () => {
   console.log(
-    `node serving ${columns.length} columns${dataset ? " + 1 dataset" : ""} on ${ADDRESS}`,
+    `node serving ${columns.length} columns + ${datasets.length} dataset${datasets.length === 1 ? "" : "s"} on ${ADDRESS}`,
   );
   try {
     await announce();

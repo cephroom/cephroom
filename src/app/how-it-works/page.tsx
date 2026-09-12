@@ -23,6 +23,16 @@ value:   1.549 nM
 tolerance: 10%
 \`\`\``;
 
+const METHOD_EXAMPLE = `\`\`\`claim tcnet-online
+dataset: mi-decoders-2025
+metric:  accuracy_pct
+subject: EEG-TCNet
+object:  four-class-motor-imagery
+method:  online
+value:   70.0 %
+tolerance: 2%
+\`\`\``;
+
 export default function HowItWorksPage() {
   return (
     <main className="mx-auto max-w-[46rem] px-5 py-12 sm:py-16">
@@ -119,7 +129,46 @@ export default function HowItWorksPage() {
             second, separate database reproduces the number — the strongest
             check there is.
           </li>
+          <li>
+            <code>method_spread</code> — how far the <em>analyses</em>{" "}
+            of the same data disagree: the widest value over the narrowest,
+            across every pipeline the dataset holds for that cell. Not the same
+            as <code>fold_spread</code>, which is about laboratories. A large
+            number means the result is a property of how it was computed.
+          </li>
         </ul>
+
+        <h3>Naming the analysis</h3>
+        <p>
+          A median Ki is computed one way, so a binding cell has one value. A
+          decoding accuracy, a cluster-corrected activation, a spectral peak is
+          a property of <em>a pipeline applied to data</em> — change the
+          evaluation protocol or the smoothing kernel and the number moves.
+          Where a dataset holds the same cell under more than one analysis, a
+          claim says which one it means:
+        </p>
+        <pre>
+          <code>{METHOD_EXAMPLE}</code>
+        </pre>
+        <p>
+          <strong>There is no default.</strong>{" "}
+          Leave <code>method:</code>{" "}
+          out on a cell with several analyses and the claim resolves{" "}
+          <em>broken</em>, naming the analyses that exist. Not a warning and not
+          a pooled average — both are slower ways of not being told, and the
+          average is a number no experiment produced.
+        </p>
+        <p>
+          That is deliberate, and taken from evidence rather than taste.
+          NeuroVault&rsquo;s collection schema carries about sixty fields
+          describing the analysis pipeline, added years before seventy teams
+          analysed one fMRI dataset and reported significant effects for
+          anywhere between 0% and 100% of the hypotheses depending on how they
+          did it. On those teams&rsquo; own submitted maps, ten of 107 fields
+          are filled and none of them is an analysis field. Optional provenance
+          is not collected. The only version that survives a deadline is the
+          one where the number does not come out without it.
+        </p>
         <p>
           A fold value is a bare ratio — <code>5.07x</code>,{" "}
           <code>5.07-fold</code>{" "}

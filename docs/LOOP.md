@@ -64,6 +64,27 @@ frame and assert nothing overflows the viewport width (matrices scroll inside
 their own container). Confirmed clean in the initial build; re-checked when a
 page gains a table or a wide element.
 
+### D. Audit our own defaults (added 2026-09-12, cycle 3)
+
+**Why:** Two findings this cycle were the same shape and neither came from any
+existing step. `scope:` defaulted to `all`, and every claim in every shipped
+column had taken that default without anyone choosing to pool across organisms.
+`scopesForTier` granted `serve:node` to Lab alone, and the plan copy sold
+publishing as a paid feature that no code enforced. Both were *defaults and
+declarations nobody re-read after writing* — invisible to attack (they are not
+exploitable), invisible to role-play (nothing is broken), and invisible to
+testing (the tests agreed with the code).
+
+NeuroVault is the same failure at scale: 107 metadata fields, ~60 describing
+the analysis pipeline, and ten filled on NARPS's own submissions. The schema
+was right and nothing depended on it.
+
+**What it does:** Each cycle, pick one default or one piece of product copy and
+check it against what the code does and what the contracts say. Ask of each
+default: would anyone have chosen this on purpose? If the honest answer is
+"they just did not type the line", the default is wrong and should be an error.
+If a plan or a page claims something, find the line that enforces it.
+
 ## Notes on running it
 
 - No checkpoints; commit as you go. The git history is the report.

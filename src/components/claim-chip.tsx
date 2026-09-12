@@ -22,6 +22,8 @@ export interface ClaimView {
     subject: string;
     object: string;
     scope: string;
+    /** The analysis the claim named, or null when it named none. */
+    method: string | null;
     select: string;
   };
   release: string | null;
@@ -45,6 +47,8 @@ function describeSelect(select: string): string {
       return "This claim asserts what fraction of the cell's measurements are censored ceilings (a “>” bound), rather than real point estimates. High means the median rests on few true values.";
     case "pdsp_fold":
       return "This claim asserts how far this number sits from the independent PDSP Ki Database's median for the same target and compound. Near 1× means two separate databases agree.";
+    case "method_spread":
+      return "This claim asserts how far the *analyses* of the same data disagree — the widest value over the narrowest, across every pipeline the dataset holds for this cell. Not how far the laboratories disagree, which is fold_spread. A large number means the result is a property of how it was computed.";
     default:
       return "This claim asserts the cell's value against the author's recorded number.";
   }
@@ -194,6 +198,12 @@ export function ClaimChip({
               {claim.query.object})
               <br />
               scope: {claim.query.scope} · select: {claim.query.select}
+              {claim.query.method !== null && (
+                <>
+                  <br />
+                  method: {claim.query.method}
+                </>
+              )}
             </span>
 
             <span className="mb-2.5 block text-[0.75rem] text-ink-muted">
