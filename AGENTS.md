@@ -25,6 +25,9 @@ now live where they are executed:
 | Identity stays in a named set of modules | `tests/contracts/identity-surface.test.ts` |
 | A key states a tier and names nobody | `tests/contracts/key-carries-nothing.test.ts` |
 | A proposal is attributed to a subject, never a person | `tests/contracts/attribution-is-pseudonymous.test.ts` |
+| Two contributors cannot correlate a reader | `tests/contracts/readers-are-not-correlatable.test.ts` |
+| An announced address is checked by the reader | `tests/contracts/address-is-not-a-claim.test.ts` |
+| Exactly what each party can observe | `tests/contracts/what-each-side-learns.test.ts` |
 | No content at rest, no proxying | `tests/contracts/no-content-at-rest.test.ts` |
 | No durable state over HTTP, no content proxy | `tests/contracts/no-remote-state.test.ts` |
 | Presence is never cached or prerendered | `tests/contracts/presence-is-not-an-archive.test.ts` |
@@ -52,6 +55,20 @@ would actually write. Four rules were silently inert for a long time because
 literal - a header name, a hostname - could never be seen. If you add a rule
 about a literal, set `raw: true`, and add it to the scanner test. A rule with
 no proof that it bites is decoration.
+
+## Role-play at more than one of each
+
+Run two contributors and several readers, or the interesting failures stay
+invisible. Four of the findings in this repository's history were comparisons
+between parties — two contributors seeing the same reader, two readers seeing
+each other, a node's claim against the registry's — and a comparison needs two
+of something. One contributor and one reader will pass every test and every
+manual walk-through while all four are live.
+
+Separate node processes with their own `--content`, `--sub` and `--pay-to`;
+separate cookie jars per reader; tiers that actually differ. It takes about
+twenty minutes to set up and it is where the last four privacy fixes came
+from.
 
 ## Attacking this thing
 
