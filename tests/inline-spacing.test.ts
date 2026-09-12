@@ -5,38 +5,16 @@ import { describe, expect, it } from "vitest";
 
 import { ROOT, walk } from "./contracts/scan";
 
-/**
- * Words must not fuse across an inline element.
- *
- * Three sentences on this site rendered as "Keys cannot be revoked.Revocation
- * needs a blocklist", "the independentPDSP Ki Database" and "set it as
- * NODE_KEYin the node's environment". In every case the source had a normal
- * space after `</strong>`, `</em>` or `</code>`, on the same line, exactly as
- * a dozen other places that render correctly — and the space was gone from
- * the server-rendered HTML.
- *
- * I could not derive the rule that distinguishes the cases. What is certain is
- * that a literal space adjacent to a JSX element is not reliably a space, and
- * that the failure is invisible in review: the source reads correctly, only
- * the output is wrong. `{" "}` is explicit and survives, so it is what we use.
- *
- * This test does not try to reproduce the compiler's behaviour. It enforces
- * the habit: a space between an inline element and adjacent prose is written
- * as `{" "}`. That is a rule a reviewer can check, and it makes the whole
- * class unshippable rather than making us re-find it each time.
- */
 
-/** Inline elements that sit inside a sentence and need a space around them. */
 const INLINE = "strong|em|code|abbr|b|i";
 
-/** `</em> word` — a bare space between a closing inline tag and prose. */
 const AFTER = new RegExp(`</(${INLINE})>[ \\t]+(?=[A-Za-z0-9(“"'‘])`, "g");
 
-/** `word <em>` — a bare space between prose and an opening inline tag. */
-const BEFORE = new RegExp(
-  `(?<=[A-Za-z0-9,.;:)”"’])[ \\t]+<(${INLINE})[ >]`,
-  "g",
-);
+// Only the after-case is enforced. A symmetric before-case was written here
+// and never adopted, because it does not describe a real hazard: a space
+// before an opening inline tag is ordinary mid-line prose, which JSX keeps.
+// It matched around thirty safe sites and no unsafe ones. What this file
+// guards is a space that has to survive a line break next to a tag.
 
 function offendingLines(source: string, pattern: RegExp): number[] {
   const lines: number[] = [];

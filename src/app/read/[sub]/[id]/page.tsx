@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { ColumnReader } from "@/components/column-reader";
 import { DatasetReader } from "@/components/dataset-reader";
-import { getViewer } from "@/lib/auth/session";
 import { registry } from "@/lib/signaling/registry";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +14,6 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { sub, id } = await params;
   const located = registry().find(decodeURIComponent(sub), decodeURIComponent(id));
-  // Offline, the platform does not know the title — it is not a gap, it is
-  // the contract holding — so the page title falls back to the id.
   return { title: located?.item.title ?? decodeURIComponent(id) };
 }
 
@@ -32,13 +29,10 @@ export default async function ReadItemPage({
   const id = decodeURIComponent(rawId);
 
   const located = registry().find(sub, id);
-  const viewer = await getViewer();
 
   if (!located) return <Offline sub={sub} id={id} />;
 
   if (located.item.kind === "dataset") {
-    // A claim's inspector links here with the cell it was about, so the
-    // explorer opens on that row rather than making the reader hunt for it.
     const { subject, object } = await searchParams;
     const highlight =
       subject && object ? { subject, object } : null;
@@ -53,10 +47,6 @@ export default async function ReadItemPage({
     );
   }
 
-  // No key is minted here. Reading a column needs none — the node checks
-  // nothing — so the page that only reads asks for nothing. A pseudonym is
-  // minted on the pages that write a proposal, where a contributor has to be
-  // able to reply.
   return (
     <ColumnReader
       sub={sub}
@@ -64,7 +54,6 @@ export default async function ReadItemPage({
       address={located.presence.address}
       servedBy={located.presence.displayName}
       payTo={located.presence.payTo ?? null}
-      signedIn={Boolean(viewer.sub)}
     />
   );
 }

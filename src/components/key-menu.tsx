@@ -6,15 +6,6 @@ import { useEffect, useRef, useState } from "react";
 
 import type { DiscoveryTier } from "@/lib/access";
 
-/**
- * The signed-in control, which shows a key rather than a person.
- *
- * It used to greet you by your Google display name. The name is gone from the
- * key — it was reaching contributors' machines — and nothing here missed it:
- * what a reader needs from this menu is which key they are holding, what it
- * permits, and how long it lasts. The subject was already shown, and is the
- * only handle the platform has.
- */
 export function KeyMenu({
   subject,
   discovery,
@@ -26,17 +17,20 @@ export function KeyMenu({
   planLabel: string;
   expiresIn: number;
 }) {
-  const [open, setOpen] = useState(false);
-  const [remaining, setRemaining] = useState(expiresIn);
-  const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const [openedAt, setOpenedAt] = useState<string | null>(null);
+  const open = openedAt === pathname;
+
+  const [remaining, setRemaining] = useState(expiresIn);
+  const [issuedFor, setIssuedFor] = useState(expiresIn);
+  const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  useEffect(() => setOpen(false), [pathname]);
-  useEffect(() => setRemaining(expiresIn), [expiresIn]);
+  if (issuedFor !== expiresIn) {
+    setIssuedFor(expiresIn);
+    setRemaining(expiresIn);
+  }
 
-  // Count down, and renew with two minutes to go. Renewal re-asks Stripe, so
-  // this is also how a downgrade reaches the reader.
   useEffect(() => {
     const tick = setInterval(() => {
       setRemaining((value) => Math.max(0, value - 1));
@@ -59,10 +53,10 @@ export function KeyMenu({
   useEffect(() => {
     if (!open) return;
     const onDown = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+      if (!ref.current?.contains(event.target as Node)) setOpenedAt(null);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") setOpenedAt(null);
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -79,7 +73,7 @@ export function KeyMenu({
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpenedAt(open ? null : pathname)}
         aria-expanded={open}
         aria-haspopup="menu"
         className="flex items-center gap-2 rounded-full border border-rule py-1 pl-1 pr-2.5 transition-colors hover:border-field-border"

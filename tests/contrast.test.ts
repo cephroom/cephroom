@@ -1,32 +1,14 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { ROOT } from "./contracts/scan";
 
-/**
- * WCAG AA, recomputed from the stylesheet on every run.
- *
- * A palette is verified once when it is designed and then quietly broken by
- * the next person who nudges a hex to taste. This test reads the real token
- * values out of `globals.css` and recalculates every text-on-background pair
- * the components can actually produce, in both themes.
- *
- * It is not decoration. The previous palette rendered `text-white` on a bright
- * dark-mode accent at 2.3:1 — every primary button on the site, failing AA by
- * a factor of two — and nothing caught it, because nothing was looking.
- *
- * Thresholds: 4.5:1 for body text, 3:1 for large text and non-text graphics
- * (WCAG 2.1 SC 1.4.3 / 1.4.11).
- */
 
 const AA_TEXT = 4.5;
 const AA_LARGE = 3;
 
-/* ------------------------------------------------------------------ *
- * Relative luminance, per WCAG 2.1
- * ------------------------------------------------------------------ */
 
 function channels(hex: string): [number, number, number] {
   const value = hex.replace("#", "");
@@ -56,20 +38,9 @@ export function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/* ------------------------------------------------------------------ *
- * Reading the tokens out of the real stylesheet
- * ------------------------------------------------------------------ */
 
 const CSS = readFileSync(join(ROOT, "src", "app", "globals.css"), "utf8");
 
-/**
- * Pulls one theme's tokens out of a block.
- *
- * `:root` is the light theme. The dark theme is written twice on purpose —
- * once under `prefers-color-scheme` and once under `[data-theme="dark"]` — so
- * both are read and asserted identical, which is the property that makes the
- * toggle and the system preference agree.
- */
 function tokensIn(blockStart: string): Record<string, string> {
   const start = CSS.indexOf(blockStart);
   if (start === -1) throw new Error(`No block matching ${blockStart}`);
@@ -102,7 +73,6 @@ const DARK_EXPLICIT = tokensIn(':root[data-theme="dark"]');
 
 const SURFACES = ["paper", "paper-raised", "paper-sunken"] as const;
 
-/** Foregrounds that carry body-sized text, and must clear 4.5:1. */
 const BODY_TEXT = [
   "ink",
   "ink-muted",
@@ -117,7 +87,6 @@ const BODY_TEXT = [
   "stale",
 ] as const;
 
-/** Foreground / its own wash: the chip pattern, `text-x bg-x-wash`. */
 const WASHED = [
   "accent",
   "counter",
@@ -127,7 +96,6 @@ const WASHED = [
   "stale",
 ] as const;
 
-/** A fill and the ink that sits on it. Buttons, badges, pills. */
 const FILLS = [
   ["accent", "accent-ink"],
   ["accent-hover", "accent-ink"],
@@ -145,8 +113,6 @@ describe("the two dark-theme blocks cannot drift apart", () => {
   });
 
   it("defines every light token in dark too, so no colour falls back", () => {
-    // A token defined only on :root keeps its light value in dark mode, which
-    // is how a palette ends up with one stranded colour nobody notices.
     expect(Object.keys(DARK_SYSTEM).sort()).toEqual(
       Object.keys(LIGHT)
         .filter((name) => !LIGHT[name].startsWith("var"))
@@ -188,16 +154,6 @@ describe.each(THEMES)("WCAG AA in %s", (theme, tokens) => {
     ).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
-  /**
-   * WCAG 1.4.11: a graphic that carries meaning, and the visual boundary of
-   * an interactive control, both need 3:1. A decorative hairline — a table
-   * divider, a blockquote bar — does not, and holding one to 3:1 would make
-   * the page shout.
-   *
-   * `--rule` and `--rule-strong` are the decorative tier and are deliberately
-   * not checked here. `--field-border` exists precisely because they were
-   * once the same token, and the search box was outlined at 1.6:1.
-   */
   it("keeps meaningful graphics above the 3:1 non-text bar", () => {
     for (const name of ["accent-bright", "counter-bright"]) {
       const ratio = contrast(tokens[name], tokens.paper);
@@ -229,14 +185,6 @@ describe.each(THEMES)("WCAG AA in %s", (theme, tokens) => {
   });
 });
 
-/**
- * Components must name a role, not a colour.
- *
- * This is the rule the previous palette broke. `text-white` on `bg-accent`
- * looks harmless in light mode and is an AA failure in dark mode, because a
- * literal colour cannot follow the theme. The token set now carries
- * `--accent-ink` for exactly this, so the literal has no remaining excuse.
- */
 describe("no raw colour literals in components", () => {
   it("never pairs a literal black or white with a themed fill", async () => {
     const { walk, stripCommentsAndStrings } = await import("./contracts/scan");
@@ -246,8 +194,6 @@ describe("no raw colour literals in components", () => {
     for (const file of walk(join(ROOT, "src"))) {
       if (!file.endsWith(".tsx")) continue;
       const source = readFileSync(file, "utf8");
-      // Class strings are stripped by the comment scrubber, so match the raw
-      // source here — these are Tailwind utilities inside className literals.
       const hits = [
         ...source.matchAll(/\b(text|bg|border)-(white|black)\b/g),
       ].map((m) => m[0]);
@@ -278,7 +224,6 @@ describe("no raw colour literals in components", () => {
 });
 
 function walkSync(dir: string): string[] {
-  const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);

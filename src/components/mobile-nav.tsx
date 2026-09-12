@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export function MobileNav({
   items,
@@ -11,17 +11,15 @@ export function MobileNav({
   items: { href: string; label: string }[];
   signedIn: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const pathname = usePathname();
-
-  // Close on navigation, otherwise the panel survives the route change.
-  useEffect(() => setOpen(false), [pathname]);
+  const [openedAt, setOpenedAt] = useState<string | null>(null);
+  const open = openedAt === pathname;
 
   return (
     <div className="md:hidden">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpenedAt(open ? null : pathname)}
         aria-expanded={open}
         aria-label={open ? "Close menu" : "Open menu"}
         className="flex h-8 w-8 items-center justify-center rounded-md border border-rule text-ink-muted transition-colors hover:text-ink"

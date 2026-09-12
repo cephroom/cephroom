@@ -6,14 +6,13 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { CheckBadge } from "@/components/check-badge";
-import { ClaimChip, type ClaimView } from "@/components/claim-chip";
+import { ClaimChip } from "@/components/claim-chip";
 import { type ParsedClaim } from "@/lib/claims/syntax";
 import {
   resolveClaims,
   type Dataset,
   type ResolvedClaim,
 } from "@/lib/claims/resolve";
-import { type Conclusion } from "@/lib/claims/verdict";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { servingMismatch } from "@/lib/signaling/serving";
@@ -49,14 +48,12 @@ export function ColumnReader({
   address,
   servedBy,
   payTo,
-  signedIn,
 }: {
   sub: string;
   id: string;
   address: string;
   servedBy: string;
   payTo: string | null;
-  signedIn: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>({ state: "loading" });
   const [checkedAt, setCheckedAt] = useState<string | null>(null);

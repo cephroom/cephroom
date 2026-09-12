@@ -57,13 +57,8 @@ export function ClaimChip({ claim }: { claim: ClaimView | undefined }) {
   const wrapRef = useRef<HTMLSpanElement>(null);
   const panelRef = useRef<HTMLSpanElement>(null);
 
-  // A chip near the right margin would push its panel off-screen and create
-  // horizontal page scroll. Measure once on open and slide it back into view.
   useLayoutEffect(() => {
-    if (!open) {
-      setShift(0);
-      return;
-    }
+    if (!open) return;
     const panel = panelRef.current;
     if (!panel) return;
 
@@ -125,7 +120,9 @@ export function ClaimChip({ claim }: { claim: ClaimView | undefined }) {
         hidden={!open}
         role="dialog"
         aria-label={`Provenance for ${claim.key}`}
-        style={{ transform: shift ? `translateX(${shift}px)` : undefined }}
+        style={{
+          transform: open && shift ? `translateX(${shift}px)` : undefined,
+        }}
         className="absolute left-0 top-[calc(100%+6px)] z-30 block w-[min(21rem,calc(100vw-1.5rem))] rounded-lg border border-rule bg-paper-raised p-3.5 text-left font-sans text-[0.8rem] leading-normal text-ink shadow-lg"
       >
         <span className="mb-2.5 flex items-center justify-between gap-2">
@@ -137,8 +134,6 @@ export function ClaimChip({ claim }: { claim: ClaimView | undefined }) {
         </span>
 
         {
-          // Shown to everyone. Withholding the evidence behind a number
-          // was the strangest paywall in a publication about checking them.
           <>
             <span className="mb-2.5 block rounded-md border border-rule bg-paper-sunken p-2 font-mono text-[0.72rem] leading-relaxed text-ink-muted">
               {claim.query.metric}({claim.query.subject} ×{" "}
@@ -197,9 +192,6 @@ export function ClaimChip({ claim }: { claim: ClaimView | undefined }) {
   );
 }
 
-// Chips render inside paragraphs, so the panel is built from phrasing
-// elements only. A <dl> here would close the surrounding <p> during parsing
-// and produce a hydration mismatch.
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <>
