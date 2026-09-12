@@ -156,6 +156,37 @@ describe("the reader is told what actually went wrong", () => {
   });
 });
 
+describe("a reader on the CLI is protected the same way", () => {
+  const cli = stripCommentsOnly(
+    readFileSync(join(ROOT, "scripts", "cephroom.ts"), "utf8"),
+  );
+
+  it("checks the node's claim before rendering a column", () => {
+    // The browser check was written first and the CLI was left exposed for a
+    // while, which is the shape this project's own API contract exists to
+    // prevent: /account promises "Everything the site does, the API does."
+    // A defence that only reaches browsers is a defence with a documented
+    // bypass.
+    expect(cli).toContain("servingMismatch");
+  });
+
+  it("checks it before pulling the datasets a claim is checked against", () => {
+    // The dataset fetches come second and go to the same machine. Checking
+    // after them would mean a wrong node had already answered the requests
+    // that decide whether a claim reads as verified.
+    const check = cli.indexOf("servingMismatch");
+    const datasets = cli.indexOf("/dataset/");
+    expect(check).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(datasets);
+  });
+
+  it("uses the shared helper rather than a second copy of the rule", () => {
+    // Two implementations of the same check drift, and this one decides
+    // whether a reader is looking at the right person's work.
+    expect(cli).toContain("signaling/serving");
+  });
+});
+
 describe("the platform does not try to check it itself", () => {
   it("makes no request to a node in order to verify an announcement", () => {
     // The tempting fix, and the wrong one. Probing an announced address would

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { publicVerif, TokenChallenge, TOKEN_TYPES } from "@cloudflare/privacypass-ts";
 
 import { resolveClaims, type Dataset } from "../src/lib/claims/resolve";
+import { servingMismatch } from "../src/lib/signaling/serving";
 import { parseBody } from "../src/lib/claims/syntax";
 
 const { Client, BlindRSAMode } = publicVerif;
@@ -225,6 +226,7 @@ async function cmdRead(sub?: string, id?: string): Promise<void> {
   const column = (await (
     await fetch(`${address}/column/${encodeURIComponent(item.id)}`, { headers })
   ).json()) as {
+    servedBySub?: string;
     title: string;
     entitled: boolean;
     prose: string;
@@ -232,6 +234,18 @@ async function cmdRead(sub?: string, id?: string): Promise<void> {
     hiddenBlocks: number;
     withheldClaimCount?: number;
   };
+
+  // The registry hands out an address that somebody announced, and nothing
+  // there ties the address to the subject announcing it — one contributor can
+  // list another's node. Checked here, before the datasets are pulled from the
+  // same machine, because those are what every claim is checked against.
+  const impostor = servingMismatch(sub, column.servedBySub);
+  if (impostor) {
+    throw new Error(
+      `${impostor}
+Nothing from ${address} is shown. The platform is not in this request and cannot check it for you.`,
+    );
+  }
 
   // Datasets come from the same node, never from whichever node announces the
   // slug — an author vouches for the data they serve.
@@ -327,5 +341,12 @@ if (!command || !commands[command]) {
 
 commands[command](...rest).catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
+  // `process.exitCode`, not `process.exit()`. Every error path worth having
+  // here runs after a network call, and exiting outright tears the process
+  // down while the sockets `fetch` opened are still closing — on Windows
+  // libuv aborts, and the code that reaches the caller is 127 rather than 1.
+  // A script wrapping this tool could not tell a refusal from a missing
+  // binary, and the refusal it could not read was the one protecting a reader
+  // from a node that is not who it claimed to be.
+  process.exitCode = 1;
 });
