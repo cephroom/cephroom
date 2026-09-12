@@ -200,6 +200,19 @@ describe("the reader asks a node for nothing it no longer sends", () => {
     }
   });
 
+  it("has no locked state left to render", () => {
+    // `NodeProposalList` kept a `locked` branch for the node's 403, and the
+    // copy behind it — "reading them needs the same membership as reading the
+    // column" — is the clearest statement of the removed model left anywhere
+    // in the app. The node stopped refusing, so the branch is unreachable and
+    // the sentence is a promise about a thing that does not exist.
+    for (const { rel, code } of readerSources()) {
+      expect(code, `${rel} still has a locked state`).not.toMatch(
+        /\blocked\b|setLocked/,
+      );
+    }
+  });
+
   it("renders no access marker beside a listed item", () => {
     // `cephroom live` printed `[${item.access}]` next to anything not
     // "public". The listing endpoint stopped sending `access`, so every row
@@ -283,6 +296,101 @@ describe("the two subscriptions never mention each other", () => {
       .join(" ")
       .toLowerCase();
     expect(copy).toMatch(/serve|announce|listing|capacity|items/);
+  });
+});
+
+describe("both pricing pages read as a newcomer would read them", () => {
+  /**
+   * Walked as somebody who has never seen the old model, which is the only
+   * useful reader: they cannot tell a stale sentence from a current one, so
+   * every sentence on the page is a claim the platform is making today.
+   *
+   * The headers of both pages were rewritten when the subscriptions were
+   * split. The FAQs were not, and an FAQ is the part people actually read —
+   * so `/pricing` was still answering "what do I get for free?" with "not
+   * the inspector, and not the columns their authors have marked
+   * member-only", describing a paywall that no longer exists, on a page
+   * whose own header says nothing you pay us unlocks a word of anything.
+   */
+  const copy = (...parts: string[]) =>
+    readFileSync(join(ROOT, "src", "app", ...parts), "utf8").replace(
+      /\s+/g,
+      " ",
+    );
+
+  it("never tells a consumer that paying opens a contributor's work", () => {
+    const pricing = copy("pricing", "page.tsx");
+    for (const phrase of [
+      "member-only",
+      "member column",
+      "Member unlocks",
+      "marked member",
+      "premium",
+      "exclusive",
+      "keep reading throughout",
+    ]) {
+      expect(pricing, `/pricing says "${phrase}"`).not.toMatch(
+        new RegExp(phrase, "i"),
+      );
+    }
+
+    // "Unlock" may appear, but only in a sentence denying one. The page's
+    // whole first paragraph turns on "nothing you pay us unlocks a word of
+    // it", so banning the word outright would delete the sentence that does
+    // the work.
+    for (const sentence of pricing.split(/[.?!]\s/)) {
+      if (!/unlock/i.test(sentence)) continue;
+      expect(sentence, `an affirmative unlock: "${sentence.trim()}"`).toMatch(
+        /\bnothing\b|\bnot\b|\bno\b|\bnever\b|\bnone\b/i,
+      );
+    }
+  });
+
+  it("never tells a contributor that readers are paying them through us", () => {
+    const contribute = copy("contribute", "page.tsx");
+    for (const phrase of [
+      "revenue share",
+      "payout",
+      "we pay you",
+      "earn from readers",
+      "paying readers",
+      "subscribers",
+    ]) {
+      expect(contribute, `/contribute says "${phrase}"`).not.toMatch(
+        new RegExp(phrase, "i"),
+      );
+    }
+  });
+
+  it("describes the same free reading on both pages", () => {
+    // The one fact that has to agree, because a contributor and a consumer
+    // reading their own page separately must not come away with different
+    // beliefs about who can read what.
+    expect(copy("pricing", "page.tsx")).toMatch(
+      /readable in full by anybody|free to read|no account at all/i,
+    );
+    expect(copy("contribute", "page.tsx")).toMatch(
+      /whoever finds your work|never gated by what a reader has paid/i,
+    );
+  });
+
+  it("says in the page description what the plan buys", () => {
+    // The description is the first thing a newcomer sees, in a search result,
+    // before any of the copy that was rewritten.
+    const description = (page: string) =>
+      /description:\s*"([^"]+)"/.exec(copy(page, "page.tsx"))?.[1] ?? "";
+    expect(description("pricing")).toMatch(/search|discover|reach|find/i);
+    expect(description("pricing")).not.toMatch(/member|unlock/i);
+    expect(description("contribute")).not.toMatch(/earn|revenue|paid by/i);
+  });
+
+  it("keeps a cancelled or failed subscription about reach, not about reading", () => {
+    // What a lapsed card costs somebody changed completely: it used to end
+    // their access to other people's columns, which we were never in a
+    // position to end. It now shortens a listing.
+    const pricing = copy("pricing", "page.tsx");
+    const failed = pricing.slice(pricing.indexOf("card fails"));
+    expect(failed.slice(0, 600)).not.toMatch(/reading|access ends/i);
   });
 });
 

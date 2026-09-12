@@ -30,7 +30,6 @@ export function NodeProposalList({
 }) {
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,12 +39,6 @@ export function NodeProposalList({
           `${address}/proposals?column=${encodeURIComponent(columnId)}`,
           nodeKey ? { headers: { authorization: `Bearer ${nodeKey}` } } : undefined,
         );
-        // Proposals carry the column's paid source, so the node gates them
-        // behind the same membership as the column itself.
-        if (response.status === 403) {
-          if (!cancelled) setLocked(true);
-          return;
-        }
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const json = (await response.json()) as { proposals: Proposal[] };
         if (!cancelled) setProposals(json.proposals);
@@ -59,15 +52,6 @@ export function NodeProposalList({
       cancelled = true;
     };
   }, [address, columnId, nodeKey]);
-
-  if (locked) {
-    return (
-      <p className="mt-8 rounded-xl border border-rule px-4 py-10 text-center text-[0.9rem] text-ink-muted">
-        Proposals edit the column&rsquo;s source, so reading them needs the same
-        membership as reading the column.
-      </p>
-    );
-  }
 
   if (error) {
     return (

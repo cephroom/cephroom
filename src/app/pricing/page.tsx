@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Plans",
   description:
-    "Open columns are free to read. Member unlocks member columns and the claim inspector.",
+    "Everything anyone serves is free to read. A plan buys how far you can search across it.",
 };
 
 export default async function PricingPage({
@@ -100,20 +100,28 @@ export default async function PricingPage({
         </h2>
         <dl className="mt-6 grid gap-x-10 gap-y-7 sm:grid-cols-2">
           <Faq q="What do I get for free?">
-            Open columns in full, every claim value, and every verdict. What
-            you do not get is the inspector behind each number, or the columns
-            their authors have marked member-only.
+            Every column anyone is serving, in full, with every claim value,
+            every verdict and the inspector behind each number — without an
+            account, and for good. None of that is ours to charge for. What
+            the free plan gives you less of is the listing: fifty results to a
+            query rather than a thousand, and two nodes at a time rather than
+            thirty-two.
           </Faq>
           <Faq q="Can I cancel?">
             Any time, from your key page. Cancellation takes effect at the end
-            of the period you have already paid for. Because your tier lives
+            of the period you have already paid for. Because your plan lives
             in a signed key rather than a database row, the change reaches you
-            when the key next renews — within fifteen minutes at worst.
+            when the key next renews — within fifteen minutes at worst. What
+            changes is how far a query reaches; nothing you could open before
+            stops opening.
           </Faq>
           <Faq q="What happens if my card fails?">
-            Nothing immediately. Stripe retries over several days and you keep
-            reading throughout. We show a banner asking you to update the card,
-            and access ends only if the retries are exhausted.
+            Nothing immediately. Stripe retries over several days and your
+            queries keep their reach throughout. We show a banner asking you to
+            update the card, and the plan drops to free only once the retries
+            are exhausted. Everything on the network stays open to you either
+            way — a lapsed card has never been able to close a column, because
+            we were never the ones holding it open.
           </Faq>
           <Faq q="What do you store about me?">
             Nothing. No account, no profile, no session, and no copy of your
@@ -121,16 +129,19 @@ export default async function PricingPage({
             to hold a payment relationship; we never copy it back.
           </Faq>
           <Faq q="Can I publish here?">
-            Anyone signed in can, at any tier, including the free one. Run a
-            node and your work is discoverable for as long as you serve it.
-            Until cycle 3 the Lab plan listed serving among the things $29 a
-            month bought you; it never did, and the line is gone.
+            Yes, and it has nothing to do with this page. Serving your own work
+            is free and is arranged separately —{" "}
+            <Link href="/contribute" className="text-accent hover:underline">
+              how to contribute
+            </Link>{" "}
+            — so nothing you buy or cancel here changes what you can publish.
           </Faq>
           <Faq q="I cannot afford this.">
-            Take the reduced rate. It is the same membership at $36 a year, it
-            is there for students, people between posts, and anyone paying out
-            of their own pocket, and nobody is asked to prove anything —
-            proving would mean us keeping a record of who proved it.
+            Take the reduced rate. It is the same plan at $36 a year, it is
+            there for students, people between posts, and anyone paying out of
+            their own pocket, and nobody is asked to prove anything — proving
+            would mean us keeping a record of who proved it. Reading costs
+            nothing at any point, so the worst case is a shorter listing.
           </Faq>
           <Faq q="Do contributors get paid?">
             Directly, by you, if you decide to. A contributor can put up a
