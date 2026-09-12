@@ -36,6 +36,10 @@ export interface Fact {
   nMeasurements: number | null;
   nCensored: number | null;
   pdspFold: number | null;
+  /** The spread the dataset reports, in the value's units. Null: none given. */
+  dispersion?: number | null;
+  dispersionKind?: string | null;
+  nObservations?: number | null;
 }
 
 export interface Dataset {
@@ -175,7 +179,9 @@ export function resolveClaims(
                   }
                 : claim.select === "pdsp_fold"
                   ? { value: fact.pdspFold, unit: null }
-                  : { value: fact.value, unit: fact.unit };
+                  : claim.select === "dispersion"
+                    ? { value: fact.dispersion ?? null, unit: fact.unit }
+                    : { value: fact.value, unit: fact.unit };
 
     // Fold spread reads as a ratio ("5.07×"); a censored fraction reads as a
     // percentage ("7%"); everything else in its own unit.
@@ -228,7 +234,7 @@ export function resolveClaims(
       key: claim.key,
       display:
         observed.value !== null
-          ? show(observed.value, observed.unit)
+          ? withDispersion(show(observed.value, observed.unit), claim, fact)
           : show(claim.expectedValue, claim.expectedUnit),
       verdict: judgement.verdict,
       authored: show(claim.expectedValue, claim.expectedUnit),
@@ -268,3 +274,29 @@ export function resolveClaims(
   };
 }
 
+
+
+/**
+ * Renders a value with the spread the dataset reports around it.
+ *
+ * "59.45 %" becomes "59.45 ± 3.33 %". Not decoration: the honest rendering of
+ * a distribution is not its centre, and showing the centre alone is how this
+ * repository came to ship a column asserting a direction from a gap of 2.02
+ * against a standard error of 2.99.
+ *
+ * Only for `select: value`. A count, a fold ratio or the dispersion itself has
+ * no dispersion of its own to show, and attaching one would be nonsense.
+ */
+function withDispersion(
+  rendered: string,
+  claim: ParsedClaim,
+  fact: { dispersion?: number | null; unit?: string | null } | undefined,
+): string {
+  if (claim.select !== "value") return rendered;
+  if (!fact || fact.dispersion === null || fact.dispersion === undefined) {
+    return rendered;
+  }
+  const unit = fact.unit ? ` ${fact.unit}` : "";
+  const bare = rendered.endsWith(unit) ? rendered.slice(0, -unit.length) : rendered;
+  return `${bare} ± ${formatValue(fact.dispersion)}${unit}`;
+}

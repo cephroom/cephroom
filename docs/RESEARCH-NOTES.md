@@ -683,3 +683,23 @@ This is **not** Layer 2 and is not described as such anywhere. Layer 2 severs
 the platform from the Google identity; this narrows what the platform is handed
 alongside it. The `sub` still passes through server memory at sign-in, and only
 a proof would change that.
+
+
+### Built (same cycle)
+
+All four, plus the correction. The node serves `dispersion`, `dispersionKind`
+and `nObservations` where a dataset reports them and null where it does not;
+`select: dispersion` makes the spread assertable on the same terms as the
+value; a value renders as `59.45 ± 3.33 %`; and the decoder column was rewritten
+to say what the numbers support.
+
+The rewrite is the part worth recording. The old section heading was "The
+direction is not fixed either" and it asserted FBCNet gets worse online from a
+gap of 2.02 against a standard error of 2.99. The new one is "Nine of the ten
+gaps are smaller than their own noise", carries the whole table, and states the
+narrow claim: from the numbers this dataset serves, nine of those gaps do not
+support a direction. It is a better column than the one it replaces, which is
+the second time this cycle that being forced into honesty produced the stronger
+piece of writing.
+
+Caught before serving by `cephroom check`, which had not existed a day earlier.

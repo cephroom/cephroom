@@ -265,3 +265,37 @@ describe("the method line", () => {
     expect(claims[0].expectedValue).toBeNull();
   });
 });
+
+describe("dispersion is not tolerance", () => {
+  const block = [
+    "```claim tcnet-sd",
+    "dataset: mi-decoders-2025",
+    "metric: accuracy_pct",
+    "subject: EEG-TCNet",
+    "object: four-class-motor-imagery",
+    "method: offline",
+    "select: dispersion",
+    "value: 3.33 %",
+    "tolerance: 5%",
+    "```",
+  ].join("\n");
+
+  it("parses dispersion as a select with a unit", () => {
+    // Unlike the fold selects, a dispersion has the value's units — a spread
+    // of 3.33 percentage points, not a bare ratio.
+    const { claims } = parseBody(`Spread {{claim:tcnet-sd}}.\n\n${block}`);
+    expect(claims[0].select).toBe("dispersion");
+    expect(claims[0].expectedValue).toBeCloseTo(3.33, 6);
+    expect(claims[0].expectedUnit).toBe("%");
+  });
+
+  it("keeps tolerance and dispersion as separate fields", () => {
+    // They look alike on the page and are different quantities: tolerance is
+    // how far the author will let the dataset drift, dispersion is how
+    // uncertain the measurement was. Conflating them is worse than omitting
+    // one, because a "± 15%" next to a number reads like error bars.
+    const { claims } = parseBody(`Spread {{claim:tcnet-sd}}.\n\n${block}`);
+    expect(claims[0].tolerance).toEqual({ kind: "percent", amount: 5 });
+    expect(claims[0].expectedValue).not.toBe(5);
+  });
+});

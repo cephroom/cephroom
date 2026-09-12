@@ -122,6 +122,15 @@ same standard as the columns.
   so a claim against one fails loudly instead of resolving to "no data".
 - The judge never converts between units or activity types. A unit mismatch is
   `broken`.
+- **A value is rendered with the spread the dataset reports around it**, not as
+  its centre. `59.45 %` becomes `59.45 ± 3.33 %` wherever a dispersion exists;
+  null where none is reported, never zero, because zero claims perfect
+  precision and "not reported" is not that. **A tolerance is not an error bar**
+  — it is how far the author will let the dataset drift before the sentence is
+  flagged — and the two look alike side by side, which is why they are separate
+  lines with separate selects. This was added after shipping a column that
+  asserted a direction from a gap of 2.02 against a standard error of 2.99,
+  using a dataset whose standard deviations the node was dropping on the floor.
 - **A number that depends on how it was computed carries the analysis that
   produced it, and `method:` has no default.** Where a cell exists under more
   than one analysis, a claim that names none resolves `broken` and lists them.

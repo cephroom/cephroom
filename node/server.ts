@@ -226,6 +226,21 @@ function readDataset() {
     scope: string;
     /** The analysis that produced this number. Null: this cell has one. */
     method: string | null;
+    /**
+     * The spread the dataset reports around this value, in the value's units.
+     *
+     * Null where the dataset reports none — never zero, because zero is a
+     * claim of perfect precision and "not reported" is not that. The binding
+     * matrix reports no dispersion per cell, so its facts carry null; the
+     * decoder benchmark reports a standard deviation for every value, and
+     * until this field existed the node dropped it on the floor and served
+     * the mean alone.
+     */
+    dispersion: number | null;
+    /** What kind of spread `dispersion` is: "sd", "sem", "ci95". */
+    dispersionKind: string | null;
+    /** How many observations it is over, when the dataset says. */
+    nObservations: number | null;
     value: number;
     unit: string | null;
     nPoints: number | null;
@@ -279,6 +294,10 @@ function readDataset() {
           // a single analysis per cell, so its facts say so rather than
           // inventing a method name nobody would type.
           method: null,
+          // This matrix reports no per-cell dispersion. Null, not zero.
+          dispersion: null,
+          dispersionKind: null,
+          nObservations: null,
           value,
           unit,
           foldSpread,
@@ -372,6 +391,9 @@ function readDecoderBenchmark() {
         method,
         value,
         unit: "%",
+        dispersion: row[`${method}_sd`] ?? null,
+        dispersionKind: "sd",
+        nObservations: 4,
         nPoints: 4,
         nDocs: 1,
         foldSpread: null,

@@ -28,6 +28,8 @@ function describeSelect(select: string): string {
       return "This claim asserts what fraction of the cell's measurements are censored ceilings (a “>” bound), rather than real point estimates. High means the median rests on few true values.";
     case "pdsp_fold":
       return "This claim asserts how far this number sits from the independent PDSP Ki Database's median for the same target and compound. Near 1× means two separate databases agree.";
+    case "dispersion":
+      return "This claim asserts the spread the dataset reports around the value — a standard deviation, not the author's tolerance. Tolerance is how far the author will let the dataset drift before flagging the sentence; this is how uncertain the measurement was to begin with, and the two are different quantities that look alike side by side.";
     case "method_spread":
       return "This claim asserts how far the *analyses* of the same data disagree — the widest value over the narrowest, across every pipeline the dataset holds for this cell. Not how far the laboratories disagree, which is fold_spread. A large number means the result is a property of how it was computed.";
     default:

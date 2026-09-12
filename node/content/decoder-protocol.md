@@ -50,12 +50,46 @@ value: 1.18x
 tolerance: 5%
 ```
 
-## The direction is not fixed either
+## Nine of the ten gaps are smaller than their own noise
 
-If this were a constant penalty for leaving the lab, you could subtract it and
-move on. FBCNet goes the other way: {{claim:fbcnet-offline}} offline against
-{{claim:fbcnet-online}} online, a model that gets *worse* when a person is in
-the loop.
+That is one decoder. Here is the table the paper reports, and the reason this
+column nearly said something false.
+
+Every value in this dataset carries a standard deviation over four
+participants. EEG-TCNet's protocol gap is {{claim:tcnet-spread}}, against
+standard deviations of {{claim:tcnet-offline-sd}} offline and
+{{claim:tcnet-online-sd}} online — a difference comfortably larger than the
+spread behind it.
+
+```claim tcnet-offline-sd
+dataset: mi-decoders-2025
+metric: accuracy_pct
+subject: EEG-TCNet
+object: four-class-motor-imagery
+method: offline
+select: dispersion
+value: 3.33 %
+tolerance: 5%
+```
+
+```claim tcnet-online-sd
+dataset: mi-decoders-2025
+metric: accuracy_pct
+subject: EEG-TCNet
+object: four-class-motor-imagery
+method: online
+select: dispersion
+value: 5.29 %
+tolerance: 5%
+```
+
+**FBCNet is the opposite case, and an earlier version of this column got it
+wrong.** It scores {{claim:fbcnet-offline}} offline and {{claim:fbcnet-online}}
+online — a gap of about two points — with standard deviations of
+{{claim:fbcnet-offline-sd}} and {{claim:fbcnet-online-sd}}. At four
+participants that difference is well inside the noise, and the sentence that
+used to be here said FBCNet "gets *worse* when a person is in the loop",
+asserting a direction from a gap of 2.02 against a standard error of 2.99.
 
 ```claim fbcnet-offline
 dataset: mi-decoders-2025
@@ -77,22 +111,69 @@ value: 65.55 %
 tolerance: 2%
 ```
 
-So there is no factor to divide out. This is the same shape as the species
-problem in binding data, one level up: a difference with no consistent sign
-cannot be corrected, only disclosed.
+```claim fbcnet-offline-sd
+dataset: mi-decoders-2025
+metric: accuracy_pct
+subject: FBCNet
+object: four-class-motor-imagery
+method: offline
+select: dispersion
+value: 1.07 %
+tolerance: 5%
+```
+
+```claim fbcnet-online-sd
+dataset: mi-decoders-2025
+metric: accuracy_pct
+subject: FBCNet
+object: four-class-motor-imagery
+method: online
+select: dispersion
+value: 5.88 %
+tolerance: 5%
+```
+
+Worked through all ten decoders the paper ran under both protocols, taking the
+standard error of the difference from the two reported deviations:
+
+| decoder | online − offline | SE of difference | ratio |
+| --- | ---: | ---: | ---: |
+| EEG-TCNet | +10.55 | 3.13 | **3.38** |
+| EEGNet | +7.90 | 4.30 | 1.84 |
+| Shallow FBCSP Net | +6.89 | 4.53 | 1.52 |
+| EEG Conformer | +6.65 | 3.53 | 1.88 |
+| MSVTNet | +4.22 | 3.93 | 1.07 |
+| SCCNet | +3.24 | 2.91 | 1.11 |
+| FBCNet | −2.02 | 2.99 | 0.68 |
+| Attention BaseNet | +1.89 | 4.11 | 0.46 |
+| FBLight ConvNet | +1.44 | 2.23 | 0.65 |
+| IFNet | +1.00 | 3.66 | 0.27 |
+
+**One of ten.** The protocol effect is real and large for EEG-TCNet and is not
+separable from noise for the other nine.
+
+Stated carefully, because the point of this column is not to make the opposite
+overclaim: this treats the two protocols as independent samples, using the
+deviations the paper reports. A paired analysis over the same four
+participants would have more power, and the paper may well have run one. The
+narrow claim is the one that matters here — **from the numbers this dataset
+serves, nine of those gaps do not support a direction**, so a column built on
+this dataset must not assert one.
 
 ## What it does to a ranking
 
 Offline, FBCNet ({{claim:fbcnet-offline}}) beats EEG-TCNet
 ({{claim:tcnet-offline}}) by eight points. Online, EEG-TCNet
 ({{claim:tcnet-online}}) beats FBCNet ({{claim:fbcnet-online}}) by four and a
-half. The pair swaps.
+half. The pair swaps — and this one survives, because it is EEG-TCNet's gap
+doing the work rather than FBCNet's.
 
 A review sentence that says "FBCNet outperforms EEG-TCNet" is true, of one
 protocol, and is not marked as such anywhere in the sentence. That is the
 failure mode this platform exists to catch — except that until this dataset
 existed, the platform could not have caught it either, because a fact here
-carried no room for the analysis that produced it.
+carried no room for the analysis that produced it, and then carried no room
+for how uncertain it was.
 
 ## The one number a claim cannot quietly get wrong
 
@@ -119,5 +200,12 @@ Four participants. Twenty decoders, ten of which were run under one protocol
 only and therefore carry no online number at all rather than an imputed one.
 Every value transcribed from a single paper and none computed here.
 
-It is an illustration of protocol sensitivity, not a leaderboard, and the
-`method:` line on every claim above is what stops it being read as one.
+It is an illustration of protocol sensitivity, not a leaderboard. The
+`method:` line on every claim above is what stops it being read as one, and
+the `select: dispersion` claims are what stop the differences being read as
+larger than they are.
+
+The tolerances above are not error bars. A tolerance is how far the author will
+let the dataset drift before this sentence is flagged; a dispersion is how
+uncertain the measurement was to begin with. They look alike side by side and
+they are different quantities, which is why they are separate lines.

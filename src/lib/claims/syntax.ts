@@ -57,7 +57,8 @@ export type ClaimSelect =
   | "fold_spread_iqr"
   | "censored_fraction"
   | "pdsp_fold"
-  | "method_spread";
+  | "method_spread"
+  | "dispersion";
 
 /**
  * The dimensionless selects. Fold spread is a ratio of the loosest to the
@@ -150,6 +151,7 @@ const SELECTS: ClaimSelect[] = [
   "censored_fraction",
   "pdsp_fold",
   "method_spread",
+  "dispersion",
 ];
 
 /** Pulls `{{claim:key}}` keys out of prose, in document order, deduplicated. */
