@@ -78,6 +78,23 @@ describe("one contributor cannot dominate the listing", () => {
     expect(countBy(few).flooder).toBeLessThanOrEqual(LISTING_LIMIT / LISTING_SPREAD);
   });
 
+  it("starves no contributor when there are more of them than the spread", () => {
+    // Forty contributors - twice LISTING_SPREAD - each with ten items, on the
+    // free reach of fifty. Every one of the forty must still appear: the
+    // round-robin gives everyone their first slot before anyone gets a second,
+    // so a large, honest network is represented rather than the alphabetical
+    // head of it taking everything. This is the multi-party property a single
+    // pair can never surface.
+    const spec: Record<string, number> = {};
+    for (let i = 0; i < 40; i += 1) spec[`s_${String(i).padStart(2, "0")}`] = 10;
+    const result = fairShare(from(spec), (e) => e.sub, 50);
+    const counts = countBy(result);
+
+    expect(Object.keys(counts).length).toBe(40);
+    expect(Math.min(...Object.values(counts))).toBeGreaterThanOrEqual(1);
+    expect(Math.max(...Object.values(counts)) - Math.min(...Object.values(counts))).toBeLessThanOrEqual(1);
+  });
+
   it("caps a flood spread across many contributors too", () => {
     const spec: Record<string, number> = {};
     for (let i = 0; i < 20; i += 1) spec[`s_${i}`] = 50;
