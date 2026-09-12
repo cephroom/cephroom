@@ -26,7 +26,12 @@ export function DiffView({ hunks }: { hunks: DiffHunk[] }) {
           <div className="border-b border-rule bg-paper-sunken px-3 py-1.5 font-mono text-[0.7rem] text-ink-faint">
             @@ line {hunk.beforeStart} → {hunk.afterStart} @@
           </div>
-          <div className="overflow-x-auto">
+          <div
+          className="overflow-x-auto"
+          role="region"
+          aria-label="Diff - scroll sideways for more"
+          tabIndex={0}
+        >
             <table className="w-full border-collapse font-mono text-[0.76rem] leading-relaxed">
               <tbody>
                 {hunk.lines.map((line, lineIndex) => (

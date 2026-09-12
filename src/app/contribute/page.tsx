@@ -53,7 +53,12 @@ export default async function ContributePage() {
         </p>
       </div>
 
-      <pre className="scroll-x mt-5 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed">
+      <pre
+        className="scroll-x mt-5 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed"
+        role="group"
+        aria-label="Command - scroll to see more"
+        tabIndex={0}
+      >
         {`git clone <this repo> && cd cephroom && npm install
 npm run node:serve                       # serves the demo content`}
       </pre>
@@ -73,7 +78,12 @@ npm run node:serve                       # serves the demo content`}
         </p>
       </div>
 
-      <pre className="scroll-x mt-5 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed">
+      <pre
+        className="scroll-x mt-5 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed"
+        role="group"
+        aria-label="Command - scroll to see more"
+        tabIndex={0}
+      >
         {`npm run node:serve -- \\
   --content ./my-columns \\
   --name "Your Name" \\
@@ -105,7 +115,12 @@ npm run node:serve                       # serves the demo content`}
         <p>Exactly this, in memory, until your lease lapses:</p>
       </div>
 
-      <div className="mt-5 overflow-x-auto rounded-xl border border-rule">
+      <div
+        className="mt-5 overflow-x-auto rounded-xl border border-rule"
+        role="region"
+        aria-label="Table - scroll sideways for more columns"
+        tabIndex={0}
+      >
         <table className="w-full text-[0.85rem]">
           <thead>
             <tr className="border-b border-rule bg-paper-sunken text-left">

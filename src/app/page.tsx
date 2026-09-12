@@ -58,7 +58,12 @@ export default async function HomePage() {
             <figcaption className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.09em] text-ink-faint">
               What an author writes
             </figcaption>
-            <pre className="scroll-x overflow-x-auto rounded-lg border border-rule bg-paper-sunken p-4 font-mono text-[0.78rem] leading-relaxed text-ink-muted">
+            <pre
+              className="scroll-x overflow-x-auto rounded-lg border border-rule bg-paper-sunken p-4 font-mono text-[0.78rem] leading-relaxed text-ink-muted"
+              role="group"
+              aria-label="Example column source - scroll to see more"
+              tabIndex={0}
+            >
               {`Haloperidol binds D2 at {{claim:hal-d2}}.
 
 \`\`\`claim hal-d2

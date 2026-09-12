@@ -206,7 +206,12 @@ export function DatasetReader({
             one you should quote depends entirely on what you intend to do next.
           </p>
 
-          <div className="mt-5 overflow-x-auto rounded-xl border border-rule">
+          <div
+            className="mt-5 overflow-x-auto rounded-xl border border-rule"
+            role="region"
+            aria-label="Data table - scroll sideways for more columns"
+            tabIndex={0}
+          >
             <table className="w-full text-[0.88rem]">
               <thead>
                 <tr className="border-b border-rule bg-paper-sunken text-left">

@@ -30,7 +30,12 @@ export function DatasetMatrix({
   highlight: { subject: string; object: string } | null;
 }) {
   return (
-    <div className="mt-5 overflow-x-auto rounded-xl border border-rule">
+    <div
+      className="mt-5 overflow-x-auto rounded-xl border border-rule"
+      role="region"
+      aria-label="Affinity matrix - scroll sideways for more columns"
+      tabIndex={0}
+    >
       <table className="w-full border-collapse text-[0.82rem]">
         <caption className="sr-only">
           Measured values by target and compound

@@ -71,7 +71,12 @@ export default function HowItWorksPage() {
         </p>
       </div>
 
-      <pre className="scroll-x mt-6 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed">
+      <pre
+          className="scroll-x mt-6 overflow-x-auto rounded-xl border border-rule bg-paper-sunken p-5 font-mono text-[0.8rem] leading-relaxed"
+          role="group"
+          aria-label="Example - scroll to see more"
+          tabIndex={0}
+        >
         {CLAIM_EXAMPLE}
       </pre>
 
