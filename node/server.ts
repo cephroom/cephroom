@@ -50,6 +50,15 @@ const HAS_DATASET = existsSync(join(DATA_DIR, "gap_report.json"));
 const MAX_BODY_CHARS = 512 * 1024;
 const MAX_PROPOSAL_BYTES = 640 * 1024;
 const MAX_OPEN_PER_SUBJECT = 20;
+
+/**
+ * How far past the cap a body is still drained so the sender can be told why.
+ *
+ * An honest overshoot — a long proposal, a pasted table — is worth spending a
+ * little bandwidth on to answer properly. Several times the cap is not a
+ * slip, and the connection is simply closed.
+ */
+const OVERSHOOT_DRAIN = 4;
 const TOO_LARGE = Symbol("payload-too-large");
 
 
@@ -378,6 +387,20 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify(body));
   };
 
+  /**
+   * Refuse a body that exceeded its cap, and only then hang up.
+   *
+   * The client is still uploading — that is why it was rejected — so the
+   * socket has to stay alive long enough for the refusal to reach them. It is
+   * closed on `finish` rather than left open, because there is no reason to
+   * keep receiving megabytes that are already going in the bin.
+   */
+  const refuseOversized = (message: string) => {
+    request.on("error", () => {});
+    response.once("finish", () => request.destroy());
+    return send(413, { error: message });
+  };
+
   if (request.method === "OPTIONS") {
     response.writeHead(204, CORS);
     response.end();
@@ -443,7 +466,9 @@ const server = createServer(async (request, response) => {
 
     const payload = await readJson(request, MAX_PROPOSAL_BYTES);
     if (payload === TOO_LARGE) {
-      return send(413, { error: "Proposal too large." });
+      return refuseOversized(
+        `Proposal too large. The limit is ${Math.floor(MAX_PROPOSAL_BYTES / 1024)} KB including the surrounding JSON; the body itself may be up to ${Math.floor(MAX_BODY_CHARS / 1024)} KB.`,
+      );
     }
     const columnId = String(payload?.columnId ?? "");
     const column = columns.find((candidate) => candidate.id === columnId);
@@ -580,16 +605,34 @@ async function readJson(
 ): Promise<Record<string, unknown> | null | typeof TOO_LARGE> {
   const chunks: Buffer[] = [];
   let total = 0;
+  let oversized = false;
   for await (const chunk of request) {
     total += (chunk as Buffer).length;
-    // Stop reading the moment the cap is exceeded, so an attacker cannot make
-    // the node buffer gigabytes before it decides to reject them.
+    // Stop *keeping* anything the moment the cap is exceeded, so an attacker
+    // cannot make the node buffer gigabytes before it decides to reject them.
+    // Memory is bounded from here whatever the client does next.
+    //
+    // Reading continues for a little longer on purpose. Destroying the socket
+    // the instant the cap is passed also destroys the 413 about to be written
+    // into it, and the client sees ECONNRESET with no idea their proposal was
+    // too big — which is the wrong answer for the person this actually
+    // happens to: not an attacker, who does not read the response, but a
+    // contributor who wrote something long and careful.
+    //
+    // So an honest overshoot is drained and discarded, and gets a real
+    // refusal. A body several times the cap is nobody's slip, and is cut off.
     if (total > maxBytes) {
-      request.destroy();
-      return TOO_LARGE;
+      if (total > maxBytes * OVERSHOOT_DRAIN) {
+        request.destroy();
+        return TOO_LARGE;
+      }
+      oversized = true;
+      continue;
     }
+    if (oversized) continue;
     chunks.push(chunk as Buffer);
   }
+  if (oversized) return TOO_LARGE;
   try {
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch {
