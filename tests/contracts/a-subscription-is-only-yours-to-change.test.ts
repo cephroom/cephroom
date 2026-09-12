@@ -76,3 +76,45 @@ describe("cancel and resume verify ownership before mutating", () => {
     expect(bodyOf("setCancellation")).toMatch(/not yours|throw new Error/i);
   });
 });
+
+describe("the simulated billing controls verify ownership too", () => {
+  const sim = stripCommentsOnly(
+    readFileSync(join(ROOT, "src", "lib", "stripe", "simulated-actions.ts"), "utf8"),
+  );
+
+  it("routes every control through the ownership guard", () => {
+    for (const action of [
+      "recoverPaymentAction",
+      "exhaustDunningAction",
+      "advancePeriodAction",
+    ]) {
+      const at = sim.indexOf(`function ${action}`);
+      expect(at, `no ${action}`).toBeGreaterThan(-1);
+      const body = sim.slice(at, at + 220);
+      expect(
+        body,
+        `${action} must call guard(formData) before mutating - these are dev controls, but an unguarded one lets a signed-in user drive a stranger's simulated subscription.`,
+      ).toMatch(/guard\(formData\)/);
+    }
+  });
+
+  it("guard checks the subscription is the viewer's before returning its id", () => {
+    const at = sim.indexOf("async function guard");
+    const body = sim.slice(at, sim.indexOf("recoverPaymentAction"));
+    expect(body).toMatch(/getViewer\(\)/);
+    expect(body).toMatch(/listSubscriptions/);
+    expect(body).toMatch(/\.id === subscriptionId/);
+    expect(body).toMatch(/Not your subscription|throw new Error/i);
+    // the membership check must precede the return of the id
+    const check = body.search(/\.id === subscriptionId/);
+    const ret = body.indexOf("return subscriptionId");
+    expect(check).toBeGreaterThan(-1);
+    expect(ret).toBeGreaterThan(check);
+  });
+
+  it("is disabled entirely when a real Stripe key is set", () => {
+    const at = sim.indexOf("async function guard");
+    const body = sim.slice(at, sim.indexOf("recoverPaymentAction"));
+    expect(body).toMatch(/usingRealStripe\(\)/);
+  });
+});
