@@ -257,6 +257,7 @@ that the platform is never in the request.
 | `no-content-at-rest.test.ts` | A blob/S3 client; `pipeThrough`; a column (front matter with `slug:` and `title:`) appearing under `src/` |
 | `no-content-at-rest.test.ts` | `node/content/` being emptied — the demo a fresh clone is promised must actually be there |
 | `no-remote-state.test.ts` | A server module that both resolves a node address and calls `fetch`; a route relaying a body it fetched |
+| `figures-come-from-the-node.test.ts` | A reader loading a figure from any origin but the serving node, or the platform proxying one through next/image |
 | `presence-is-not-an-archive.test.ts` | A registry- or viewer-reading page without `force-dynamic`; an endpoint without `no-store`; `revalidate`/`unstable_cache`/`force-cache`; an unwrapped redirect |
 | `what-each-side-learns.test.ts` | A `since`/`before`/`after`/`cursor` parameter on `/api/v1/live` |
 
