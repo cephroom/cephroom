@@ -88,7 +88,11 @@ describe("the float-denominated money model cannot come back", () => {
       "payoutMinor",
     ];
 
-    for (const file of [...walk(join(ROOT, "src")), ...walk(join(ROOT, "node"))]) {
+    for (const file of [
+      ...walk(join(ROOT, "src")),
+      ...walk(join(ROOT, "node")),
+      ...walk(join(ROOT, "simulated-counterparties")),
+    ]) {
       if (!file.endsWith(".ts") && !file.endsWith(".tsx")) continue;
       if (file.includes(".test.")) continue;
       const rel = relative(ROOT, file).split(sep).join("/");
@@ -101,7 +105,11 @@ describe("the float-denominated money model cannot come back", () => {
 
   it("never multiplies an amount by a fraction anywhere in the platform", () => {
     const offenders: string[] = [];
-    for (const file of [...walk(join(ROOT, "src")), ...walk(join(ROOT, "node"))]) {
+    for (const file of [
+      ...walk(join(ROOT, "src")),
+      ...walk(join(ROOT, "node")),
+      ...walk(join(ROOT, "simulated-counterparties")),
+    ]) {
       if (!file.endsWith(".ts") && !file.endsWith(".tsx")) continue;
       if (file.includes(".test.")) continue;
       const code = stripCommentsAndStrings(readFileSync(file, "utf8"));
