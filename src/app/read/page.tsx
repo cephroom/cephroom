@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { LiveSearch } from "@/components/live-search";
 import { fairShare } from "@/lib/signaling/fair-share";
 import { registry } from "@/lib/signaling/registry";
 
@@ -38,23 +39,10 @@ export default async function ReadPage({
           serving, their work leaves this page — not because it was deleted,
           but because being served was the only reason it was here.
         </p>
+      </header>
 
-        <form action="/read" className="mt-6 flex max-w-md gap-2">
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Search what is online"
-            aria-label="Search"
-            className="w-full rounded-md border border-field-border bg-paper-raised px-3 py-2 text-[0.9rem] outline-none transition-colors placeholder:text-ink-faint focus:border-accent"
-          />
-          <button
-            type="submit"
-            className="shrink-0 rounded-md bg-accent px-4 py-2 text-[0.88rem] font-medium text-accent-ink transition-colors hover:bg-accent-hover"
-          >
-            Search
-          </button>
-        </form>
-
+      {}
+      <LiveSearch initialQuery={q}>
         {}
         <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-[0.82rem]">
           {q.trim() ? (
@@ -76,7 +64,6 @@ export default async function ReadPage({
             </>
           )}
         </dl>
-      </header>
 
       {nodes.length === 0 ? (
         <Empty query={q} />
@@ -156,6 +143,7 @@ export default async function ReadPage({
           {located.length === 0 && <Empty query={q} />}
         </>
       )}
+      </LiveSearch>
     </main>
   );
 }

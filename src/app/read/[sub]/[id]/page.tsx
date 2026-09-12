@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ColumnReader } from "@/components/column-reader";
 import { DatasetReader } from "@/components/dataset-reader";
 import { getViewer } from "@/lib/auth/session";
-import { mintNodeKey } from "@/lib/keys/tokens";
 import { registry } from "@/lib/signaling/registry";
 
 export const dynamic = "force-dynamic";
@@ -54,17 +53,10 @@ export default async function ReadItemPage({
     );
   }
 
-  const nodeKey = viewer.sub
-    ? await mintNodeKey({
-        sub: viewer.sub,
-        // Scoped to this contributor. They see a pseudonym that is stable for
-        // them and meaningless to every other node.
-        audience: located.presence.sub,
-        // Never outlives the session it came from.
-        sessionSecondsLeft: viewer.expiresIn,
-      })
-    : null;
-
+  // No key is minted here. Reading a column needs none — the node checks
+  // nothing — so the page that only reads asks for nothing. A pseudonym is
+  // minted on the pages that write a proposal, where a contributor has to be
+  // able to reply.
   return (
     <ColumnReader
       sub={sub}
@@ -72,7 +64,6 @@ export default async function ReadItemPage({
       address={located.presence.address}
       servedBy={located.presence.displayName}
       payTo={located.presence.payTo ?? null}
-      nodeKey={nodeKey}
       signedIn={Boolean(viewer.sub)}
     />
   );

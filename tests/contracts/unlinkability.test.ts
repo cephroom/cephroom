@@ -174,6 +174,49 @@ describe("Layer 1 protects a search history, not a paywall", () => {
     expect(body("cmdLive")).toMatch(/readKey/);
   });
 
+  it("spends none of them in the browser's reader either", async () => {
+    /**
+     * The same finding as the CLI, in the reader people actually use, and
+     * found the same way — by opening the page.
+     *
+     * `ColumnReader` called `spendToken()` on mount and put the resulting key
+     * on the request to the contributor's node, falling back to the node key
+     * when the wallet was empty. Both are wrong now for the same reason: a
+     * node serves a column to whoever asks and checks nothing, so the token
+     * was consumed for no effect and the node key handed a contributor a
+     * pseudonym for a request that needed no identity at all. The reader also
+     * displayed "read anonymously" on the strength of it — a badge claiming
+     * a protection that the request did not need and the token did not give.
+     */
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { ROOT, stripCommentsOnly } = await import("./scan");
+
+    const reader = stripCommentsOnly(
+      readFileSync(join(ROOT, "src", "components", "column-reader.tsx"), "utf8"),
+    );
+    expect(reader).not.toMatch(/spendToken/);
+    // And nothing else goes with the request: a column fetch carries no
+    // authorization header of any kind.
+    const fetchCall = reader.slice(reader.indexOf("/column/"));
+    expect(fetchCall.slice(0, 400)).not.toMatch(/authorization/i);
+  });
+
+  it("spends one on the search the site itself runs", async () => {
+    // The other half, and the one that makes the decision real rather than
+    // recorded: if the site's own search never spends a token, the promise on
+    // the account page is true only for people using the API.
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { ROOT, stripCommentsOnly } = await import("./scan");
+
+    const search = stripCommentsOnly(
+      readFileSync(join(ROOT, "src", "components", "live-search.tsx"), "utf8"),
+    );
+    expect(search).toMatch(/spendToken/);
+    expect(search).toMatch(/api\/v1\/live/);
+  });
+
   it("does not offer them where they would buy nothing", async () => {
     // A free consumer has no subscription for their searching to be linked
     // to, so the wallet has nothing to offer them and says so rather than

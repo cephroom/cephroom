@@ -17,7 +17,6 @@ import { type Conclusion } from "@/lib/claims/verdict";
 import { remarkClaims } from "@/lib/markdown/remark-claims";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { servingMismatch } from "@/lib/signaling/serving";
-import { spendToken } from "@/lib/tokens/wallet";
 
 
 interface ServedColumn {
@@ -50,7 +49,6 @@ export function ColumnReader({
   address,
   servedBy,
   payTo,
-  nodeKey,
   signedIn,
 }: {
   sub: string;
@@ -58,12 +56,10 @@ export function ColumnReader({
   address: string;
   servedBy: string;
   payTo: string | null;
-  nodeKey: string | null;
   signedIn: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>({ state: "loading" });
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
-  const [anonymous, setAnonymous] = useState(false);
   const base = `/read/${encodeURIComponent(sub)}/${encodeURIComponent(id)}`;
 
   useEffect(() => {
@@ -71,14 +67,14 @@ export function ColumnReader({
 
     (async () => {
       try {
-        const spent = await spendToken();
-        if (cancelled) return;
-        const presentedKey = spent?.key ?? nodeKey;
-        setAnonymous(Boolean(spent));
-
-        const response = await fetchWithTimeout(`${address}/column/${encodeURIComponent(id)}`, {
-          headers: presentedKey ? { authorization: `Bearer ${presentedKey}` } : {},
-        });
+        // Nothing is presented. A column is served whole to whoever asks, so
+        // a key here would buy nothing and would hand the contributor a
+        // pseudonym for a request that needs no identity — and a token spent
+        // here would be destroyed for no effect. Tokens are for the search,
+        // which is the part that happens on our own surface.
+        const response = await fetchWithTimeout(
+          `${address}/column/${encodeURIComponent(id)}`,
+        );
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const column = (await response.json()) as ServedColumn;
 
@@ -126,7 +122,7 @@ export function ColumnReader({
     };
     // `sub` included: it is what the fetched content is checked against,
   // so a stale one would verify against the wrong contributor.
-  }, [address, id, nodeKey, sub]);
+  }, [address, id, sub]);
 
   const resolved = useMemo(() => {
     if (phase.state !== "ready") return null;
@@ -241,15 +237,13 @@ export function ColumnReader({
             <span className="text-[0.8rem] text-ink-muted">
               checked in your browser at {checkedAt}
             </span>
-            {anonymous && (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full border border-counter/30 bg-counter-wash px-2 py-0.5 text-[0.7rem] font-medium text-counter"
-                title="Fetched with an anonymous discovery token, so this search is not linked to your subscription."
-              >
-                <span aria-hidden>▚</span>
-                read anonymously
-              </span>
-            )}
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-counter/30 bg-counter-wash px-2 py-0.5 text-[0.7rem] font-medium text-counter"
+              title="This column was fetched from the contributor's machine with no key and no token. They were told nothing about you beyond the connection itself."
+            >
+              <span aria-hidden>▚</span>
+              fetched with nothing attached
+            </span>
           </div>
 
           {conclusion === "drifted" && (
