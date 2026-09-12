@@ -8,7 +8,7 @@ import { parseBody } from "../src/lib/claims/syntax";
 import { FREE_SERVING_CAPACITY } from "../src/lib/stripe/plans";
 import { readColumnFile, type Column } from "./columns";
 import { foldForScope } from "./fold-facts";
-import { PresenceLoop } from "./presence";
+import { AnnounceRefused, PresenceLoop } from "./presence";
 import { isNodeScoped, ProposalStore, proposalRootFor } from "./proposals";
 import { verifyKeyWithPlatform } from "./verify";
 
@@ -562,7 +562,14 @@ async function announceOnce(): Promise<number> {
   });
 
   if (!response.ok) {
-    throw new Error(`announce failed: ${response.status} ${await response.text()}`);
+    const body = await response.text().catch(() => "");
+    let detail = body;
+    try {
+      detail = (JSON.parse(body) as { error?: string }).error ?? body;
+    } catch {
+      // Not JSON. Whatever the platform said is still better than a guess.
+    }
+    throw new AnnounceRefused(response.status, detail || response.statusText);
   }
 
   const json = (await response.json()) as {
@@ -580,6 +587,27 @@ const presence = new PresenceLoop({
       `announced ${manifest().length} items to ${PLATFORM} as "${DISPLAY_NAME}"`,
     );
     return leaseSeconds;
+  },
+  onFailure: (detail, permanent) => {
+    if (permanent) {
+      console.error(
+        `
+the platform refused this announcement:
+  ${detail}
+
+` +
+          `This will not clear by waiting. The node is still serving on ` +
+          `${ADDRESS} and will keep trying, so fixing the cause brings it ` +
+          `back without a restart.
+`,
+      );
+      return;
+    }
+    console.error(
+      `could not announce to ${PLATFORM}: ${detail}
+` +
+        `Still serving on ${ADDRESS}, and still trying.`,
+    );
   },
   beat: async () => {
     if (!connectionId) return null;
@@ -606,12 +634,9 @@ server.listen(PORT, "127.0.0.1", async () => {
     `node serving ${columns.length} columns + ${datasets.length} dataset${datasets.length === 1 ? "" : "s"} on ${ADDRESS}`,
   );
   await presence.start();
-  if (!presence.connected()) {
-    console.error(
-      `could not reach ${PLATFORM} yet. Still serving, and still trying — ` +
-        `this resolves itself when the platform comes up.`,
-    );
-  }
+  // Any failure has already been reported by onFailure, in the platform's own
+  // words. Saying "could not reach the platform" here as well would reassert
+  // the guess this was written to remove.
 });
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
