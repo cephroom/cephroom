@@ -133,6 +133,8 @@ const PERMITTED_GLOBAL_STATE: Record<string, string> = {
     "The bounded exception: spent nullifiers, opaque, two epochs, a Set with no room for a payload.",
   "src/lib/zk/jwks.ts":
     "The identity provider's published moduli on a 14-day rolling window. Public keys, nothing of the user's.",
+  "src/lib/tokens/issuance-gate.ts":
+    "A single integer: how many signing batches are in flight. Counts work, never people — a per-subscriber limit would be an activity record.",
   "src/lib/zk/verify.ts":
     "Outstanding sign-in challenges. Random bytes and an epoch, capped, spent on use.",
 };

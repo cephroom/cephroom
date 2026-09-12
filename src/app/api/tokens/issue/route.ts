@@ -2,11 +2,32 @@ import { NextResponse } from "next/server";
 
 import { getViewer } from "@/lib/auth/session";
 import { entitlementFor } from "@/lib/stripe/entitlement";
+import { issuanceGate } from "@/lib/tokens/issuance-gate";
 import { BATCH_SIZE, issueBatch, tokenTierFor } from "@/lib/tokens/issuer";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  // Before anything expensive, and before asking Stripe. A batch costs twelve
+  // blind RSA signatures and an API call; unbounded, one subscriber could
+  // hold the signing path open indefinitely and burn the Stripe rate limit
+  // that sign-in and billing share. The gate counts work in flight and knows
+  // nothing about who is asking — a per-subscriber limit would be a
+  // per-person activity record, which Contract 1 does not allow.
+  if (!issuanceGate().tryEnter()) {
+    return NextResponse.json(
+      { error: "Busy signing. Try again in a moment." },
+      {
+        status: 503,
+        headers: { "cache-control": "no-store", "retry-after": "2" },
+      },
+    );
+  }
+
+  return issuanceGate().run(() => issue(request));
+}
+
+async function issue(request: Request) {
   const viewer = await getViewer();
   if (!viewer.sub) {
     return NextResponse.json(
