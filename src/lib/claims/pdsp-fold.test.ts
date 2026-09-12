@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { FOLD_SELECTS, isFoldSelect, parseBody } from "./syntax";
 
-/**
- * pdsp_fold — the fold difference between ChEMBL's median and the independent
- * PDSP Ki Database's, for the same target and compound. A claim that a second,
- * separate database reproduces the number; near 1× is agreement. It reuses the
- * fold-select machinery, so this test mostly guards that wiring.
- */
 function claim(value: string) {
   return [
     "{{claim:x}}",

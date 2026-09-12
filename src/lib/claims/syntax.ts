@@ -13,12 +13,7 @@ export type ClaimSelect =
 export const FOLD_SELECTS: ClaimSelect[] = [
   "fold_spread",
   "fold_spread_iqr",
-  // The ChEMBL-vs-PDSP fold difference is a ratio too, rendered "1.33×", and
-  // shares the bare-ratio parsing (drop notation, reject non-positive).
   "pdsp_fold",
-  // How far the *analyses* of the same data disagree, as opposed to how far
-  // the laboratories do. See lib/claims/method.ts — this is the NARPS
-  // quantity, and it is a ratio like the rest.
   "method_spread",
 ];
 
@@ -133,10 +128,6 @@ function parseFields(body: string): Record<string, string> {
 }
 
 export function parseBody(rawBody: string): ParsedBody {
-  // HTML normalises textarea values to CRLF on form submission, which breaks
-  // the fence patterns below, which anchor on a bare newline. Normalising
-  // here means the parser behaves identically whether a body arrived
-  // through a form, a server action argument, or a seed file.
   const body = normaliseNewlines(rawBody);
   const claims: ParsedClaim[] = [];
   const errors: ClaimParseError[] = [];
@@ -187,8 +178,6 @@ export function parseBody(rawBody: string): ParsedBody {
         }
         if (value !== null && value <= 0) value = null;
       } else if (select === "censored_fraction") {
-        // A fraction in [0, 1]. Accept "7%" as 0.07 and "0.07" as itself;
-        // anything outside [0, 1] is not a fraction, so record no value.
         if (value !== null && parsed.unit === "%") value = value / 100;
         if (value !== null && (value < 0 || value > 1)) value = null;
       }
@@ -204,7 +193,6 @@ export function parseBody(rawBody: string): ParsedBody {
         subject: fields.subject,
         object: fields.object,
         scope: (fields.scope ?? "all").toLowerCase(),
-        // No `?? "all"`. An absent method is absent, not a pooled one.
         method: fields.method ? fields.method.trim() : null,
         select,
         expectedValue: value,
@@ -216,8 +204,6 @@ export function parseBody(rawBody: string): ParsedBody {
 
       return "";
     })
-    // Definition blocks leave blank runs behind; collapse them so the prose
-    // does not gain stray paragraph breaks where a claim used to sit.
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
@@ -263,7 +249,6 @@ export function formatValue(
   else if (magnitude >= 0.01) text = value.toFixed(3);
   else text = value.toPrecision(2);
 
-  // Trim trailing zeros but keep at least one decimal place for sub-10 values.
   if (text.includes(".")) text = text.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   return unit ? `${text} ${unit}` : text;
 }

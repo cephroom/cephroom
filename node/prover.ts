@@ -71,9 +71,6 @@ const server = createServer(async (request, response) => {
       circuit: "jwt-tx-validation@27cda6e",
       verificationKeyHash: artefacts?.verificationKeyHash ?? null,
       ready: artefacts !== null,
-      // No name, no operator field, no contact. A prover is chosen by its URL
-      // and judged by whether its artefacts match; anything else here would be
-      // marketing, and marketing is how a default emerges.
       notice:
         "This prover sees the JWT you send it. Run your own if you would rather nobody did.",
     });
@@ -127,10 +124,6 @@ const server = createServer(async (request, response) => {
       });
       return send(200, result);
     } catch (error) {
-      // The message, never the input. An error that echoed the JWT back would
-      // put it somewhere it could be captured — a log aggregator, a proxy, a
-      // browser console — which is exactly what this process promises not to
-      // do with it.
       return send(400, {
         error: error instanceof Error ? error.message : "Could not prove.",
       });

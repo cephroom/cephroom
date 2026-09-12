@@ -63,8 +63,6 @@ export async function GET(
     const accessToken = await exchange(provider, code, flow.v);
     accountId = (await fetchProfile(provider, accessToken)).accountId;
   } catch {
-    // Deliberately not logged. An auth failure that recorded who failed
-    // would be exactly the identity retention Contract 1 forbids.
     return fail(url.origin, "exchange");
   }
 
@@ -72,12 +70,6 @@ export async function GET(
 
   const sub = deriveSubject(providerId, accountId);
 
-  // Ask Stripe, do not remember. If Stripe is unreachable the reader is
-  // signed in as a free reader rather than not signed in at all.
-  //
-  // Only the tier is taken. The customer id used to be read here too and
-  // stamped into the key; it is re-derived from the subject wherever billing
-  // actually needs it, so nothing has to carry it around.
   let discovery: DiscoveryTier = "browse";
   try {
     discovery = (await entitlementFor(sub)).discovery;

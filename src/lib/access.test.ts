@@ -7,19 +7,6 @@ import {
   servingFromSubscriptions,
 } from "./access";
 
-/**
- * What a subscription means, now that there are two of them.
- *
- * This file used to test `tierAllows` — whether a consumer's tier let them
- * read somebody else's column. That question is gone, and so is the function:
- * a consumer's plan buys reach across the platform's own discovery, a
- * contributor's buys room in the platform's own listing, and neither is
- * visible to the other side.
- *
- * What survives unchanged is the judgement about Stripe statuses, which was
- * always the interesting part, and the rule for picking which of several
- * subscriptions to describe.
- */
 
 const sub = (
   fields: Partial<{
@@ -42,9 +29,6 @@ describe("which statuses count as paying", () => {
   });
 
   it("counts past_due, because Stripe is still trying", () => {
-    // A failed card is not a decision. Cutting somebody off mid-dunning
-    // punishes them for their bank's fraud heuristics; Stripe retries for
-    // days and most of these recover.
     expect(isPaying("past_due")).toBe(true);
   });
 
@@ -83,8 +67,6 @@ describe("the discovery plan a customer is on", () => {
   });
 
   it("ignores a serving subscription entirely", () => {
-    // The whole point of the split. A contributor on Stacks browses like
-    // anybody else unless they also bought discovery.
     expect(discoveryFromSubscriptions([sub({ serving: "stacks" })])).toBe("browse");
   });
 });
@@ -101,8 +83,6 @@ describe("the serving plan a contributor is on", () => {
   });
 
   it("ignores a discovery subscription entirely", () => {
-    // The mirror of the above, and the reason both are tested: a consumer on
-    // Sweep gets no extra room to serve, because those are different products.
     expect(servingFromSubscriptions([sub({ discovery: "sweep" })])).toBe("desk");
   });
 
@@ -115,8 +95,6 @@ describe("the serving plan a contributor is on", () => {
 
 describe("which subscription to describe on the account page", () => {
   it("prefers a live one over a dead one", () => {
-    // A customer who resubscribed after cancelling holds both. Describing the
-    // dead one tells a paying customer their subscription has ended.
     const dead = sub({ id: "old", status: "canceled", discovery: "query" });
     const live = sub({ id: "new", status: "active", discovery: "query" });
     expect(
@@ -125,7 +103,6 @@ describe("which subscription to describe on the account page", () => {
   });
 
   it("falls back to a dead one rather than showing nothing", () => {
-    // Somebody who cancelled should still see what they had, and when it ends.
     const dead = sub({ id: "old", status: "canceled", discovery: "query" });
     expect(
       governingSubscription([dead], (s) => s.discovery !== null)?.id,

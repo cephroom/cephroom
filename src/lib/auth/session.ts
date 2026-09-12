@@ -14,15 +14,6 @@ export const REFRESH_COOKIE = "cephroom_renew";
 
 const LEGACY_COOKIES = ["receptorome_key", "receptorome_renew"];
 
-/**
- * Everything the platform knows about whoever is asking.
- *
- * A subject, their discovery plan, and when the key expires. Nothing else,
- * because there is nothing else in the key and nowhere to look it up. The
- * display name and the Stripe customer id used to be here; both were read
- * straight back out of the credential, which made them feel like facts the
- * platform held rather than data it was carrying around on someone's behalf.
- */
 export interface Viewer {
   sub: string | null;
   discovery: DiscoveryTier;
@@ -56,7 +47,7 @@ export async function canResumeSession(): Promise<boolean> {
   const store = await cookies();
   if (store.get(ACCESS_COOKIE)?.value) {
     const key = await verifyAccessKey(store.get(ACCESS_COOKIE)!.value);
-    if (key) return false; // already signed in
+    if (key) return false;
   }
   return Boolean(store.get(REFRESH_COOKIE)?.value);
 }

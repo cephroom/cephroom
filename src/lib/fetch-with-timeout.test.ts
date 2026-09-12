@@ -13,9 +13,6 @@ describe("fetchWithTimeout", () => {
   });
 
   it("aborts and throws a readable error when the node hangs", async () => {
-    // A node that never responds: fetch rejects with an AbortError once the
-    // controller fires. The reader turns this into "node stopped answering"
-    // instead of spinning forever.
     vi.stubGlobal(
       "fetch",
       vi.fn((_input: string, init?: RequestInit) => {

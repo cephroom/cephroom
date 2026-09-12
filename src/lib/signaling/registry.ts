@@ -55,8 +55,6 @@ export function createRegistry(now: () => number = Date.now): Registry {
     announce(announcement) {
       const connectionId = `c_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
 
-      // A node re-announcing replaces its previous lease rather than
-      // accumulating one, so a restart does not double-list its work.
       for (const [id, presence] of live) {
         if (presence.sub === announcement.sub) live.delete(id);
       }
@@ -76,8 +74,6 @@ export function createRegistry(now: () => number = Date.now): Registry {
 
     heartbeat(connectionId, sub) {
       const presence = live.get(connectionId);
-      // Ownership is checked before freshness, so a mismatched subject learns
-      // nothing about whether the connection exists.
       if (!presence || presence.sub !== sub || !fresh(presence)) return false;
       presence.expiresAt = now() + LEASE_SECONDS * 1000;
       return true;

@@ -13,9 +13,6 @@ export async function POST() {
     return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   }
 
-  // Capacity comes from the contributor's own serving plan, asked for at
-  // the moment the key is issued. It is not in the session key, because a
-  // session key is a consumer's and this is the other subscription entirely.
   const { serving } = await entitlementFor(viewer.sub);
   const key = await mintServeKey({
     sub: viewer.sub,

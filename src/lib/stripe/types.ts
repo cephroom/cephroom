@@ -6,15 +6,6 @@ import type {
 } from "./plans";
 
 
-/**
- * One subscription as Stripe holds it.
- *
- * A subscription now belongs to exactly one of the two catalogues, and says
- * which by carrying the tier for that side and null for the other. They are
- * unrelated products that happen to be billed by the same counterparty: a
- * consumer's discovery plan and a contributor's serving plan can coexist on
- * one customer without either implying anything about the other.
- */
 export interface SubscriptionView {
   id: string;
   plan: AnyPlanId;

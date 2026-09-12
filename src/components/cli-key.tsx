@@ -32,7 +32,6 @@ export function CliKey() {
       setCopied(label);
       setTimeout(() => setCopied(null), 1600);
     } catch {
-      // Clipboard denied. The value is on screen and selectable.
     }
   }
 

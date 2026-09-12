@@ -12,7 +12,6 @@ import {
   SERVING_PLANS,
 } from "./plans";
 
-/** Every plan in both catalogues that actually has a price. */
 const PAID = [
   ...DISCOVERY_ORDER.map((id) => DISCOVERY_PLANS[id]),
   ...SERVING_ORDER.map((id) => SERVING_PLANS[id]),
@@ -59,8 +58,6 @@ describe("planForPrice", () => {
   });
 
   it("returns null for a price we do not sell", () => {
-    // The webhook turns this into a loud failure rather than a silent
-    // subscription with no plan attached.
     expect(planForPrice("price_from_some_other_product")).toBeNull();
   });
 });
@@ -96,18 +93,6 @@ describe("the reduced rate is a price, not a tier", () => {
     );
   });
 
-  /**
-   * Found by taking the reduced rate through the simulated checkout: the page
-   * offered "Member — $90 per year" for a session whose `priceId` was the $36
-   * one. The stand-in reconstructed the price from `plan` + `interval` and
-   * ignored the price id it had been handed.
-   *
-   * Real Stripe Checkout reads the price id and would have charged $36, so
-   * nobody was ever going to be overcharged. That is exactly why it is worth
-   * fixing rather than shrugging at: the stand-in exists so the billing path
-   * is exercised honestly in development, and one that quietly disagrees with
-   * Stripe about the amount is worse than no stand-in at all.
-   */
   it("can be found by price id, which is what a checkout is given", () => {
     const reduced = DISCOVERY_PLANS.query.reduced!;
     expect(priceForId(reduced.priceId)).toEqual({

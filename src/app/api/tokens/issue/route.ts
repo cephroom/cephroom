@@ -8,12 +8,6 @@ import { BATCH_SIZE, issueBatch, tokenTierFor } from "@/lib/tokens/issuer";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  // Before anything expensive, and before asking Stripe. A batch costs twelve
-  // blind RSA signatures and an API call; unbounded, one subscriber could
-  // hold the signing path open indefinitely and burn the Stripe rate limit
-  // that sign-in and billing share. The gate counts work in flight and knows
-  // nothing about who is asking — a per-subscriber limit would be a
-  // per-person activity record, which Contract 1 does not allow.
   if (!issuanceGate().tryEnter()) {
     return NextResponse.json(
       { error: "Busy signing. Try again in a moment." },
@@ -36,8 +30,6 @@ async function issue(request: Request) {
     );
   }
 
-  // Live from Stripe, not from the key, so a cancellation within the key's
-  // fifteen minutes cannot buy an hour of anonymous discovery on top.
   const entitlement = await entitlementFor(viewer.sub);
   const tier = tokenTierFor(entitlement.discovery);
   if (!tier) {
@@ -73,8 +65,6 @@ async function issue(request: Request) {
     blinded = body.requests.map((entry) => {
       if (typeof entry !== "string") throw new Error("not a string");
       const bytes = Uint8Array.from(Buffer.from(entry, "base64"));
-      // A blind RSA token request is 2 + 1 + 256 bytes. Bounding it here
-      // keeps a malformed or hostile body from reaching the crypto.
       if (bytes.length !== 259) throw new Error("wrong length");
       return bytes;
     });

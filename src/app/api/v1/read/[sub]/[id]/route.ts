@@ -13,8 +13,6 @@ export async function GET(
   const located = registry().find(decodeURIComponent(sub), decodeURIComponent(id));
 
   if (!located) {
-    // Deliberately uninformative, and for the same reason the offline page is:
-    // the platform cannot say what used to be here, because it never knew.
     return NextResponse.json(
       {
         ...envelope(),
@@ -35,11 +33,6 @@ export async function GET(
       sub: presence.sub,
       servedBy: presence.displayName,
       address: base,
-      // Exactly what the contributor announced, or absent if they announced
-      // nothing. Relaying this verbatim is the whole of the platform's
-      // involvement in money, and it used to reach browsers only — so a
-      // reader on the API could not find out how to pay somebody while a
-      // reader on the site could.
       ...(presence.payTo ? { payTo: presence.payTo } : {}),
       item: {
         id: item.id,
@@ -50,8 +43,6 @@ export async function GET(
         openProposals: item.openProposals ?? 0,
       },
       fetch: {
-        // Present your read key as `authorization: Bearer <key>`. Without one
-        // you get the public preview; the node decides, not us.
         self: `${base}/${item.kind}/${encodeURIComponent(item.id)}`,
         manifest: `${base}/manifest`,
         proposals: `${base}/proposals?column=${encodeURIComponent(item.id)}`,

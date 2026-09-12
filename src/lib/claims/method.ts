@@ -34,17 +34,11 @@ export function selectByMethod<T extends Methoded>(
     );
     if (match) return { kind: "resolved", fact: match };
 
-    // A dataset with a single unnamed analysis answers any claim about it —
-    // but only if the claim did not ask for a method it does not have. Asking
-    // for one it does not have is a real mismatch, not a near miss.
     return { kind: "unknown", methods: available };
   }
 
-  // No method asked for.
   if (candidates.length === 1) return { kind: "resolved", fact: candidates[0] };
 
-  // Several candidates. If they are all the same analysis — a dataset that
-  // simply repeats a method name — there is still only one answer.
   if (available.length <= 1 && candidates.every((c) => c.method !== null)) {
     return { kind: "resolved", fact: candidates[0] };
   }

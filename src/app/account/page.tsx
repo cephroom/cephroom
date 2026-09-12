@@ -66,14 +66,8 @@ export default async function AccountPage() {
   const viewer = await getViewer();
   if (!viewer.sub) redirect("/signin?next=/account");
 
-  // The key arrives already re-stamped: checkout redirects through
-  // /api/auth/restamp, because a page cannot set a cookie while rendering.
   const fresh = viewer;
 
-  // Resolve the customer through Stripe from the subject. The key used to
-  // carry the id, which saved this round trip and made the credential a cache
-  // of Stripe's own records — the fourth of the four places Contract 1 says
-  // the platform does not mirror them.
   let customerId: string | null = null;
   let subscriptions: SubscriptionView[] = [];
   try {
@@ -85,10 +79,6 @@ export default async function AccountPage() {
     subscriptions = [];
   }
 
-  // Two subscriptions, shown side by side and described separately, because
-  // they are unrelated products. A contributor on Stacks with no discovery
-  // plan browses like anybody else; neither card implies anything about the
-  // other side of the network.
   const discoverySub = governingSubscription(
     subscriptions,
     (subscription) => subscription.discovery !== null,
@@ -253,14 +243,6 @@ function Row({
   );
 }
 
-/**
- * One subscription, described on its own terms.
- *
- * Two of these render on this page and neither refers to the other. That is
- * the point: a discovery plan and a serving plan are unrelated products, and
- * a page that summed them into a single "your tier" would be re-creating the
- * thing this model removed.
- */
 function Plan({
   kind,
   heading,
@@ -277,9 +259,6 @@ function Plan({
   chooseHref: string;
 }) {
   const status = subscription ? STATUS_COPY[subscription.status] : null;
-  // By price id. Rebuilding from plan + interval reports the list price
-  // rather than the one they are on, so a reduced-rate subscriber was told
-  // they pay full price.
   const price = subscription ? priceForId(subscription.priceId)?.price : null;
 
   return (

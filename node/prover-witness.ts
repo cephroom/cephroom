@@ -70,7 +70,6 @@ export function sha256Pad(message: Buffer, maxLength: number): Buffer {
   message.copy(padded);
   padded[message.length] = 0x80;
 
-  // Length goes in the last eight bytes of the final 64-byte block used.
   const blocks = Math.ceil((message.length + 1 + 8) / 64);
   if (blocks * 64 > maxLength) {
     throw new Error("The token is longer than this circuit accepts.");
@@ -103,7 +102,7 @@ export async function proveJwt(input: ProveInput): Promise<{
   }
 
   const message = Buffer.from(`${header}.${payload}`, "utf8");
-  const MAX_MESSAGE = 1216; // multiple of 64, comfortably over a Google id_token
+  const MAX_MESSAGE = 1216;
 
   const witness = {
     messageBytes: Array.from(sha256Pad(message, MAX_MESSAGE)),
@@ -117,8 +116,6 @@ export async function proveJwt(input: ProveInput): Promise<{
     salt: input.salt,
   };
 
-  // Imported here rather than at module scope so that `prover.ts` starts, and
-  // reports itself honestly as not ready, on a machine with no snarkjs.
   const snarkjs = (await import("snarkjs")) as unknown as {
     plonk: { fullProve: Prove };
     groth16: { fullProve: Prove };

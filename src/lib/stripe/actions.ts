@@ -23,10 +23,6 @@ export async function startCheckout(formData: FormData) {
   const plan = String(formData.get("plan") ?? "") as AnyPlanId;
   const interval = String(formData.get("interval") ?? "month") as BillingInterval;
   const from = String(formData.get("from") ?? "/account");
-  // The reduced rate is a price, not a tier. It is honoured only where the
-  // plan actually offers one, so a crafted form field cannot conjure a
-  // discount on a plan that has none — this is a public endpoint like every
-  // other server action.
   const wantsReduced = String(formData.get("reduced") ?? "") === "1";
 
   const definition = planById(plan);
@@ -41,11 +37,6 @@ export async function startCheckout(formData: FormData) {
     );
   }
 
-  // The customer id comes from Stripe, not from the key. It used to ride
-  // along in the key as a convenience, which made the credential a cache of
-  // Stripe's records keyed by identity — the thing Contract 1 says the
-  // platform does not keep, in the one place nobody was looking. Asking costs
-  // a round trip on a page that is already talking to Stripe.
   const { customerId } = await entitlementFor(viewer.sub);
 
   const session = await (await gateway()).createCheckoutSession({
@@ -54,8 +45,6 @@ export async function startCheckout(formData: FormData) {
     priceId: reduced?.priceId ?? definition.prices[interval].priceId,
     plan,
     interval: reduced ? "year" : interval,
-    // Through the re-stamp handler, because the key still says what it
-    // said before the payment and a page cannot set a cookie while rendering.
     successUrl: `${baseUrl()}/api/auth/restamp?next=${encodeURIComponent("/account?checkout=success")}`,
     cancelUrl: `${baseUrl()}${from.startsWith("/") ? from : "/pricing"}?checkout=cancelled`,
   });
@@ -89,10 +78,6 @@ async function setCancellation(subscriptionId: string, cancel: boolean) {
   const viewer = await getViewer();
   if (!viewer.sub) redirect("/signin?next=/account");
 
-  // A server action is a public endpoint. Confirm the subscription really
-  // belongs to this caller before touching it — and resolve the customer
-  // through Stripe from the subject, rather than believing a customer id the
-  // caller's own key handed us.
   const { customerId } = await entitlementFor(viewer.sub);
   if (!customerId) redirect("/pricing");
 

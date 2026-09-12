@@ -137,9 +137,6 @@ describe("parseBody", () => {
   });
 
   it("parses a body that arrived with CRLF line endings", () => {
-    // HTML normalises textarea values to CRLF on form submission. Before this
-    // was handled, saving from the studio silently recorded zero claims while
-    // the live preview - which passes the string directly - showed them all.
     const body = `Binds at {{claim:hal-d2}}.\n\n${CLAIM}\n`.replace(
       /\n/g,
       "\r\n",
@@ -224,15 +221,11 @@ describe("the method line", () => {
   });
 
   it("leaves method null when the line is absent", () => {
-    // Emphatically not "all". An absent analysis is absent; the resolver
-    // decides what that means, and for a multi-analysis cell it means broken.
     const { claims } = parseBody(withMethod.replace("method: online\n", ""));
     expect(claims[0].method).toBeNull();
   });
 
   it("trims but does not lowercase the method name", () => {
-    // Matching is case-insensitive at resolution time; the name is preserved
-    // as written so an error message can quote the author back to themselves.
     const { claims } = parseBody(
       withMethod.replace("method: online", "method:   Online  "),
     );
@@ -245,13 +238,10 @@ describe("the method line", () => {
         .replace("method: online\n", "")
         .replace("value: 70.0 %", "select: method_spread\nvalue: 1.18x"),
     );
-    // The fixture is a bare block with no prose, so the only complaint is the
-    // unreferenced key — nothing about the select itself.
     expect(errors.map((error) => error.message)).toEqual([
       'Claim "tcnet-online" is defined but never referenced in the prose.',
     ]);
     expect(claims[0].select).toBe("method_spread");
-    // A ratio, so the fold parsing applies: no unit, notation dropped.
     expect(claims[0].expectedValue).toBeCloseTo(1.18, 6);
     expect(claims[0].expectedUnit).toBeNull();
   });
@@ -281,8 +271,6 @@ describe("dispersion is not tolerance", () => {
   ].join("\n");
 
   it("parses dispersion as a select with a unit", () => {
-    // Unlike the fold selects, a dispersion has the value's units — a spread
-    // of 3.33 percentage points, not a bare ratio.
     const { claims } = parseBody(`Spread {{claim:tcnet-sd}}.\n\n${block}`);
     expect(claims[0].select).toBe("dispersion");
     expect(claims[0].expectedValue).toBeCloseTo(3.33, 6);
@@ -290,10 +278,6 @@ describe("dispersion is not tolerance", () => {
   });
 
   it("keeps tolerance and dispersion as separate fields", () => {
-    // They look alike on the page and are different quantities: tolerance is
-    // how far the author will let the dataset drift, dispersion is how
-    // uncertain the measurement was. Conflating them is worse than omitting
-    // one, because a "± 15%" next to a number reads like error bars.
     const { claims } = parseBody(`Spread {{claim:tcnet-sd}}.\n\n${block}`);
     expect(claims[0].tolerance).toEqual({ kind: "percent", amount: 5 });
     expect(claims[0].expectedValue).not.toBe(5);

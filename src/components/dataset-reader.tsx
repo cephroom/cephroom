@@ -87,9 +87,6 @@ export function DatasetReader({
         );
         if (!response.ok) throw new Error(`node returned ${response.status}`);
         const json = (await response.json()) as Dataset & { servedBySub?: string };
-        // A dataset is what every claim in a column is checked against, so a
-        // machine answering for one it does not own is the most valuable
-        // address to have stolen.
         const impostor = servingMismatch(sub, json.servedBySub);
         if (impostor) throw new Error(impostor);
         if (!cancelled) setDataset(json);
@@ -102,8 +99,6 @@ export function DatasetReader({
     return () => {
       cancelled = true;
     };
-    // `sub` included: see the column reader — it is the value the node's
-  // own claim is compared with.
   }, [address, datasetId, sub]);
 
   const metric = METRICS[selected];
@@ -291,9 +286,6 @@ export function DatasetReader({
           ))}
         </nav>
 
-        {/* Shown to everyone. A dataset is what every claim is checked
-            against, and checking is the whole product — withholding the
-            matrix withheld the evidence rather than the article. */}
         <DatasetMatrix
           subjects={subjects}
           objects={objects}

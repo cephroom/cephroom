@@ -12,27 +12,9 @@ import {
   TELEMETRY_RULE,
 } from "./rules";
 
-/**
- * Contract 1 — the platform persists nothing about users.
- *
- * The rules themselves live in ./rules, applied here and proven in
- * ./scanner.test.ts. Keeping the rule and the proof-of-rule as one object is
- * deliberate: a rule that has quietly stopped matching anything is
- * indistinguishable, from here, from a rule that is passing.
- */
 
 const PLATFORM_ROOTS = ["src"];
 
-/**
- * Roots scanned for writes.
- *
- * `src` alone is not enough for any rule carrying an allowlist. An allow
- * prefix naming a directory the scan never visits cannot exempt anything, so
- * "permits exactly one exempt path" was comparing a literal to itself while
- * the prefix it named was unreachable. Scanning both roots makes the
- * exemption load-bearing — the simulated counterparty is now genuinely the
- * only thing standing between this rule and a failure.
- */
 const WRITE_ROOTS = ["src", "simulated-counterparties"];
 
 describe("Contract 1: no persistence layer exists", () => {
@@ -101,29 +83,11 @@ describe("Contract 1: nothing is written as a result of signing in", () => {
   });
 
   it("imports no filesystem module at all in the platform", () => {
-    // Stronger than banning the call names, and not evadable by reaching a
-    // write through a handle those names do not cover.
     const hits = scan(WRITE_ROOTS, [FS_IMPORT_RULE]);
     expect(hits.length, `\n${describeHits(hits)}\n`).toBe(0);
   });
 });
 
-/**
- * Every piece of mutable process state in the platform, named.
- *
- * The rule this replaces looked for a declaration whose identifier contained
- * "store", "sessions", "users" or "cache". It caught `const userStore` and
- * missed `const userTable`, `export const accounts: Map<string, User>`, and —
- * most of the point — every global in this repository, all six of which are
- * written as `globalForX.__y ??= new Map()`. A session store in the house
- * style passed unnoticed.
- *
- * So the assertion is an inventory rather than a denylist. State is
- * enumerated and compared against this list; adding any is a failing test
- * until the module is named here with what it holds and why the platform may
- * hold it. The question in review is no longer "does this look like a session
- * store" — which is a judgement — but "why is there a seventh", which is not.
- */
 const PERMITTED_GLOBAL_STATE: Record<string, string> = {
   "src/lib/signaling/registry.ts":
     "Presence. Fifteen-second leases, dropped on withdraw or expiry. An address and a manifest, never a person.",
@@ -160,9 +124,6 @@ describe("Contract 1: process state is enumerated, not merely unnoticed", () => 
   });
 
   it("makes every one of them forget, rather than merely be small", async () => {
-    // Naming the state is half of it. The other half is that each one drops
-    // what it holds without being asked: a store that only grows is a store,
-    // whatever the module comment says about it.
     const { createRegistry } = await import("@/lib/signaling/registry");
     const { NullifierStore } = await import("@/lib/tokens/nullifiers");
 
@@ -175,7 +136,7 @@ describe("Contract 1: process state is enumerated, not merely unnoticed", () => 
       items: [],
     });
     expect(registry.size()).toBe(1);
-    clock += 60_000; // a minute: four lease lengths
+    clock += 60_000;
     expect(registry.size()).toBe(0);
 
     const nullifiers = new NullifierStore(2);
@@ -186,17 +147,12 @@ describe("Contract 1: process state is enumerated, not merely unnoticed", () => 
   });
 
   it("bounds the development identity provider too", async () => {
-    // The local Google stand-in lives under simulated-counterparties/ and so
-    // is outside the inventory above — but it runs inside the platform
-    // process and it holds personas, so an unbounded map of issued tokens to
-    // personas would still be a user table that nobody had named one.
     const devOAuth = await import("@simulated/google/provider");
     const persona = devOAuth.DEV_PERSONAS[0];
 
     const token = devOAuth.issueToken(persona, 1_000);
     expect(devOAuth.personaForToken(token, 1_000)).toEqual(persona);
 
-    // Expired, and gone rather than merely rejected.
     expect(devOAuth.personaForToken(token, 1_000 + devOAuth.DEV_TOKEN_TTL_MS + 1)).toBeNull();
     expect(devOAuth.issuedTokenCount()).toBe(0);
   });
@@ -244,16 +200,10 @@ describe("Contract 1: identity never reaches a log or an address", () => {
 
 describe("Contract 1: the allowlist has not grown", () => {
   it("permits exactly one exempt path, and it is the simulated counterparty", () => {
-    // Written out so that widening an allowlist is a visible diff on a test
-    // rather than a quiet addition to an array.
     expect([SIMULATED]).toEqual(["simulated-counterparties/"]);
   });
 
   it("exempts a path the scan actually reaches", () => {
-    // The assertion above compares a literal to itself, which is a fine diff
-    // tripwire and a worthless check. This is the half that was missing: the
-    // exempt prefix has to name something inside a scanned root, or it is
-    // exempting nothing and the rule is unguarded in a way nobody would see.
     expect(
       WRITE_ROOTS.some(
         (root) => SIMULATED.startsWith(`${root}/`) || SIMULATED === `${root}/`,
@@ -263,9 +213,6 @@ describe("Contract 1: the allowlist has not grown", () => {
   });
 
   it("still catches a write outside the exempt path", () => {
-    // Proof the rule can fail. The simulated counterparty does write a file,
-    // so without the allowlist this fires — which is what makes its silence
-    // with the allowlist in place mean something.
     const hits = scan(WRITE_ROOTS, [{ ...FS_WRITE_RULE, allow: [] }]);
     expect(
       hits.map((hit) => hit.file),

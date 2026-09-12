@@ -15,9 +15,6 @@ async function guard(formData: FormData): Promise<string> {
   const subscriptionId = String(formData.get("subscriptionId") ?? "");
   if (!viewer.sub) throw new Error("Sign in first.");
 
-  // A server action is a public endpoint. Confirm ownership with the
-  // counterparty rather than trusting the form — and resolve the customer
-  // from the subject, because the key no longer carries one to trust.
   const { customerId } = await entitlementFor(viewer.sub);
   if (!customerId) throw new Error("No subscription.");
 

@@ -5,26 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { ROOT, stripCommentsOnly, walk } from "./scan";
 
-/**
- * Contract 2, against the framework rather than against the code.
- *
- * Every route and page that touches the registry carries
- * `export const dynamic = "force-dynamic"`, and nothing asserted it. That is
- * the whole of what stands between this platform and an archive: without it
- * Next is free to prerender `/read` at build time and serve a snapshot of
- * whoever happened to be online when the bundle was built — a cached copy of
- * exactly what the contract says is never kept, produced by deleting one line
- * that looks like boilerplate.
- *
- * The same applies to a response without `no-store`. A CDN holding
- * `/api/v1/live` for sixty seconds is a sixty-second archive, and it is the
- * kind of thing added for a good reason by somebody who has not read this
- * file.
- *
- * Prose pages are deliberately not covered. `/privacy` and `/how-it-works`
- * read nothing and may be prerendered; requiring the annotation everywhere
- * would make it noise, and a rule that is mostly noise stops being read.
- */
 
 interface AppFile {
   rel: string;
@@ -57,8 +37,6 @@ describe("nothing that reads presence can be prerendered", () => {
   });
 
   it("marks every page that reads the viewer force-dynamic", () => {
-    // A page rendered once and reused would show one reader's tier — and
-    // possibly their name — to the next.
     const offenders = appFiles()
       .filter((file) => /\bgetViewer\s*\(|\bcookies\s*\(/.test(file.code))
       .filter((file) => !FORCE_DYNAMIC.test(file.code))
@@ -86,12 +64,7 @@ describe("nothing that reads presence can be cached downstream", () => {
     const offenders = appFiles()
       .filter((file) => file.rel.startsWith("src/app/api/"))
       .filter((file) => file.rel.endsWith("/route.ts"))
-      // The public key is the one thing here that is genuinely static and
-      // genuinely public; it is cacheable and says so.
       .filter((file) => !file.rel.includes(".well-known"))
-      // `NO_STORE` and `HEADERS` from @/lib/api/shape both carry the header,
-      // and `noStore()` sets it on a response that cannot take a header bag
-      // (a redirect). A route spelling it any of those ways is complying.
       .filter((file) => !/no-store|\bNO_STORE\b|\bnoStore\b|\bHEADERS\b/.test(file.code))
       .map((file) => file.rel);
 
@@ -102,15 +75,6 @@ describe("nothing that reads presence can be cached downstream", () => {
   });
 
   it("wraps every redirect an API route issues", () => {
-    // The check above is per *file*, which is too coarse: a route with three
-    // responses and `noStore` on two of them passes it. This was not
-    // hypothetical — `/api/dev-oauth/authorize` sets the header on the HTML
-    // consent screen and not on the branch that redirects with an
-    // authorization code in the query string, and the file-level assertion
-    // saw the header and was satisfied.
-    //
-    // Every redirect in this codebase either carries a Set-Cookie or a
-    // credential in its location, so the rule is simply: all of them.
     const offenders: string[] = [];
     for (const file of appFiles()) {
       if (!file.rel.startsWith("src/app/api/")) continue;
@@ -131,9 +95,6 @@ describe("nothing that reads presence can be cached downstream", () => {
   it("asks the framework to cache nothing on its own initiative", () => {
     const offenders: string[] = [];
     for (const file of appFiles()) {
-      // `revalidate` turns a page into a periodically-refreshed copy, which
-      // is a cache with a nicer name. `unstable_cache` and `force-cache` are
-      // explicit about it.
       if (/export\s+const\s+revalidate\s*=|unstable_cache|["']force-cache["']/.test(file.code)) {
         offenders.push(file.rel);
       }
@@ -142,17 +103,12 @@ describe("nothing that reads presence can be cached downstream", () => {
   });
 
   it("keeps the offline page unable to say what used to be there", () => {
-    // The tombstone test. A helpful "this column was called X, last seen
-    // Tuesday" requires the platform to have kept X and Tuesday, so the page
-    // that renders when nobody is serving must have nothing but the ids from
-    // the URL.
     const page = readFileSync(
       join(ROOT, "src", "app", "read", "[sub]", "[id]", "page.tsx"),
       "utf8",
     );
     const offline = page.slice(page.indexOf("function Offline"));
     expect(offline).toMatch(/Nobody is serving this right now/i);
-    // It may render the identifiers it was asked for, and nothing else.
     expect(offline).not.toMatch(/lastSeen|previously|was serving|title=|servedBy/);
   });
 });

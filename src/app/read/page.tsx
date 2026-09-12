@@ -21,7 +21,6 @@ export default async function ReadPage({
 }) {
   const { q = "" } = await searchParams;
 
-  // Fair-shared, so no contributor can crowd the others off the page.
   const located = fairShare(registry().search(q), (entry) => entry.presence.sub);
   const columns = located.filter((entry) => entry.item.kind === "column");
   const datasets = located.filter((entry) => entry.item.kind === "dataset");

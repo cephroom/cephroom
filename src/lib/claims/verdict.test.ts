@@ -48,7 +48,6 @@ describe("judge", () => {
   });
 
   it("honours an absolute tolerance, which is what log-scale metrics need", () => {
-    // A 0.1 change in pKi is 1.6% - a percentage tolerance would never fire.
     expect(
       judge({ value: 8.81, unit: null }, { value: 8.95, unit: null }, abs(0.1))
         .verdict,

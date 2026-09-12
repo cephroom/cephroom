@@ -63,9 +63,6 @@ export async function refreshProviderKeys(
     if (!response.ok) return;
     published = (await response.json()) as typeof published;
   } catch {
-    // Unreachable JWKS. Keep the window as it is rather than emptying it —
-    // a network blip must not lock every reader out, and the retention bound
-    // already limits how stale this can get.
     return;
   }
 

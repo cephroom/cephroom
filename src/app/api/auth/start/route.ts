@@ -42,8 +42,6 @@ export async function GET(request: Request) {
   authorize.searchParams.set("scope", provider.scope);
   authorize.searchParams.set("state", state);
 
-  // GitHub does not implement PKCE; sending the parameters is harmless there
-  // and required for Google.
   authorize.searchParams.set("code_challenge", challenge);
   authorize.searchParams.set("code_challenge_method", "S256");
 

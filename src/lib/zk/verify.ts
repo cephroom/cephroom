@@ -56,14 +56,10 @@ export function issueChallenge(now: number = Date.now()): string {
   const value = randomBytes(32).toString("hex");
   const epoch = challengeEpoch(now);
 
-  // Drop everything older than one epoch as we go. Lazy, like the presence
-  // registry: no sweeper, and the set cannot outgrow two epochs of sign-ins.
   for (const [key, issued] of challenges()) {
     if (issued.epoch < epoch - 1) challenges().delete(key);
   }
 
-  // Then the backstop. Map iterates in insertion order, so this evicts oldest
-  // first — which is the least-bad choice available without knowing who asked.
   while (challenges().size >= MAX_OUTSTANDING) {
     const oldest = challenges().keys().next();
     if (oldest.done) break;
@@ -147,8 +143,6 @@ export async function verifySubmission(
     return { ok: false, reason: "unknown-challenge" };
   }
 
-  // Spend the challenge before the expensive check, so a flood of invalid
-  // proofs against one challenge costs one pairing check rather than many.
   const nullifier = createHash("sha256")
     .update(submission.challenge, "utf8")
     .digest("hex");
@@ -182,9 +176,6 @@ export async function verifySubmission(
   }
   if (!valid) return { ok: false, reason: "bad-proof" };
 
-  // The subject. `Poseidon(iss, aud, sub, salt)` with a salt the platform has
-  // never seen, so this is stable for the user and reveals nothing about the
-  // Google account behind it.
   return { ok: true, subject: `z_${signals[OIDC_DIGEST_INDEX].toString(36)}` };
 }
 

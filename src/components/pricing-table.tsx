@@ -13,15 +13,6 @@ import {
   type PlanDefinition,
 } from "@/lib/stripe/plans";
 
-/**
- * One catalogue of plans, rendered.
- *
- * Generic over which catalogue, because there are two now and they must not
- * know about each other. The component is handed the plans, the current one,
- * and a rank — it has no idea whether it is selling discovery to a consumer
- * or capacity to a contributor, which is exactly the separation the pages
- * above it are trying to keep.
- */
 export function PricingTable({
   plans,
   current,
@@ -39,7 +30,6 @@ export function PricingTable({
   checkoutAction: (formData: FormData) => Promise<void>;
   from: string;
   featuredId?: string;
-  /** What the free plan says under its button. */
   freeNote: { current: string; included: string };
 }) {
   const [interval, setInterval] = useState<BillingInterval>("month");

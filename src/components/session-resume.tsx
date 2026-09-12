@@ -14,8 +14,6 @@ export function SessionResume() {
       const response = await fetch("/api/auth/refresh", {
         method: "POST",
       }).catch(() => null);
-      // Only reload if the refresh actually signed us in, to avoid a loop
-      // when the refresh key turns out to be expired too.
       if (response?.ok) {
         const json = (await response.json().catch(() => null)) as {
           signedIn?: boolean;

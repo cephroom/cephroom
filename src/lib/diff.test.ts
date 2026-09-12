@@ -66,7 +66,6 @@ describe("toHunks", () => {
 
     const hunks = toHunks(diffLines(before, after), 2);
     expect(hunks).toHaveLength(1);
-    // 2 lines of context either side, plus the removal and the addition.
     expect(hunks[0].lines).toHaveLength(6);
     expect(hunks[0].beforeStart).toBe(19);
   });

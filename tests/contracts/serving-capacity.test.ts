@@ -9,28 +9,6 @@ import {
   DISCOVERY_REACH,
 } from "@/lib/stripe/plans";
 
-/**
- * What a contributor's plan buys, and what it deliberately does not.
- *
- * It buys **how many items may be listed at once**. That is the same limit
- * the fair-share work introduced when one contributor announced five hundred
- * items and took 97% of the page — the mechanism already existed as an abuse
- * control, and this states it as a plan.
- *
- * It does **not** buy reach, ranking, or prominence, and the distinction is
- * the whole reason the two subscriptions can coexist without becoming the old
- * model again. If paying us bought a bigger share of somebody's search
- * results, a contributor plan would be buying attention that consumers came
- * here for, and the listing would be an auction. Every contributor present
- * gets an equal share of whatever page is being built; a plan changes how
- * many of *their* items are eligible to fill it, not how many slots they get.
- *
- * Which leaves a deliberate interaction worth stating: a contributor with
- * 2,500 items listed is fully discoverable to a consumer whose plan returns
- * enough results to reach them, and a sample to one whose plan does not. The
- * contributor decides how much is *present*; the consumer decides how much
- * they *see*. Neither pays for the other's side.
- */
 
 const platform = generateKeyPairSync("ed25519");
 const b64 = (pem: string) => Buffer.from(pem).toString("base64");
@@ -66,9 +44,6 @@ describe("a serve key carries the capacity its plan bought", () => {
   });
 
   it("refuses to believe a capacity above the largest plan", async () => {
-    // The key is signed by us, so this is not an attack — it is a guard
-    // against a bug upstream minting something nonsensical and the registry
-    // honouring it forever after.
     const verified = await tokens.verifyServeKey(
       await tokens.mintServeKey({ sub: "s_liar", capacity: 10_000_000 }),
     );
@@ -76,8 +51,6 @@ describe("a serve key carries the capacity its plan bought", () => {
   });
 
   it("falls back to free rather than zero when the claim is nonsense", async () => {
-    // Zero would silently take a contributor offline. Free is the honest
-    // reading of "we could not tell what you had bought".
     for (const nonsense of [0, -5, 1.5, Number.NaN]) {
       const key = await tokens.mintServeKey({
         sub: "s_odd",
@@ -139,8 +112,6 @@ describe("the platform holds a contributor to it", () => {
       ),
     );
     expect(route).toContain("withinCapacity");
-    // From the key, not from the body: a contributor cannot announce their
-    // own allowance.
     expect(route).toContain("capacity");
     expect(route).not.toMatch(/body\.capacity|parsed\.data\.capacity/);
   });
@@ -148,10 +119,6 @@ describe("the platform holds a contributor to it", () => {
 
 describe("capacity buys presence, never prominence", () => {
   it("gives every contributor the same share of a page, whatever they pay", () => {
-    // The contributor on Stacks and the contributor on Desk appear equally
-    // in a listing. If this ever stopped being true, a contributor plan would
-    // be buying search results, which is the consumer's product and the old
-    // model wearing a different hat.
     const entries = [
       ...Array.from({ length: SERVING_CAPACITY.stacks }, (_, i) => ({
         sub: "s_stacks",
@@ -164,17 +131,12 @@ describe("capacity buys presence, never prominence", () => {
     const counts: Record<string, number> = {};
     for (const entry of page) counts[entry.sub] = (counts[entry.sub] ?? 0) + 1;
 
-    // The free contributor keeps all five — a small contributor is never
-    // truncated to make room — and the paid one does not get the page.
     expect(counts.s_desk).toBe(5);
     expect(counts.s_stacks).toBeLessThanOrEqual(LISTING_MIN_SHARE);
     expect(counts.s_stacks / page.length).toBeLessThan(0.75);
   });
 
   it("surfaces more of a large contributor as the consumer's reach grows", () => {
-    // The deliberate interaction: the contributor decides how much is
-    // present, the consumer decides how much they see. Neither buys the
-    // other's side.
     const entries = Array.from({ length: SERVING_CAPACITY.stacks }, (_, i) => ({
       sub: "s_stacks",
       id: `a${i}`,
@@ -185,18 +147,6 @@ describe("capacity buys presence, never prominence", () => {
   });
 
   it("says so in the copy a contributor is deciding from", async () => {
-    /**
-     * Found by reading the page rather than the code. `/contribute` said the
-     * listing "gives every contributor an equal share, and a plan changes the
-     * size of your share", which is a contradiction in one sentence, and the
-     * Shelf plan advertised "An equal share of the listing, at ten times the
-     * size" — a promise of prominence that `fairShare` does not keep and must
-     * not, because prominence is the consumer's product.
-     *
-     * A plan that cannot deliver what its own card promises is the old model
-     * with the roles swapped: money taken for something the mechanism was
-     * never going to do.
-     */
     const { SERVING_PLANS } = await import("@/lib/stripe/plans");
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -229,11 +179,6 @@ describe("capacity buys presence, never prominence", () => {
   });
 
   it("does not tell a contributor to write an access level", async () => {
-    // The front matter a contributor is told to write has to be the front
-    // matter the node reads. `access` was dropped from `readColumnFile` when
-    // the gate went; the page still listed it beside `slug` and `title`, so
-    // somebody following the instructions would write a field that silently
-    // does nothing — and would reasonably believe it was doing something.
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const { ROOT } = await import("./scan");
@@ -245,7 +190,6 @@ describe("capacity buys presence, never prominence", () => {
   });
 
   it("keeps the free capacity generous enough to never be met in practice", () => {
-    // A researcher with their columns and the datasets behind them.
     expect(FREE_SERVING_CAPACITY).toBeGreaterThanOrEqual(20);
   });
 });

@@ -5,23 +5,9 @@ import { describe, expect, it } from "vitest";
 
 import { ROOT, stripCommentsAndStrings, walk } from "./scan";
 
-/**
- * Contract 0 — this is a GitHub for science, not a generic content site.
- *
- * Most of Contract 0 is enforced structurally: the social-graph features that
- * would dilute the thesis all require a user table or an archive, which the
- * no-user-data and no-content-at-rest tests already make unbuildable. This
- * file guards the specific temptations by name, so that reaching for one is a
- * failing test rather than a quiet drift toward a publishing SaaS.
- *
- * These are named features, not substrings of ordinary words: each pattern is
- * anchored so it matches an identifier or route, not prose (comments and
- * strings are stripped first regardless).
- */
 
 interface Temptation {
   name: string;
-  /** Why it belongs to a social/publishing product and not to this one. */
   why: string;
   pattern: RegExp;
 }
@@ -77,8 +63,6 @@ describe("Contract 0: the platform does not grow social-graph features", () => {
   });
 
   it("has no route segment named for a social feed", () => {
-    // A /feed, /trending, /following, or /notifications route is the shape of
-    // a social product. Discovery here is presence (/read), and that is all.
     const routes = walk(join(ROOT, "app"))
       .concat(walk(join(ROOT, "src", "app")))
       .map((f) => relative(ROOT, f).split(sep).join("/"));

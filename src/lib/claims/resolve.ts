@@ -96,8 +96,6 @@ export function resolveClaims(
 
   for (const claim of claims) {
     const dataset = datasets.get(claim.datasetSlug);
-    // Everything matching the query except the analysis. Usually one row; for
-    // a dataset that holds the same cell under several pipelines, several.
     const candidates = (dataset?.facts ?? [])
       .filter(
         (candidate) =>
@@ -120,10 +118,6 @@ export function resolveClaims(
             ? `No analysis called "${claim.method}" here. This cell has: ${picked.methods.join(", ")}.`
             : null;
 
-    // method_spread is a statement about *all* the analyses of a cell, so it
-    // resolves from the candidate set rather than from one picked fact — and
-    // is the one select that does not need a `method:` line, because naming a
-    // single analysis would defeat the question it asks.
     const observed: { value: number | null; unit: string | null } =
       claim.select === "method_spread"
         ? { value: methodSpread(candidates), unit: null }
@@ -153,8 +147,6 @@ export function resolveClaims(
                     ? { value: fact.dispersion ?? null, unit: fact.unit }
                     : { value: fact.value, unit: fact.unit };
 
-    // Fold spread reads as a ratio ("5.07×"); a censored fraction reads as a
-    // percentage ("7%"); everything else in its own unit.
     const show = (value: number | null, unit: string | null) =>
       value === null
         ? "—"
@@ -188,9 +180,6 @@ export function resolveClaims(
     const note = statMissing
       ? `This cell reports no ${describeStat(claim.select)} to check — the statistic is not available for this query.`
       : (judgement.note ??
-        // Keyed on the candidate set, not on one picked fact: method_spread
-        // resolves from every analysis of a cell and never picks one, so
-        // testing `fact` here reported "no cell" under a green verdict.
         (candidates.length > 0
           ? null
           : `No cell for ${claim.subject} × ${claim.object}.`));

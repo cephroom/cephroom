@@ -18,26 +18,9 @@ import {
   verifySubmission,
 } from "@/lib/zk/verify";
 
-/**
- * The property that makes "choose your own prover" real rather than a slogan.
- *
- * A third-party prover sees the user's JWT. That does not remove trust, it
- * moves it — and moving it is only an improvement if the user's choice is
- * genuine. The choice is genuine exactly when the platform cannot tell one
- * prover from another, so these tests assert that prover identity is not, and
- * cannot become, an input to verification.
- *
- * The failure this guards against is not malice. It is somebody adding a
- * `provers` allowlist "to block a broken one", or a `preferredProvers` list
- * for the UI, or a callback to the prover to check it is still up. Each is
- * individually reasonable and each one re-centralises the trust that was just
- * distributed.
- */
 
 const ISSUER = "https://accounts.google.com";
 
-// A stand-in RSA modulus. The verifier compares limbs, so any fixed value that
-// round-trips through the chunking is a valid fixture.
 const MODULUS = Buffer.alloc(256, 0x7b).toString("base64url");
 
 function signalsFor(challenge: string, digest = 12345n): string[] {
@@ -90,8 +73,6 @@ describe("prover identity is not an input to verification", () => {
     seedProviderKeys(ISSUER, [MODULUS]);
     const store = new NullifierStore();
 
-    // The same bytes submitted twice, notionally from two different provers.
-    // There is nowhere in the submission to say which, and that is the test.
     const first = issueChallenge();
     const second = issueChallenge();
 
@@ -106,13 +87,10 @@ describe("prover identity is not an input to verification", () => {
 
     expect(a).toEqual({ ok: true, subject: a.ok ? a.subject : "" });
     expect(b.ok).toBe(true);
-    // Same circuit output, same subject — the prover made no difference.
     expect(a.ok && b.ok && a.subject).toBe(b.ok ? b.subject : null);
   });
 
   it("takes no submission field that could identify a prover", () => {
-    // The submission type is the contract with the outside world. If a prover
-    // could name itself, a verifier could come to depend on the name.
     const source = readFileSync(
       join(ROOT, "src", "lib", "zk", "verify.ts"),
       "utf8",
@@ -126,9 +104,6 @@ describe("prover identity is not an input to verification", () => {
   });
 
   it("makes no network request while verifying", () => {
-    // A callback to the prover, or to anywhere, would be prover-specific trust
-    // arriving through the back door — and a verifier that needs the network
-    // is a verifier that fails when a prover goes down.
     const source = readFileSync(
       join(ROOT, "src", "lib", "zk", "verify.ts"),
       "utf8",
@@ -170,7 +145,6 @@ describe("a proof binds to a challenge and spends it", () => {
     };
 
     expect((await verifySubmission(submission, options)).ok).toBe(true);
-    // A valid proof copied is still a valid proof. Only the spend stops it.
     expect(await verifySubmission(submission, options)).toEqual({
       ok: false,
       reason: "challenge-spent",
@@ -183,8 +157,6 @@ describe("a proof binds to a challenge and spends it", () => {
     const mine = issueChallenge();
     const other = issueChallenge();
 
-    // A proof made for `other`, presented against `mine`. Without this check a
-    // proof could be lifted from one session into another.
     const result = await verifySubmission(
       { proof: {}, publicSignals: signalsFor(other), challenge: mine },
       { verifyingKey: {}, spend: (e, n) => store.spend(e, n), verifier: alwaysValid() },
@@ -193,9 +165,6 @@ describe("a proof binds to a challenge and spends it", () => {
   });
 
   it("spends the challenge before checking the proof", async () => {
-    // So a flood of junk proofs against one challenge costs one pairing check,
-    // not one per attempt. Rate limiting without identity is hard; not doing
-    // unbounded work per challenge is the part that is free.
     seedProviderKeys(ISSUER, [MODULUS]);
     const store = new NullifierStore();
     const challenge = issueChallenge();
@@ -252,7 +221,6 @@ describe("the provider's key is checked, not assumed", () => {
   it("round-trips a modulus through the circuit's limb representation", () => {
     const chunks = modulusToChunks(MODULUS);
     expect(chunks).toHaveLength(RSA_MODULUS_CHUNKS);
-    // 17 limbs of 121 bits covers 2057 bits, enough for RSA-2048 and no more.
     for (const limb of chunks) expect(limb < 1n << 121n).toBe(true);
 
     let rebuilt = 0n;
@@ -298,8 +266,6 @@ describe("the signal layout is pinned", () => {
   });
 
   it("keeps the digest and nonce at the indices the verifier reads", () => {
-    // A verifier reading the wrong index accepts the wrong statement, and does
-    // so silently. The layout is asserted rather than assumed.
     expect(OIDC_DIGEST_INDEX).toBe(RSA_MODULUS_CHUNKS);
     expect(NONCE_HASH_INDEX).toBe(RSA_MODULUS_CHUNKS + 1);
     expect(EXPECTED_SIGNAL_COUNT).toBe(RSA_MODULUS_CHUNKS + 3);
@@ -316,9 +282,6 @@ describe("the platform is a verifier and never a prover", () => {
         .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/\/\/.*$/gm, "");
       const rel = relative(ROOT, file).split(sep).join("/");
-      // `groth16.prove`, `plonk.prove`, `fullProve` — the platform running any
-      // of these is the moment the separation collapses, because a prover we
-      // operate is us.
       expect(code, `${rel} must not prove`).not.toMatch(
         /\b(fullProve|groth16\.prove|plonk\.prove)\b/,
       );
@@ -326,8 +289,6 @@ describe("the platform is a verifier and never a prover", () => {
   });
 
   it("declares only verification in the snarkjs type surface", () => {
-    // Comments scrubbed: that file explains at length why it declares no
-    // prover, and the explanation is not a declaration.
     const types = readFileSync(
       join(ROOT, "src", "types", "snarkjs.d.ts"),
       "utf8",

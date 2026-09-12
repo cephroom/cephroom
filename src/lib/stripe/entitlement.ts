@@ -5,14 +5,6 @@ import { gateway } from "./gateway";
 import type { SubscriptionView } from "./types";
 
 
-/**
- * What the two subscriptions add up to for one subject.
- *
- * Both are reported because one customer may hold either, both, or neither,
- * and the two say nothing about each other. A contributor on Stacks with no
- * discovery plan browses like anybody else; a consumer on Sweep who serves
- * nothing has the free serving capacity they never use.
- */
 export interface Entitlement {
   discovery: DiscoveryTier;
   serving: ServingTier;

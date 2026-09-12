@@ -2,13 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { describeAgreement } from "./dataset-matrix";
 
-/**
- * The matrix labels each cell's interquartile fold spread as tight / mixed /
- * loose against this dataset's own quartiles. The label is the signal; the
- * colour only reinforces it. These tests hold the thresholds and, more
- * importantly, the invariant that every band carries a word — so a reader
- * who cannot see the colour still knows how well the labs agree.
- */
 describe("describeAgreement", () => {
   it("calls tight agreement below ~2.5x", () => {
     expect(describeAgreement(1).word).toBe("tight");

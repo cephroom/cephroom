@@ -30,8 +30,6 @@ function periodEnd(subscription: Stripe.Subscription): number | null {
 function toView(subscription: Stripe.Subscription): SubscriptionView | null {
   const priceId = subscription.items.data[0]?.price.id ?? "";
   const match = planForPrice(priceId);
-  // A subscription to a price we do not sell is not one of ours. Ignoring it
-  // is safer than guessing a tier from it.
   if (!match) return null;
 
   return {
@@ -54,10 +52,6 @@ export function liveGateway(): StripeGateway {
     mode: key.startsWith("sk_live") ? "live" : "test",
 
     async findCustomerBySubject(sub) {
-      // Stripe holds the subject-to-customer mapping in customer metadata,
-      // so the platform does not have to. Every metadata key this platform
-      // has ever used is searched, newest first — see SUBJECT_METADATA_KEYS
-      // for why dropping one would orphan returning subscribers.
       for (const key of SUBJECT_METADATA_KEYS) {
         const found = await stripe().customers.search({
           query: `metadata['${key}']:'${sub}'`,
@@ -67,9 +61,6 @@ export function liveGateway(): StripeGateway {
         if (!id) continue;
 
         if (key !== SUBJECT_METADATA_KEY) {
-          // Migrate the mapping forward so the legacy search is paid once per
-          // customer rather than on every renewal. Writing to Stripe is
-          // allowed; writing it here would not be.
           await stripe().customers.update(id, {
             metadata: { [SUBJECT_METADATA_KEY]: sub },
           });
@@ -106,8 +97,6 @@ export function liveGateway(): StripeGateway {
         success_url: input.successUrl,
         cancel_url: input.cancelUrl,
         allow_promotion_codes: true,
-        // Carried so that a customer created by Checkout still answers the
-        // metadata lookup above.
         subscription_data: { metadata: { [SUBJECT_METADATA_KEY]: input.sub } },
       });
 

@@ -12,19 +12,6 @@ import {
   toChunks,
 } from "../../node/prover-witness";
 
-/**
- * Witness construction, tested without a 3 GB proving key.
- *
- * The circuit does not parse JSON. It is told where each claim sits and checks
- * that what is there matches, so the prover computes those indices — and an
- * index that is wrong by one proves something other than what was intended.
- *
- * The reassuring direction: in this circuit a wrong index makes the proof fail
- * to verify rather than prove a weaker statement, because the digest and nonce
- * checks are over what was actually found. That is why these indices are
- * derived inside the prover from the token rather than accepted from a caller
- * who could choose them.
- */
 
 function makeJwt(payload: Record<string, unknown>): string {
   const header = Buffer.from(
@@ -78,8 +65,6 @@ describe("locateClaim", () => {
   });
 
   it("throws rather than guessing when a claim is missing", () => {
-    // A missing claim must stop the prover, not produce a proof over an index
-    // that happens to point at something else.
     expect(() => locateClaim(payload, "email")).toThrow(/no "email" claim/);
   });
 
@@ -91,9 +76,6 @@ describe("locateClaim", () => {
   it("is not confused by a value that contains the next key's name", () => {
     const tricky = JSON.stringify({ sub: '"aud":fake', aud: "real" });
     const aud = locateClaim(tricky, "aud");
-    // indexOf finds the first occurrence, which is inside the sub value — so
-    // this documents a real limitation rather than pretending it is handled.
-    // The circuit's own check is what catches it: the digest will not match.
     expect(aud.keyStartIndex).toBeGreaterThan(0);
   });
 });
@@ -140,8 +122,6 @@ describe("sha256Pad", () => {
   });
 
   it("uses a second block when the length would not fit in the first", () => {
-    // 57 bytes leaves no room for the marker plus the 8-byte length in one
-    // 64-byte block, so the padding must spill.
     const message = Buffer.alloc(57, 0x41);
     const padded = sha256Pad(message, 128);
     expect(padded.readBigUInt64BE(120)).toBe(BigInt(57 * 8));

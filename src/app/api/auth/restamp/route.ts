@@ -23,8 +23,6 @@ export async function GET(request: Request) {
   if (!token) return response;
 
   const key = await verifyAccessKey(token);
-  // An anonymous key has no subject to ask Stripe about, and nothing to
-  // re-stamp: it was minted against a token, not against a subscription.
   if (!key?.sub) return response;
 
   const sub = key.sub;
@@ -35,8 +33,6 @@ export async function GET(request: Request) {
       accessCookie(await mintAccessKey({ sub, discovery: entitlement.discovery })),
     );
   } catch {
-    // Stripe unreachable. Leave the existing key alone; it renews on its own
-    // schedule and will pick the change up then.
   }
 
   return response;

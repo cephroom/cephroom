@@ -15,12 +15,7 @@ const NAV = [
 ];
 
 export async function SiteHeader() {
-  // Reading a cookie and verifying a signature. No lookup, because there is
-  // nothing to look anything up in.
   const viewer = await getViewer();
-  // A returning member whose 15-minute access key lapsed but whose 7-day
-  // refresh key is still good would otherwise appear signed out on a cold
-  // load. This resumes them silently.
   const resumable = !viewer.sub && (await canResumeSession());
 
   return (

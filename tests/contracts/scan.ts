@@ -3,16 +3,6 @@ import { join, relative, sep } from "node:path";
 
 export const ROOT = join(import.meta.dirname, "..", "..");
 
-/**
- * Source scanning for the contract tests.
- *
- * These tests exist because the contracts have to be enforced by something
- * other than the memory of whoever wrote them — and, since docs/CONTRACTS.md
- * was deleted, by something other than a document either. They are
- * deliberately crude: a regex over source text catches a reintroduced user
- * table or a stray writeFile, which is exactly the failure mode worth
- * catching. Anything subtler is a design review, not a test.
- */
 
 export interface Hit {
   file: string;
@@ -48,16 +38,6 @@ export function walk(dir: string, extensions = [".ts", ".tsx"]): string[] {
   return out;
 }
 
-/**
- * Removes comments and string literals before matching.
- *
- * Without this every rule fires on the explanatory comments that exist
- * precisely to describe what is forbidden, and on error messages that name
- * the thing they are refusing to do.
- *
- * Read `stripCommentsOnly` below before adding a rule: the cost of this one
- * is that it also deletes the contents of every string.
- */
 export function stripCommentsAndStrings(source: string): string {
   let out = "";
   let i = 0;
@@ -127,7 +107,6 @@ export function stripCommentsAndStrings(source: string): string {
       continue;
     }
 
-    // Inside a string literal. Keep newlines so line numbers stay true.
     const closer = state === "single" ? "'" : state === "double" ? '"' : "`";
     if (char === "\\") {
       i += 2;
@@ -145,22 +124,6 @@ export function stripCommentsAndStrings(source: string): string {
   return out;
 }
 
-/**
- * Removes comments but keeps string literals.
- *
- * The distinction matters more than it looks. `stripCommentsAndStrings`
- * exists so that a rule naming a forbidden thing does not fire on the comment
- * explaining why it is forbidden — but it also deletes the contents of every
- * string, which silently defeats any rule whose target only ever *appears*
- * inside a string. `request.headers.get("x-forwarded-for")` reduces to
- * `request.headers.get( )`, and the rule that exists to catch exactly that
- * line matched nothing for as long as it was written this way.
- *
- * So rules come in two kinds. A rule about an *identifier* (`req.ip`,
- * `writeFileSync`) reads stripped source. A rule about a *literal* (a header
- * name, a hostname, an API-key field) sets `raw: true` and reads this, which
- * keeps the strings and drops only the commentary.
- */
 export function stripCommentsOnly(source: string): string {
   let out = "";
   let i = 0;
@@ -210,7 +173,6 @@ export function stripCommentsOnly(source: string): string {
       continue;
     }
 
-    // Inside a string literal: kept verbatim, which is the whole point.
     const closer = state === "single" ? "'" : state === "double" ? '"' : "`";
     if (char === "\\") {
       out += source.slice(i, i + 2);
@@ -228,18 +190,7 @@ export function stripCommentsOnly(source: string): string {
 export interface Rule {
   name: string;
   pattern: RegExp;
-  /**
-   * Paths (relative, forward-slashed, prefix match) exempt from this rule.
-   * Every entry must be justified where the rule is declared, and widening
-   * one is a visible diff on a test.
-   */
   allow?: string[];
-  /**
-   * Match against source with string literals intact (comments still
-   * stripped). Set this whenever the thing being forbidden is spelled as a
-   * literal — a header name, a hostname, a field name — because the default
-   * stripping deletes exactly those and the rule then matches nothing.
-   */
   raw?: boolean;
 }
 
@@ -283,7 +234,6 @@ export function describeHits(hits: Hit[]): string {
     .join("\n");
 }
 
-/** Files present anywhere under the repo, excluding build and vendor output. */
 export function filesMatching(pattern: RegExp, extensions?: string[]): string[] {
   return walk(ROOT, extensions ?? [""])
     .map((file) => relative(ROOT, file).split(sep).join("/"))

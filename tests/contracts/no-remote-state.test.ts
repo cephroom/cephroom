@@ -6,29 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ROOT, describeHits, scan, stripCommentsOnly, walk } from "./scan";
 import { REMOTE_STORE_RULE } from "./rules";
 
-/**
- * The storage contracts, closed on the side they were open.
- *
- * Every other rule in this suite looks for a filesystem call, an import, or a
- * package name. A hosted key-value store needs none of them — it is a `fetch`
- * to a URL and a bearer token, and it would have satisfied the entire
- * contract suite while being, in every way that matters, the user table.
- * There is no "the platform makes no network calls" baseline to fall back on
- * either: it already talks to an identity provider and to Stripe.
- *
- * The same hole swallows Contract 2 from the other direction. A server-side
- * `fetch(presence.address + "/column/" + id)` makes the platform a host — the
- * bytes pass through its memory, it can cache them, and a reader's request is
- * no longer to the contributor's machine. The existing guard against this
- * bans three *names* (`fetchNodeContent`, `proxyNode`, `pipeThrough`), so it
- * catches a proxy somebody labelled as one.
- *
- * So the rule here is not about names. It is: the platform's server code may
- * reach the network only from modules named below, and the module that knows
- * where nodes live is not one of them.
- */
 
-/** A module is client-side if it says so. Everything else runs on the server. */
 function isClientModule(source: string): boolean {
   return /^\s*["']use client["']/m.test(source);
 }
@@ -53,25 +31,9 @@ function platformModules(): Module[] {
     });
 }
 
-/**
- * What counts as reaching the network.
- *
- * An SDK is included deliberately. `new Stripe(...)` makes requests without
- * the word `fetch` appearing anywhere, so a rule that only knew about `fetch`
- * would report that the platform's one genuinely stateful counterparty is
- * never contacted — and would miss a second module quietly acquiring a client
- * of its own.
- */
 const NETWORK_CALL =
   /\bfetch\s*\(|\bfetchImpl\s*\(|\bXMLHttpRequest\b|\baxios\b|\bgot\s*\(|\bundici\b|\b(https?)\.request\s*\(|\bnavigator\.sendBeacon\b|\bnew\s+Stripe\s*\(/;
 
-/**
- * Server modules permitted to reach the network, each for a stated reason.
- *
- * Short on purpose. Every entry is a place the platform talks to a party that
- * is allowed to be stateful — and each is a fixed, compile-time URL, never an
- * address that arrived from a request.
- */
 const SERVER_NETWORK_ALLOWED: Record<string, string> = {
   "src/app/api/auth/callback/[provider]/route.ts":
     "Exchanges an OAuth code and reads the profile, both at the provider's own published endpoints. The profile is turned into a subject and dropped.",
@@ -122,10 +84,6 @@ describe("Contract 1 and 2: durable state cannot arrive over HTTP either", () =>
 
 describe("Contract 2: the platform is never in the request for content", () => {
   it("never makes a network call from a module that knows a node's address", () => {
-    // The structural version of "do not proxy". The registry is the only
-    // thing that knows where a contributor's machine is; if the module
-    // holding that knowledge could also make requests, the proxy is one line
-    // away and it would be named something reasonable.
     const offenders = platformModules()
       .filter((module) => !module.client)
       .filter((module) => /\bregistry\s*\(|presence\.address|\.address\b/.test(module.code))
@@ -139,9 +97,6 @@ describe("Contract 2: the platform is never in the request for content", () => {
   });
 
   it("fetches nodes only from the browser, and only through the timeout wrapper", () => {
-    // Every node fetch is to a stranger's machine over an unknown network. A
-    // bare fetch to one that hangs rather than closes never settles, and the
-    // reader spins forever.
     const offenders = platformModules()
       .filter((module) => /\/(column|dataset|manifest|proposals)\//.test(module.code))
       .filter((module) => /\bfetch\s*\(/.test(module.code))
@@ -162,7 +117,6 @@ describe("Contract 2: the platform is never in the request for content", () => {
       }));
 
     for (const route of routes) {
-      // A route that both knows an address and streams a body is a host.
       expect(
         /new Response\s*\(\s*(response|upstream|body)\b|\.body\s*\)/.test(route.code),
         `${route.rel} looks like it relays a body it fetched.`,

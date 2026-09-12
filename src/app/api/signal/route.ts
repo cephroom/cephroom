@@ -13,13 +13,6 @@ import { FREE_SERVING_CAPACITY } from "@/lib/stripe/plans";
 export const dynamic = "force-dynamic";
 
 
-/**
- * Who is announcing, and how much they may announce.
- *
- * Both come from the key. A serve key carries the capacity its plan bought;
- * an ordinary session key carries none, so it gets the free capacity — which
- * is the point, because serving is free and signing in is enough.
- */
 async function announcer(
   request: Request,
 ): Promise<{ sub: string; capacity: number } | null> {

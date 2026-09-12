@@ -14,8 +14,6 @@ export class NullifierStore {
 
   spend(epoch: number, nullifier: Nullifier): SpendResult {
     if (!NULLIFIER_PATTERN.test(nullifier)) {
-      // Not a shape this store accepts. Refusing is safer than storing an
-      // unexpected string, which is how something identifying gets in.
       throw new Error("A nullifier must be 64 lowercase hex characters.");
     }
 

@@ -2,11 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { parseBody } from "./syntax";
 
-/**
- * Censored-fraction claims — what share of a cell's measurements are a "> N"
- * ceiling rather than a real point estimate. A claim about how much of the
- * median rests on true values, which the median itself cannot say.
- */
 function claim(value: string, select = "censored_fraction") {
   return [
     "{{claim:cens}}",
@@ -35,7 +30,6 @@ describe("censored_fraction grammar", () => {
   });
 
   it("reads a percentage as a fraction", () => {
-    // "7%" and "0.07" are the same assertion.
     const [c] = parseBody(claim("7%")).claims;
     expect(c.expectedValue).toBeCloseTo(0.07);
     expect(c.expectedUnit).toBeNull();

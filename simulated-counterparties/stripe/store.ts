@@ -104,14 +104,9 @@ export function planFor(sessionId: string) {
   const session = readSession(sessionId);
   if (!session) return null;
 
-  // By price id, which is what the session actually carries. Rebuilding it
-  // from plan + interval drops any price off that axis — the reduced rate was
-  // offered at the full annual price for exactly that reason.
   const byId = priceForId(session.request.priceId);
   if (byId) return { session, plan: byId.plan, price: byId.price };
 
-  // A free plan has no price and cannot be checked out, so a session naming
-  // one is malformed rather than something to guess at.
   const plan = planById(session.request.plan);
   const price = plan?.prices?.[session.request.interval];
   if (!plan || !price) return null;
@@ -205,8 +200,6 @@ export function simulatedGateway(): StripeGateway {
       );
       if (!customer) return null;
 
-      // Migrate a customer found under an older metadata key forward, exactly
-      // as the live gateway does, so the stand-in exercises that path too.
       if (!customer.metadata[SUBJECT_METADATA_KEY]) {
         customer.metadata = { [SUBJECT_METADATA_KEY]: sub };
         save(store);

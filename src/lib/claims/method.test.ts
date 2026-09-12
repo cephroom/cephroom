@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { methodSpread, methodsOf, selectByMethod } from "./method";
 
-/**
- * These tests state decisions, not behaviour. The central one — that a claim
- * which does not name a method resolves *broken* rather than picking or
- * pooling — is a judgement call about scientific honesty, and it is written
- * here so that changing it is a visible argument rather than a quiet edit.
- */
 
 const ki = [{ method: null, value: 1.549 }];
 
@@ -29,9 +23,6 @@ describe("a dataset with one analysis behaves exactly as before", () => {
   });
 
   it("refuses a claim that asks for a method the cell does not have", () => {
-    // Not a near miss to be forgiven. The author believes they are quoting a
-    // number from an analysis this dataset does not contain, and that belief
-    // is the thing worth surfacing.
     const result = selectByMethod(ki, "online");
     expect(result.kind).toBe("unknown");
   });
@@ -57,7 +48,6 @@ describe("a cell with several analyses will not answer an unqualified claim", ()
   });
 
   it("never averages them", () => {
-    // The tempting wrong answer: 64.7%, a number no experiment produced.
     const result = selectByMethod(decoders, null);
     expect(result.kind).not.toBe("resolved");
   });
@@ -68,8 +58,6 @@ describe("a cell with several analyses will not answer an unqualified claim", ()
   });
 
   it("matches a method name case- and space-insensitively", () => {
-    // A method name is typed by hand in prose. "Online" and "online" are not
-    // two analyses.
     expect(
       selectByMethod(decoders, "  Online ").kind === "resolved" &&
         selectByMethod(decoders, "  Online ").kind,
@@ -86,7 +74,6 @@ describe("a cell with several analyses will not answer an unqualified claim", ()
   });
 
   it("answers when several rows are all the same analysis", () => {
-    // Repetition is not ambiguity.
     const repeated = [
       { method: "online", value: 70.0 },
       { method: "online", value: 70.0 },
@@ -115,7 +102,6 @@ describe("methodsOf", () => {
 
 describe("methodSpread — how far the pipelines disagree", () => {
   it("is the ratio of the widest pair", () => {
-    // EEG-TCNet, the real case: 59.45 offline, 70.00 online.
     expect(methodSpread(decoders)).toBeCloseTo(70.0 / 59.45, 6);
   });
 
@@ -126,8 +112,6 @@ describe("methodSpread — how far the pipelines disagree", () => {
   });
 
   it("refuses a non-positive value rather than inventing a ratio", () => {
-    // A ratio through zero or a negative is not a statement about
-    // disagreement, and reporting one would be worse than reporting nothing.
     expect(
       methodSpread([
         { method: "a", value: 0 },
@@ -143,8 +127,6 @@ describe("methodSpread — how far the pipelines disagree", () => {
   });
 
   it("ignores an unnamed analysis rather than mixing it in", () => {
-    // A null-method row is "this dataset has one analysis". Counting it as a
-    // second one would manufacture disagreement out of a modelling choice.
     expect(
       methodSpread([
         { method: null, value: 1 },

@@ -1,20 +1,4 @@
 
-/**
- * A stand-in for Google's OAuth endpoints, run locally.
- *
- * This lives with the other simulated counterparty rather than in `src/`,
- * which is not tidiness — it is the boundary. AGENTS.md says counterparties
- * are mocked, never our own code, and that the directory name *is* the
- * enforcement. While this file sat in `src/lib/auth/`, the platform's source
- * contained a list of people with email addresses, and the contract test that
- * guards identity had to carry four separate exemptions to allow it.
- *
- * Google holds names and addresses because an identity provider must. That is
- * a fact about Google, so it belongs on Google's side of the line, and the
- * platform's side now has no email address in it at all.
- *
- * Everything here is development-only and gated on AUTH_DEV_OAUTH=1.
- */
 export const DEV_OAUTH_CLIENT_ID = "cephroom-local";
 export const DEV_OAUTH_CLIENT_SECRET = "cephroom-local-secret";
 
@@ -49,10 +33,6 @@ export const DEV_PERSONAS: DevPersona[] = [
     mimics: "github",
     login: "kabara",
   },
-  // Enough distinct accounts to run the platform at a realistic shape —
-  // several readers on different tiers against more than one contributor at
-  // the same time. One-to-one role-play hides everything that only shows up
-  // when parties can be compared with each other.
   {
     sub: "dev-google-2",
     name: "Priya Raghunathan",
@@ -164,7 +144,6 @@ interface IssuedToken {
   expiresAt: number;
 }
 
-// Module-level state is fine here: this exists only in a single dev process.
 const globalForCodes = globalThis as unknown as {
   __devOAuthCodes?: Map<string, IssuedCode>;
   __devOAuthTokens?: Map<string, IssuedToken>;
@@ -175,22 +154,6 @@ export const issuedTokens = (globalForCodes.__devOAuthTokens ??= new Map());
 
 export const DEV_CODE_TTL_MS = 5 * 60_000;
 
-/**
- * How long a dev access token answers for.
- *
- * It matches the `expires_in` the token endpoint already advertised, which
- * previously described a lifetime nothing enforced: the token map was written
- * on every exchange and never read for expiry, never pruned and never
- * deleted. Left running, a development process accumulated one
- * token-to-persona entry per sign-in for as long as it was up — an unbounded
- * map from a bearer credential to a name and an email address, inside the
- * platform process.
- *
- * It is the counterparty's state rather than the platform's, and it is
- * development-only, both of which make it permitted. Neither makes it
- * exempt from being bounded, so it expires and prunes like everything else
- * here does.
- */
 export const DEV_TOKEN_TTL_MS = 60 * 60_000;
 
 export function issueCode(
@@ -223,14 +186,6 @@ export function issueToken(persona: DevPersona, now: number = Date.now()): strin
   return token;
 }
 
-/**
- * The persona behind a bearer token, or null.
- *
- * Reading goes through here rather than through `issuedTokens.get` so that
- * expiry is applied at the one place a token is exchanged for a name. A
- * caller reaching into the map directly would resurrect the old behaviour
- * without touching this file.
- */
 export function personaForToken(
   token: string,
   now: number = Date.now(),
@@ -249,7 +204,6 @@ export function issuedTokenCount(): number {
   return issuedTokens.size;
 }
 
-/** Lazy sweep, like the presence registry: no timer, no separate lifecycle. */
 function prune(entries: Map<string, { expiresAt: number }>, now: number): void {
   for (const [key, entry] of entries) {
     if (entry.expiresAt < now) entries.delete(key);
@@ -271,13 +225,6 @@ function escapeHtml(value: string): string {
   );
 }
 
-/**
- * The consent screen.
- *
- * Rendered here rather than in the route so that the personas — and their
- * email addresses — never appear in the platform's own source. The route is a
- * transport shim; this is the counterparty.
- */
 export function renderConsentScreen(input: {
   pathname: string;
   clientId: string;

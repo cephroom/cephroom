@@ -3,16 +3,6 @@ import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { SignJWT, importPKCS8 } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 
-/**
- * Contract 1 says authorization is signature verification, not a lookup. That
- * is only sound if a forged, tampered, expired, or wrong-audience key is
- * rejected. These exercise the real verifier against exactly those.
- *
- * A fresh Ed25519 pair is generated and injected as the platform's keys
- * before the token module is imported, so the test signs with the same key
- * the verifier trusts — and an attacker's separately-generated key stands in
- * for a forgery.
- */
 
 const b64 = (pem: string) => Buffer.from(pem).toString("base64");
 
@@ -50,7 +40,7 @@ describe("forgery and tampering are rejected", () => {
     const decoded = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8"),
     );
-    decoded.discovery = "sweep"; // the escalation an attacker would want
+    decoded.discovery = "sweep";
     const tampered = [
       header,
       Buffer.from(JSON.stringify(decoded)).toString("base64url"),
@@ -79,7 +69,6 @@ describe("forgery and tampering are rejected", () => {
   });
 
   it("rejects the alg:none downgrade", async () => {
-    // header {"alg":"none"}, a lab-tier payload, empty signature.
     const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString(
       "base64url",
     );
@@ -121,8 +110,6 @@ describe("expiry and audience are enforced", () => {
   });
 
   it("does not accept a refresh key where an access key is required", async () => {
-    // Different audiences: a long-lived refresh key must not be presentable
-    // as an access key, or the 15-minute access window would be meaningless.
     const refresh = await tokens.mintRefreshKey({ sub: "s_reader" });
     expect(await tokens.verifyAccessKey(refresh)).toBeNull();
     expect(await tokens.verifyRefreshKey(refresh)).not.toBeNull();
@@ -144,34 +131,21 @@ describe("the node key is an access-audience key, and nothing more", () => {
     const key = await tokens.verifyAccessKey(nodeKey, {
       audience: "s_contributor",
     });
-    // The subject is scoped to the contributor being visited, so it is
-    // deliberately *not* the reader's own — see
-    // tests/contracts/readers-are-not-correlatable.test.ts.
     expect(key?.sub).not.toBe("s_lab");
     expect(key?.sub?.startsWith("n_")).toBe(true);
     expect(key?.scp).toContain("write:propose");
-    // Not `serve:node`. That scope left `scopesForTier` in cycle 3: it was
-    // granted to Lab alone, never checked anywhere, and its only effect was
-    // to imply that publishing is a paid feature — which Contract 2 says it
-    // is not. See tests/contracts/serving-is-free.test.ts.
     expect(key?.scp).not.toContain("serve:node");
   });
 
   it("issues a serve key that announces but grants NO read access", async () => {
-    // The long-lived key a contributor pastes into NODE_KEY. It must not be a
-    // reader session: a leaked 30-day serve key that could read every paid
-    // column is a far larger blast radius than "announce under this subject".
     const serve = await tokens.mintServeKey({ sub: "s_pub" });
 
-    // Rejected by the reader-session verifier — this is what closes the hole.
     expect(await tokens.verifyAccessKey(serve)).toBeNull();
 
-    // Accepted only by the announce-only verifier, yielding just a subject.
     const announced = await tokens.verifyServeKey(serve);
     expect(announced?.sub).toBe("s_pub");
     expect(announced).not.toHaveProperty("tier");
 
-    // And an access key is not a serve key — the audiences do not cross.
     const access = await tokens.mintAccessKey({ sub: "s_pub", discovery: "query" });
     expect(await tokens.verifyServeKey(access)).toBeNull();
   });

@@ -41,9 +41,6 @@ export async function POST(request: Request) {
     return response;
   }
 
-  // What the reader currently holds, so an outage can carry it forward
-  // instead of inventing a downgrade. Reading the access cookie here is the
-  // only way to know it: the refresh key deliberately carries no tier.
   const existing = request.headers
     .get("cookie")
     ?.split("; ")
@@ -57,9 +54,6 @@ export async function POST(request: Request) {
   try {
     fromStripe = (await entitlementFor(key.sub)).discovery;
   } catch {
-    // Not "Stripe said no" — "Stripe said nothing". Treated as the same fact,
-    // this demoted paying subscribers during any outage; see
-    // tests/contracts/an-outage-does-not-downgrade.test.ts.
     fromStripe = null;
   }
 

@@ -10,17 +10,6 @@ import { DISCOVERY_CONCURRENCY, DISCOVERY_REACH } from "@/lib/stripe/plans";
 
 export const dynamic = "force-dynamic";
 
-/**
- * The discovery plan behind this request.
- *
- * From the session cookie, or from an anonymous token presented as a bearer —
- * the token path is the point of Layer 1 now that reading is ungated: a
- * subscriber's *queries* are the one activity the platform can still see, and
- * a token lets them spend their reach without the search being attached to
- * their subscription.
- *
- * No key is not an error. Browsing is free and needs none.
- */
 async function reachFor(request: Request): Promise<DiscoveryTier> {
   const header = request.headers.get("authorization") ?? "";
   if (header.toLowerCase().startsWith("bearer ")) {
@@ -50,12 +39,7 @@ export async function GET(request: Request) {
     .map((entry) => ({
       sub: entry.presence.sub,
       servedBy: entry.presence.displayName,
-      // Announced by the contributor, passed on unread. Absent when they set
-      // none: "nothing" is a legitimate answer to how to pay somebody, and an
-      // empty string invites a client to render an empty payment box.
       ...(entry.presence.payTo ? { payTo: entry.presence.payTo } : {}),
-      // The address is the point of this endpoint: a client fetches the bytes
-      // from here, directly, and the platform is not in that request.
       address: entry.presence.address,
       id: entry.item.id,
       title: entry.item.title,
@@ -69,14 +53,6 @@ export async function GET(request: Request) {
       },
     }));
 
-  // An equal share of the page each, so one contributor announcing five
-  // hundred items cannot bury the rest. Measured before this existed: one
-  // hostile contributor held 97% of the listing and a search for a real tag
-  // came back 506 results, 500 of them hers.
-  //
-  // How much of the page the caller gets is their discovery plan. It is the
-  // same query over the same presence either way — a plan buys more of the
-  // answer, never a different one, and never anything from inside a column.
   const discovery = await reachFor(request);
   const results = fairShare(
     matching,
@@ -89,14 +65,11 @@ export async function GET(request: Request) {
       ...envelope(),
       contributors: new Set(results.map((r) => r.sub)).size,
       count: results.length,
-      // What this plan is cleared for, so a crawler knows how hard to go
-      // without guessing. The client does the crawling; we hand out the map.
       reach: {
         plan: discovery,
         results: DISCOVERY_REACH[discovery],
         concurrentNodes: DISCOVERY_CONCURRENCY[discovery],
       },
-      // Stated, so a client can tell a short listing from a quiet network.
       ...(results.length < matching.length
         ? { truncated: true, matching: matching.length }
         : {}),
