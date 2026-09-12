@@ -105,13 +105,20 @@ contract 2 defend each other.
 | `discovery-indexes-nothing.test.ts` | Naming any search-index or embedding library |
 | `a-key-unlocks-nothing.test.ts` | Plan copy promising "premium", "exclusive", "unlock", "support contributors" |
 | `api-surface.test.ts` | The claims resolver importing React or `node:`, or a second copy of it appearing |
+| `datasets-come-from-the-same-node.test.ts` | A reader fetching `/dataset/` from a different binding than it fetched `/column/` from |
 
-**Knowingly unenforced.** Nothing asserts that a reader resolves a claim's
-dataset from the same node that served the claim. `/api/v1/read` states the rule
-in its own response body, with the reason — an author vouches for the data they
-serve, and letting a stranger's node answer would let anyone substitute the
-numbers a claim is checked against. It is the load-bearing rule of contract 1
-and it currently rests on discipline. See "Unenforced" below.
+**The load-bearing one.** A claim is checked against a dataset, so if the dataset
+can come from a node other than the one that served the claim, anyone serving
+that slug can substitute the numbers the claim is judged against — and a green
+badge means nothing. An author vouches for the data they serve. `/api/v1/read`
+states this rule in its own response body; for a long time nothing held it, and
+it now does: every reader must resolve a dataset from the same binding it
+resolved the column from, and from exactly one.
+
+What that test deliberately does *not* assert: that no discovery call appears
+near a dataset fetch. An earlier version did, and it flagged the CLI for using
+the locator to find *the* node — which is discovery working. A guard that fires
+on correct code gets silenced rather than heeded.
 
 ---
 
@@ -462,7 +469,6 @@ nobody has written down is indistinguishable from a rule nobody keeps.
 
 | Contract | Unenforced | Why it matters |
 |---|---|---|
-| 1 | A reader resolves a claim's dataset from the same node that served the claim | `/api/v1/read` states the rule and gives the reason; nothing tests it. Letting another node answer would let anyone substitute the numbers a claim is checked against — which is the whole mechanism |
 | 4 | No TURN relay | Structurally satisfied — plain HTTP, no peer connection — but nothing fails if a relay appears |
 | 7 | `formatPrice` above 5,000 minor units | Round-trip is tested to 5,000; the largest real price is 99,000 |
 | 11 | Local-only adversarial testing | No test; rests on the observable absence of external probing |

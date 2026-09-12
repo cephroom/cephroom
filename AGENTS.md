@@ -28,6 +28,7 @@ carries it, which is falsifiable by deleting the section.
 | Contract | Where it is held |
 | --- | --- |
 | 1. A GitHub for science, not a publishing SaaS | `thesis.test.ts`, `discovery-indexes-nothing.test.ts` |
+| 1. A dataset is resolved from the node that served the claim | `datasets-come-from-the-same-node.test.ts` |
 | 2. No person-linkable data at rest | `no-user-data.test.ts`, `identity-surface.test.ts`, `no-remote-state.test.ts` |
 | 2. Tokens do not degrade into identified search | `tokens-do-not-degrade-silently.test.ts` |
 | 2. A node stores a scoped pseudonym, and expires it | `tests/node/proposal-subjects-are-node-scoped.test.ts` |
