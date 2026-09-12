@@ -44,6 +44,29 @@ export const LISTING_MIN_SHARE = 10;
  * whatever they pay; capacity buys how much work is eligible to fill it, and
  * copy-does-not-overstate.test.ts keeps the plan bullets honest about it.
  */
+/**
+ * Which limit actually cut a listing - contract 9, the honesty half.
+ *
+ * Two different things truncate an answer and they call for opposite responses
+ * from a reader. Hitting the plan's ceiling means a larger plan returns more.
+ * Hitting the per-contributor share means it does not, and in a small network
+ * that is almost always the one that bound the result: below twenty
+ * contributors, Browse and Query both land on the same floor and return the
+ * identical listing.
+ *
+ * Reporting only "truncated" and the plan's ceiling read as "pay more to see
+ * the rest" in exactly the case where paying more changes nothing. Naming the
+ * cause is what stops the product upselling something the reader already has.
+ */
+export function limitedBy(
+  returned: number,
+  matching: number,
+  limit: number,
+): "reach" | "share" | null {
+  if (returned >= matching) return null;
+  return returned >= limit ? "reach" : "share";
+}
+
 export function fairShare<T>(
   entries: T[],
   contributorOf: (entry: T) => string,

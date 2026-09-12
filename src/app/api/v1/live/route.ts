@@ -4,7 +4,7 @@ import { envelope, HEADERS } from "@/lib/api/shape";
 import type { DiscoveryTier } from "@/lib/access";
 import { getViewer } from "@/lib/auth/session";
 import { verifyAccessKey } from "@/lib/keys/tokens";
-import { fairShare } from "@/lib/signaling/fair-share";
+import { fairShare, limitedBy } from "@/lib/signaling/fair-share";
 import { registry } from "@/lib/signaling/registry";
 import { DISCOVERY_CONCURRENCY, DISCOVERY_REACH } from "@/lib/stripe/plans";
 
@@ -54,11 +54,9 @@ export async function GET(request: Request) {
     }));
 
   const discovery = await reachFor(request);
-  const results = fairShare(
-    matching,
-    (entry) => entry.sub,
-    DISCOVERY_REACH[discovery],
-  );
+  const reach = DISCOVERY_REACH[discovery];
+  const results = fairShare(matching, (entry) => entry.sub, reach);
+  const limit = limitedBy(results.length, matching.length, reach);
 
   return NextResponse.json(
     {
@@ -70,8 +68,8 @@ export async function GET(request: Request) {
         results: DISCOVERY_REACH[discovery],
         concurrentNodes: DISCOVERY_CONCURRENCY[discovery],
       },
-      ...(results.length < matching.length
-        ? { truncated: true, matching: matching.length }
+      ...(limit
+        ? { truncated: true, matching: matching.length, limitedBy: limit }
         : {}),
       results,
       note: "Presence only. Nothing that is not being served right now appears here, and nothing that ever was is recorded.",

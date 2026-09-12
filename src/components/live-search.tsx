@@ -22,6 +22,7 @@ interface LiveAnswer {
   contributors: number;
   truncated?: boolean;
   matching?: number;
+  limitedBy?: "reach" | "share";
   reach: { plan: string; results: number; concurrentNodes: number };
   results: LiveResult[];
 }
@@ -166,10 +167,9 @@ function Answer({
         role={spend === "stale" || spend === "refused" ? "status" : undefined}
       >
         {SPEND_NOTE[spend]}
-        {answer.truncated
-          ? ` ${answer.matching} matched; ${answer.reach.plan} returns ${answer.reach.results}.`
-          : ""}
       </p>
+
+      {answer.truncated && <Truncation answer={answer} />}
 
       {answer.results.length === 0 && (
         <div className="mt-10 rounded-xl border border-rule bg-paper-raised px-6 py-12 text-center">
@@ -255,6 +255,35 @@ function Answer({
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Says which limit cut the listing, because the two call for opposite
+ * responses and only one of them is worth money.
+ */
+function Truncation({ answer }: { answer: LiveAnswer }) {
+  const held = (answer.matching ?? 0) - answer.count;
+
+  return (
+    <p className="mt-2 max-w-[62ch] text-[0.78rem] leading-relaxed text-ink-faint">
+      {answer.limitedBy === "reach" ? (
+        <>
+          {answer.matching} online, {answer.count} shown &mdash; your{" "}
+          {answer.reach.plan} plan returns {answer.reach.results} per query, and
+          this search reached it. A larger plan returns more.
+        </>
+      ) : (
+        <>
+          {answer.matching} online, {answer.count} shown. Your{" "}
+          {answer.reach.plan} plan&rsquo;s limit of {answer.reach.results} was
+          not reached: the other {held} were held back so that no contributor
+          takes more than an equal share of the page.{" "}
+          <strong>A larger plan would return the same {answer.count}.</strong>{" "}
+          Search for something narrower to see them.
+        </>
+      )}
+    </p>
   );
 }
 

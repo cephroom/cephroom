@@ -57,6 +57,17 @@ export default async function PricingPage({
           no index here, at any price — a node that is switched off is not
           findable, because nothing about it was kept.
         </p>
+        <p className="mt-4 max-w-[62ch] text-[0.95rem] leading-relaxed text-ink-muted">
+          And one that costs us a sale, so it belongs here rather than in a
+          footnote. A listing gives every contributor who is online the{" "}
+          <strong>same share of the page</strong>, whatever anyone pays. While
+          the network is small that share, not your plan, is what decides how
+          much comes back — so Browse and Query return the same results until
+          there are more contributors online than a single page can hold. The
+          number on a plan is a ceiling, and you only meet it once the network
+          is big enough to reach it. When a search is cut short we tell you
+          which of the two did it.
+        </p>
       </header>
 
       {params.checkout === "cancelled" && (
