@@ -384,3 +384,88 @@ rigour it does not have.
   generalisation is demonstrated rather than claimed. A motor-imagery decoding
   matrix is the right choice: it is the case the literature above measures, and
   it makes every pharmacology assumption in the UI visible by breaking.
+
+---
+
+## 2026-09-12 (cycle 3, second pass) — What a membership should cost, and who it should pay
+
+Asked to make the plans reasonable and friendly to both sides. Two reference
+classes matter, because this product sits between them.
+
+### Creator platforms: the platform takes 0–15%, the creator takes the rest
+
+| Platform | Platform cut | Notes |
+| --- | --- | --- |
+| Substack | ~10% + Stripe | ~13–15% effective on gross |
+| Patreon | up to ~10% | tier-dependent |
+| Ghost (self-hosted) | 0% | you pay hosting instead |
+| Ghost Pro | 0% on revenue | hosting is the fee |
+
+The shape is consistent: **the platform's cut is the minority share, and the
+person who wrote the thing gets the rest.**
+
+### Learned societies: dues are tiered by career stage, steeply
+
+| | Regular | Postdoc | Grad student | Undergrad |
+| --- | --- | --- | --- | --- |
+| SfN (1 yr) | $245 | $185 | **$95** | **$38** |
+| OHBM | $220 | — | **$100** | — |
+
+Graduate students pay **39%** of the regular rate at SfN, **45%** at OHBM.
+Both also reduce for members in countries the World Bank classifies as
+developing. Both verify — SfN wants a letter from a department head.
+
+Two things follow directly.
+
+**A reduced rate is a norm in this field, not a growth tactic.** A platform for
+researchers with a single price is priced wrong for most of its audience. Built
+this cycle at $36/yr against $90.
+
+**We cannot verify it, and should not pretend to.** Verification means holding
+a record of who proved what, which Contract 1 forbids. So it is asked for and
+not proved, and — importantly — **nothing marks a reduced-rate key**. A `tier`
+that said "student" would be a durable fact about a person riding around in
+their browser, which is the thing the contract exists to prevent. The reduced
+rate is a *price*, and the tier it buys is identical.
+
+### The finding that is not about price
+
+Against the creator-platform column, this platform is an outlier in a way the
+pricing page was actively obscuring. **Contributors receive nothing.** They run
+the node, pay the bandwidth, hold the uptime — and readers pay us $9–29 a month
+for access to their columns. The page said "Membership pays for the writing."
+It does not. That sentence is now gone.
+
+Under Contract 0 this is also a thesis problem, not only a fairness one: GitHub
+does not charge readers to read your repository. A "GitHub for science" whose
+revenue is a toll on other people's work is not obviously the thing it claims
+to be.
+
+The honest obstacle, stated rather than dodged: **splitting revenue fairly
+requires counting who read what.** A per-contributor read ledger is durable
+state about people, keyed to identity, and it is exactly what Contract 1
+forbids. Every scheme that starts "just count reads and divide" ends at a user
+table.
+
+What is possible without one, ranked:
+
+1. **A contributor charges from their own node, with their own payment
+   relationship, and we take no cut.** Available today in principle — the node
+   is already the enforcement point and the platform is not in the request
+   path. Costs us nothing, needs no ledger, and no read count. It moves the
+   toll off the platform entirely.
+2. **A flat, equal split among contributors who served during the period**,
+   with no regard to how much anyone read. Needs a list of who was live, which
+   the presence registry has in RAM — but *paying* them needs it to survive the
+   period, and that is a durable list of contributors. Probably fails the
+   contract; recorded so the next cycle does not re-derive it.
+3. **Reader-directed allocation**: the reader nominates who their fee goes to.
+   Stripe holds the mapping, not us. Plausible, and the most contract-shaped of
+   the three, but it is a real product design rather than a tweak.
+
+Not building any of them this cycle, because which one is right is a business
+decision about what this product is, not a defect to be fixed quietly. What was
+built is everything that needed no such decision: the false sentence removed,
+the obstacle stated on the pricing page where a prospective contributor will
+see it, the imaginary paywall on publishing deleted, and the reduced rate
+shipped.
