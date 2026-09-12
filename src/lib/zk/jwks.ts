@@ -8,7 +8,12 @@
  * own schedule: verifying only against the newest would reject honest proofs
  * made minutes earlier.
  *
- * The window is what keeps it bounded. A key not seen in a fortnight is dropped
+ * It is named in PERMITTED_GLOBAL_STATE under contract 2 even though it holds
+ * nothing personal, because the list is of everything this process remembers -
+ * an enumeration with exceptions for "obviously harmless" is not an
+ * enumeration.
+ *
+ * The window is what keeps it bounded. A key not seen in a fortnight is dropped * The window is what keeps it bounded. A key not seen in a fortnight is dropped
  * rather than kept in case it comes back, so this cannot silently become a
  * permanent archive of everything a provider has ever published.
  */

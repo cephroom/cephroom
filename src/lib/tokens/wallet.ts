@@ -95,6 +95,15 @@ async function isStale(wallet: Wallet): Promise<boolean> {
  * "usable" means "not known to be dead". That weaker claim is stated on
  * /privacy rather than smoothed over.
  */
+/**
+ * Lives in the browser and nowhere else - contract 2.
+ *
+ * A wallet the platform held would be a per-subscriber record of how much
+ * anonymous search capacity somebody is carrying, which is an activity record
+ * wearing a convenience feature. Keeping it client-side is what makes the
+ * tokens unlinkable at redemption: there is no server-side row to join a spend
+ * back to the batch it came from.
+ */
 export async function walletHealth(): Promise<WalletHealth> {
   const wallet = read();
   const holding = wallet?.tokens.length ?? 0;
