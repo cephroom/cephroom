@@ -68,6 +68,7 @@ export default async function ReadItemPage({
       id={id}
       address={located.presence.address}
       servedBy={located.presence.displayName}
+      payTo={located.presence.payTo ?? null}
       nodeKey={nodeKey}
       tier={viewer.tier}
       signedIn={Boolean(viewer.sub)}

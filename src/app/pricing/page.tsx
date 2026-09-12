@@ -30,15 +30,15 @@ export default async function PricingPage({
         </h1>
         <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
           Membership pays for running the broker and building the reading
-          tools. It does not pay for hosting, because nothing is hosted here —
-          and it does not yet pay contributors, which is the part of this we
-          are least happy with and are saying out loud rather than implying
-          otherwise.
+          tools. It does not pay for hosting, because nothing is hosted here,
+          and it does not pay contributors — <strong>paying them is something
+          you do yourself, directly</strong>, and we take no share of it and do
+          not see it happen.
         </p>
         <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
           Publishing is free and always will be. Running a node costs you
-          nothing here, at any tier, and we take no share of anything you
-          choose to charge for from your own machine.
+          nothing here, at any tier, and whatever readers choose to send you is
+          entirely yours — it never touches us.
         </p>
       </header>
 
@@ -109,14 +109,19 @@ export default async function PricingPage({
             proving would mean us keeping a record of who proved it.
           </Faq>
           <Faq q="Do contributors get paid?">
-            Not by us, not yet, and we would rather say so than let the
-            pricing imply otherwise. A contributor can charge from their own
-            node today, with their own payment relationship, and we take no
-            cut of it because the money never passes through here. A share of
-            membership going back to the people whose work you came to read is
-            the open question on this design — the honest obstacle is that
-            splitting revenue fairly means counting who read what, and that
-            ledger is the thing Contract 1 forbids.
+            Directly, by you, if you decide to. A contributor can put up a
+            wallet address or a link, and it shows at the foot of their
+            columns. The money goes from you to them; it does not pass through
+            us, we take no share, and we do not learn that it happened.
+          </Faq>
+          <Faq q="Why not just split my subscription with them?">
+            Because we would then be paying out of a pool, and two people who
+            agree to say a transfer happened could drain it — we cannot tell a
+            real 100 MB read from two machines signing that one occurred, and
+            we are never going to watch the data to find out. Building defences
+            against that was possible and we did build them; removing the pool
+            removes the attack instead. Nothing is paid out by us, so nothing
+            can be extracted from us.
           </Faq>
           <Faq q="What happens if the site goes down?">
             Nothing happens to anyone's work. It was never here. Contributors

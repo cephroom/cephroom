@@ -59,6 +59,7 @@ npm run node:serve                       # serves the demo content`}
         {`npm run node:serve -- \\
   --content ./my-columns \\
   --name "Your Name" \\
+  --pay-to "ko-fi.com/you, or a wallet, or nothing" \\
   --port 4600`}
       </pre>
 
@@ -98,6 +99,10 @@ npm run node:serve                       # serves the demo content`}
             <Row field="sub" note="Your pseudonymous subject. Not an email, and not reversible to one." />
             <Row field="displayName" note="Whatever name you choose to serve under." />
             <Row field="address" note="Where readers should fetch from. Stated by you, never read off the socket." />
+            <Row
+              field="payTo"
+              note="Whatever you said in --pay-to, repeated verbatim to readers. Absent if you set nothing. Never parsed, never used to route anything."
+            />
             <Row field="items" note="Ids, titles, tags. Enough to link to you; not enough to be a copy." />
           </tbody>
         </table>
@@ -112,7 +117,30 @@ npm run node:serve                       # serves the demo content`}
           that.
         </p>
 
-        <h2>What this costs you</h2>
+        <h2 className="mt-14 font-serif text-[1.35rem] font-semibold tracking-[-0.02em]">
+        Getting paid
+      </h2>
+      <p className="mt-3 max-w-[62ch] text-[0.95rem] leading-relaxed text-ink-muted">
+        Directly, by readers, outside this platform. Whatever you put in{" "}
+        <code className="font-mono text-[0.82rem]">--pay-to</code>{" "}
+        is shown at the foot of your columns, verbatim — a wallet address, a
+        page, an institutional account, or a sentence saying not to bother.
+      </p>
+      <p className="mt-3 max-w-[62ch] text-[0.95rem] leading-relaxed text-ink-muted">
+        Cephroom is not a party to any of it. We do not calculate an amount,
+        hold anything, route a transfer, or record that one happened, and we
+        take no share. We also never pay you ourselves — no bonuses, no
+        incentives for popular columns. That is a rule in the contracts rather
+        than a current limitation, and{" "}
+        <Link href="/how-it-works#contracts" className="text-accent hover:underline">
+          the reason is written down
+        </Link>
+        : a platform that pays out of a pool can have that pool drained by two
+        people who agree to say a transfer happened, and we cannot tell,
+        because we do not watch what moves between you and a reader.
+      </p>
+
+      <h2>What this costs you</h2>
         <ul>
           <li>
             <strong>No archive.</strong>{" "}

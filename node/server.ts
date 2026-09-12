@@ -38,6 +38,19 @@ const flag = (name: string, fallback: string) => {
 const PORT = Number.parseInt(flag("port", "4600"), 10);
 const PLATFORM = flag("platform", process.env.AUTH_URL ?? "http://localhost:3000");
 const DISPLAY_NAME = flag("name", "Marcus Oyelaran");
+
+/**
+ * Where readers can pay this contributor, if they want to.
+ *
+ * Announced as a plain string and displayed by the platform verbatim. The
+ * platform never handles the money: a reader's subscription buys access to the
+ * network, and paying the person who wrote something is a separate act they
+ * perform directly, wallet to wallet, which this process is not part of and
+ * learns nothing about.
+ *
+ *   npm run node:serve -- --pay-to "0x… / ko-fi.com/… / please don't"
+ */
+const PAY_TO = flag("pay-to", process.env.PAY_TO ?? "");
 const SUB = flag("sub", process.env.NODE_SUBJECT ?? "s_localnode_marcus");
 const ADDRESS = flag("address", `http://127.0.0.1:${PORT}`);
 
@@ -460,7 +473,12 @@ const server = createServer(async (request, response) => {
   }
 
   if (url.pathname === "/manifest") {
-    return send(200, { sub: SUB, displayName: DISPLAY_NAME, items: manifest() });
+    return send(200, {
+      sub: SUB,
+      displayName: DISPLAY_NAME,
+      ...(PAY_TO ? { payTo: PAY_TO } : {}),
+      items: manifest(),
+    });
   }
 
   if (url.pathname === "/dataset") {
@@ -722,6 +740,7 @@ async function announce() {
     },
     body: JSON.stringify({
       displayName: DISPLAY_NAME,
+      ...(PAY_TO ? { payTo: PAY_TO } : {}),
       address: ADDRESS,
       items: manifest(),
     }),

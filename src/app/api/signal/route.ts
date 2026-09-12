@@ -41,6 +41,16 @@ const announcement = z.object({
     .string()
     .url()
     .refine((value) => /^https?:/.test(value), "http(s) only"),
+  /**
+   * Where this contributor says they can be paid. Opaque, and bounded.
+   *
+   * Not parsed, not validated beyond a length: recognising a wallet address
+   * would be the first step towards routing to one, and the platform is not a
+   * party to anything that happens with this string. Bounded because it is
+   * held in RAM and repeated to readers, and an unbounded field a stranger can
+   * set is a place to put something that is not a payment detail.
+   */
+  payTo: z.string().max(300).optional(),
   items: z.array(item).max(500),
 });
 

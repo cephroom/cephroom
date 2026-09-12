@@ -70,6 +70,7 @@ export function ColumnReader({
   id,
   address,
   servedBy,
+  payTo,
   nodeKey,
   tier,
   signedIn,
@@ -78,6 +79,8 @@ export function ColumnReader({
   id: string;
   address: string;
   servedBy: string;
+  /** Where this contributor says they can be paid, verbatim. May be absent. */
+  payTo: string | null;
   nodeKey: string | null;
   tier: Tier;
   signedIn: boolean;
@@ -320,6 +323,28 @@ export function ColumnReader({
             {column.prose}
           </ReactMarkdown>
         </div>
+
+          {payTo && (
+            <section className="mt-14 rounded-xl border border-counter/30 bg-counter-wash p-5">
+              <h2 className="font-serif text-[1.1rem] font-semibold text-counter">
+                Pay {servedBy} directly
+              </h2>
+              <p className="mt-1.5 max-w-[54ch] text-[0.88rem] leading-relaxed text-ink-muted">
+                Your membership pays for the broker and the reading tools. It
+                does not pay {servedBy}, and we take no share of anything you
+                send them. This is what they gave as a way to reach them:
+              </p>
+              <p className="mt-3 break-all rounded-md border border-rule bg-paper-raised p-3 font-mono text-[0.82rem] text-ink">
+                {payTo}
+              </p>
+              <p className="mt-3 max-w-[54ch] text-[0.78rem] leading-relaxed text-ink-faint">
+                We are not part of whatever happens next. Nothing is calculated,
+                held, routed or recorded here — we do not learn whether you sent
+                anything, and neither the amount nor the fact of it is visible
+                to us or to anybody else on this site.
+              </p>
+            </section>
+          )}
 
         {column.entitled && (
           <section className="mt-14 rounded-xl border border-rule bg-paper-sunken p-5">

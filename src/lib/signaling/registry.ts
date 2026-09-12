@@ -40,6 +40,22 @@ export interface Announcement {
   sub: string;
   displayName: string;
   /**
+   * Where this contributor can be paid, in their own words.
+   *
+   * A free string the node announces and the platform repeats. Deliberately
+   * opaque to us: a wallet address, a page, an institutional account, a
+   * sentence saying not to bother. It is displayed and nothing else.
+   *
+   * **The platform is not a party to anything that happens next.** It does
+   * not calculate an amount, hold funds, route a transfer, record that one
+   * occurred, or show what anybody has earned. Paying a contributor is an act
+   * a reader performs themselves, outside this system, and the platform
+   * learns nothing about it. See Contract 3 in docs/CONTRACTS.md: the moment
+   * it brokers value between two parties it becomes a different kind of
+   * business with a different legal shape.
+   */
+  payTo?: string;
+  /**
    * Where a reader's browser should fetch from.
    *
    * Supplied by the node, never derived from the socket. The platform does

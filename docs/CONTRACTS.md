@@ -44,6 +44,61 @@ storage tests below make the social-graph features unbuildable (they all need
 a user table), and `tests/contracts/thesis.test.ts` guards the specific
 temptations by name.
 
+### The platform brokers connections, never value
+
+**Money between a reader and a contributor does not pass through here, and the
+platform never funds a payment to a contributor.** A subscription buys a key of
+a given tier. The tier is a permission — what the holder may reach — not a
+balance, not an allowance, and not consumed by use. It expires when the key
+does, and that is the whole of the model.
+
+A contributor may announce a string saying where they can be paid. The platform
+displays it verbatim. That is the entire extent of its involvement.
+
+None of the following may be built:
+
+| | |
+| --- | --- |
+| Calculating an amount owed | makes the platform a party to the transaction |
+| Holding funds, escrow, or a pending balance | makes it a custodian |
+| Routing or facilitating a transfer | makes it a payments business |
+| Recording that a payment happened | an activity record about two people |
+| Displaying who has earned what | a public ledger of private dealings |
+| Recommended or suggested prices | price-setting in a market it runs |
+| **Bonuses, growth incentives, or subsidies for popular contributors** | platform-funded payouts, which is the hole this closes |
+
+The last row is the one that will be argued for later, because it is the
+obvious growth lever and it will look harmless. It is not.
+
+**Why this is a contract and not a preference.** An earlier design had the
+platform take a subscription, split it, and pay contributors from the reserved
+part against signed usage records. It was carefully built: dual-signed receipt
+chains, write-before-pay ordering, per-grant caps, bounded spent counters. All
+of it existed to defend against one attack — **two colluding parties can sign a
+transfer that never happened**, and the platform cannot tell, because it does
+not observe the data layer and that boundary does not move.
+
+That attack cannot be prevented. The argument is short: a transcript of a real
+transfer is computable by the serving party alone, so anything the receiving
+party could contribute after a real transfer, they can contribute without one.
+The two worlds are identical to any observer who sees only what the two parties
+choose to send. No cryptography changes this — not zero-knowledge proofs, which
+prove knowledge the colluder legitimately has, and not the prover nodes.
+
+The defences were therefore economic rather than absolute: make it
+loss-making, bound the damage. That works, and it is a permanent tax on
+attention — every future change has to be checked against it, and the one
+remaining route to a real gain (a payment reversed after its units were paid
+out) could only be bounded, never closed.
+
+**Removing the pool removes the attack.** Two parties signing a fabricated
+transfer are now dividing their own money. There is no platform pool to drain,
+nothing is ever paid out by us, and total paid cannot exceed total received
+because total paid is zero. A structural fix beats a defended one, and the
+metering machinery that defended it is gone.
+
+---
+
 ---
 
 ## Contract 1 — No person-linkable data at rest
