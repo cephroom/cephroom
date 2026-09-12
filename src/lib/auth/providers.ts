@@ -37,12 +37,21 @@ export function providers(): ProviderConfig[] {
       authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
       tokenUrl: "https://oauth2.googleapis.com/token",
       userinfoUrl: "https://openidconnect.googleapis.com/v1/userinfo",
-      scope: "openid email profile",
+      // No `email` scope. We never had a use for the address — the subject is
+      // an HMAC of the account id and the greeting uses the display name — and
+      // asking for it anyway meant Google sent it and the platform held it in
+      // memory for the length of a request. Not asking is strictly better than
+      // asking and forgetting: there is no version of this where the address
+      // is in this process at all. `profile` still supplies the name.
+      scope: "openid profile",
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
       profile: (raw) => ({
         accountId: String(raw.sub ?? ""),
-        name: String(raw.name ?? raw.email ?? "Reader"),
+        // No email fallback: with the scope dropped there is nothing to fall
+        // back to, and leaving the branch would be an invitation to put the
+        // scope back.
+        name: String(raw.name ?? "Reader"),
       }),
     },
     {
@@ -70,7 +79,9 @@ export function providers(): ProviderConfig[] {
       authorizeUrl: `${baseUrl()}/api/dev-oauth/authorize`,
       tokenUrl: `${baseUrl()}/api/dev-oauth/token`,
       userinfoUrl: `${baseUrl()}/api/dev-oauth/userinfo`,
-      scope: "openid email profile",
+      // Matches the Google scope, so the development flow exercises the same
+      // shape of answer rather than a richer one.
+      scope: "openid profile",
       clientId: "cephroom-local",
       clientSecret: "cephroom-local-secret",
       profile: (raw) => ({

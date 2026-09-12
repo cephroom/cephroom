@@ -240,6 +240,37 @@ overclaiming privacy is worse than claiming none:
   same-site cookie, so the platform could today see which column *pages* were
   opened. Narrowing that is outstanding work and is described as outstanding.
 
+#### zkLogin, and why it is not here
+
+A second layer was specified: a zero-knowledge proof that the client holds a
+valid Google-signed JWT, so the platform never sees the Google identity at all.
+It is not built, and the reason is measured rather than asserted.
+
+zkLogin's circuit is **1.1 million R1CS constraints**, 80% of which is verifying
+Google's RS256 signature and therefore irreducible. Proving it in Chrome with
+snarkjs was benchmarked here at four circuit sizes on a 16-core, 16 GB machine:
+the proving key is **478–513 bytes per constraint, linear over a 30× range**, so
+1.1M constraints needs **~550 MB of proving key downloaded into the browser**,
+and proving costs **at least 31 seconds** by a straight-line extrapolation that
+ignores both the Θ(n log n) factor and a multi-gigabyte working set. zkLogin's
+own authors write that proving ~1M-constraint Groth16 "can lead to crashes or
+long delays on a browser", and Sui's production system therefore proves on a
+backend service.
+
+A proving service is a party that sees the JWT. For Sui that is acceptable
+because the verifier is a blockchain and the prover is someone else. Here the
+platform **is** the verifier, so any prover we operate is us, and the separation
+the layer exists to create does not exist. Shipping a proof that is not a proof,
+or a circuit without a real ceremony, would be the overclaiming that `/privacy`
+argues against.
+
+What was done instead is smaller and honest: the platform **stopped requesting
+the `email` scope** from Google. It never used the address, but asking for it
+meant receiving it. Not asking removes it from the process entirely. This
+narrows what arrives beside the identity; it does not sever the identity, and
+nothing in the product describes it as doing so. Full reasoning and the
+benchmark table are in docs/RESEARCH-NOTES.md.
+
 ### Everything else is also "at rest"
 
 Logs, analytics, error reports and caches all count. The audit:

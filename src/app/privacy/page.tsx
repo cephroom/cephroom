@@ -186,6 +186,23 @@ export default function PrivacyPage() {
             something already done, and we are not going to describe it as done.
           </li>
           <li>
+            <strong>We still see your Google account id at sign-in.</strong>{" "}
+            For about as long as one request takes. We turn it into a
+            one-way pseudonymous subject and forget it, and nothing is written
+            down — but we hold it, briefly, and a promise is what stops us
+            doing otherwise. Removing that would need a zero-knowledge proof
+            that you hold a valid Google token without showing it to us. We
+            measured what that costs today: the circuit is 1.1 million
+            constraints, the proving key is about 550 megabytes for your
+            browser to download, and proving takes at least half a minute on a
+            fast desktop — the people who designed the scheme say it can crash
+            a browser outright. So it is not built. We have{" "}
+            <em>reduced</em>{" "}
+            what arrives with it instead: we no longer ask Google for your
+            email address at all, so it is not something we forget, it is
+            something we never receive.
+          </li>
+          <li>
             <strong>Your tier is visible at redemption.</strong>{" "}
             A token is
             signed by a per-tier key, so spending one reveals which tier it was

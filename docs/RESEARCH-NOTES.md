@@ -568,3 +568,118 @@ that says how much to trust it.
   version is a better column than the one it replaces: the paper's headline is
   that rankings reorder between protocols, and at n = 4 exactly one of ten gaps
   is larger than its own noise.
+
+---
+
+## 2026-09-12 (cycle 4, Layer 2) — I measured zkLogin in a browser, and it is not close
+
+Layer 1 (blind-signed access tokens) shipped and is verified. Layer 2 — a
+zero-knowledge proof that the client holds a valid Google-signed JWT, so the
+platform never sees the Google identity at all — was specified as the next
+thing, with four questions to answer explicitly: browser proving time, what the
+user sees while it runs, Google key rotation, a fallback, and the size of the
+cryptographic dependency.
+
+Two of those turned out to answer the rest.
+
+### What the zkLogin paper says
+
+Baldimtsi et al., *zkLogin: Privacy-Preserving Blockchain Authentication with
+Existing Credentials* (arXiv:2401.11735):
+
+- **"In total, our R1CS circuit has around 1.1 million (slightly above 2^20)
+  constraints."** Broken down: SHA-2 is "around 750k (66%)", RSA bignum
+  operations "around 155k (14%)", JWT parsing "approximately 235k (20%)". The
+  expensive 80% is verifying Google's RS256 signature, and it is irreducible —
+  you cannot check a signature without doing the arithmetic.
+- **"The average proof generation time is 2.1 ± 0.15 s"** — using **rapidsnark**,
+  a native prover, on a **Google Cloud n2d-standard-16: 16 vCPUs, 64 GB RAM.**
+- And, decisively: **"proving moderately complex ZKPs (e.g., around 1M
+  constraints in Groth16) can lead to crashes or long delays on a browser"** —
+  which is why Sui's production zkLogin delegates proving to a backend ZK
+  service.
+
+That last point is the thing. A proving service is a party that sees the JWT.
+For Sui that is tolerable because the verifier is a blockchain and the ZK
+service is a different party. Here the platform *is* the verifier, so any
+prover we run is us, and the sever we were trying to create does not exist.
+
+### What I measured, rather than took on faith
+
+Built a tunable circom circuit (one squaring per constraint), ran the full
+Groth16 pipeline, and proved **in Chrome with snarkjs** — the same WASM prover a
+browser would actually use — on this machine: **16 cores, 16 GB.**
+
+| constraints | zkey | prove (best of 2, in-browser) |
+| ---: | ---: | ---: |
+| 1,000 | 475 KB | 87 ms |
+| 5,000 | 2.57 MB | 246 ms |
+| 20,000 | 10.26 MB | 779 ms |
+| 30,000 | 14.34 MB | 1,057 ms |
+
+**The proving key is exactly linear: ~478–513 bytes per constraint** across the
+whole range. At zkLogin's 1.1M constraints that is **~530–560 MB** of proving
+key, which the browser must download and hold in memory before it can prove
+anything. That extrapolation is safe because the relationship is linear and
+measured over a 30× range, and it settles the question on its own: no reading
+site asks a subscriber to fetch half a gigabyte to sign in.
+
+**The proving time I will not extrapolate, and it is worth saying why.** Fitting
+a power law to these four points gives an exponent of 0.815 — *sublinear*, which
+is impossible for Groth16 (it is Θ(n log n)). The artefact is fixed overhead:
+decomposing the two largest points gives ~223 ms of constant cost plus
+0.0278 ms per constraint. A straight-line extrapolation of the marginal term
+gives ~31 s at 1.1M constraints, and that is a **floor**, not an estimate —
+it ignores the log factor and, more importantly, ignores that the multi-scalar
+multiplication working set at 1.1M constraints is measured in gigabytes on a
+16 GB machine. That is where the paper's "crashes" come from.
+
+So the honest statement is: **≥ 31 s and ~550 MB on a 16-core desktop, with the
+real figure higher and the failure mode being an out-of-memory crash rather
+than a slow success.** A four-year-old phone is not in the conversation.
+
+### The decision
+
+**Layer 2 is not built, and no partial version of it is shipped.** A proof that
+is not a proof, or a circuit without a real trusted setup, would be worse than
+nothing here — it is precisely the overclaiming that Layer 1's own privacy page
+argues against. The reasoning is recorded in docs/CONTRACTS.md and the status is
+stated on `/privacy`, where a reader making a decision will see it rather than
+in a document they will not read.
+
+Answering the four questions as asked, since the answers are the argument:
+
+- **Browser proving time** — ≥ 31 s measured floor, realistically minutes or a
+  crash. Not viable.
+- **What the user sees while it runs** — moot, but worth recording: there is no
+  acceptable answer. A thirty-second-plus blocking wait on sign-in, on a
+  publication people open once and read, is worse than the exposure it removes.
+- **Google key rotation** — solvable and not the blocker. The paper's approach
+  is an oracle polling the JWKS endpoint and treating every key seen in the last
+  Δ epochs as current, which is structurally the same trick as this platform's
+  own two-live-epoch token keys.
+- **Fallback if proving fails or the device is too slow** — would be the current
+  sign-in plus Layer 1, which is to say: the fallback is the whole product, and
+  a feature whose fallback is "everything, for nearly everyone" is not a
+  feature.
+- **Size of the dependency** — snarkjs is 9.7 MB unpacked, which is the small
+  part. The circuit artefacts are the dependency: ~550 MB of proving key per
+  circuit version, plus a trusted setup ceremony whose integrity everything
+  rests on.
+
+### What shipped instead, and what it is not
+
+One genuine reduction, in the same direction, that needed no proof: **the
+platform stopped asking Google for the `email` scope.** It never used the
+address — the subject is an HMAC of the account id, the greeting uses the
+display name — but it asked anyway, so Google sent it and it sat in server
+memory for the length of a request. Not asking is strictly better than asking
+and forgetting: there is now no version of the flow in which an address is in
+this process at all. The local OAuth stand-in was changed to match, because a
+stand-in that answers more richly than the real provider lets code grow a
+dependency on a field production will not have.
+
+This is **not** Layer 2 and is not described as such anywhere. Layer 2 severs
+the platform from the Google identity; this narrows what the platform is handed
+alongside it. The `sub` still passes through server memory at sign-in, and only
+a proof would change that.
