@@ -95,6 +95,62 @@ export const DEV_PERSONAS: DevPersona[] = [
     picture: null,
     mimics: "google",
   },
+  {
+    sub: "dev-google-8",
+    name: "Ana Petrova",
+    email: "ana.petrova@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-9",
+    name: "Hiroshi Tanaka",
+    email: "hiroshi.tanaka@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-10",
+    name: "Fatima Zahra",
+    email: "fatima.zahra@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-11",
+    name: "Lukas Berg",
+    email: "lukas.berg@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-12",
+    name: "Nia Mwangi",
+    email: "nia.mwangi@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-13",
+    name: "Oskar Nowak",
+    email: "oskar.nowak@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-14",
+    name: "Yara Haddad",
+    email: "yara.haddad@example.com",
+    picture: null,
+    mimics: "google",
+  },
+  {
+    sub: "dev-google-15",
+    name: "Diego Ramos",
+    email: "diego.ramos@example.com",
+    picture: null,
+    mimics: "google",
+  },
 ];
 
 interface IssuedCode {

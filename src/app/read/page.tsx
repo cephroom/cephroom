@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { fairShare } from "@/lib/signaling/fair-share";
 import { registry } from "@/lib/signaling/registry";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,8 @@ export default async function ReadPage({
 }) {
   const { q = "" } = await searchParams;
 
-  const located = registry().search(q);
+  // Fair-shared, so no contributor can crowd the others off the page.
+  const located = fairShare(registry().search(q), (entry) => entry.presence.sub);
   const columns = located.filter((entry) => entry.item.kind === "column");
   const datasets = located.filter((entry) => entry.item.kind === "dataset");
   const nodes = registry().list();
