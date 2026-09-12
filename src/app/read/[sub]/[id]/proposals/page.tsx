@@ -28,6 +28,7 @@ export default async function ProposalsPage({
         sub: viewer.sub,
         tier: viewer.tier,
         audience: sub,
+        sessionSecondsLeft: viewer.expiresIn,
       })
     : null;
 

@@ -140,6 +140,7 @@ describe("the node key is an access-audience key, and nothing more", () => {
       sub: "s_lab",
       tier: "lab",
       audience: "s_contributor",
+      sessionSecondsLeft: 900,
     });
     const key = await tokens.verifyAccessKey(nodeKey, {
       audience: "s_contributor",

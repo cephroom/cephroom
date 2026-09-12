@@ -53,6 +53,7 @@ describe("what a contributor learns about a reader", () => {
         sub: "s_reader",
         tier: "lab",
         audience: "s_nodeA_marcus",
+        sessionSecondsLeft: 900,
       }),
     );
     expect(Object.keys(claims).sort()).toEqual(
@@ -72,6 +73,7 @@ describe("what a contributor learns about a reader", () => {
         sub: "s_reader",
         tier: "lab",
         audience: "s_nodeA_marcus",
+        sessionSecondsLeft: 900,
       }),
     );
 
@@ -103,13 +105,13 @@ describe("what a contributor learns about a reader", () => {
     // depends on it. A contributor knows "this is the same person as last
     // week" and "these are four different people".
     const first = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node" }),
+      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node", sessionSecondsLeft: 900 }),
     ).sub;
     const again = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node" }),
+      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node", sessionSecondsLeft: 900 }),
     ).sub;
     const other = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_b", tier: "member", audience: "s_node" }),
+      await tokens.mintNodeKey({ sub: "s_b", tier: "member", audience: "s_node", sessionSecondsLeft: 900 }),
     ).sub;
 
     expect(first).toBe(again);
@@ -118,17 +120,17 @@ describe("what a contributor learns about a reader", () => {
 
   it("CANNOT compare notes with another contributor", async () => {
     const atA = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeA" }),
+      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeA", sessionSecondsLeft: 900 }),
     ).sub;
     const atB = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeB" }),
+      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeB", sessionSecondsLeft: 900 }),
     ).sub;
     expect(atA).not.toBe(atB);
   });
 
   it("CANNOT recover the platform subject from what it was given", async () => {
     const scoped = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node" }),
+      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_node", sessionSecondsLeft: 900 }),
     ).sub;
     expect(scoped).not.toContain("s_a");
     expect(String(scoped).startsWith("n_")).toBe(true);
@@ -214,10 +216,10 @@ describe("what one reader learns about another", () => {
 
   it("cannot use one to find the same person at another contributor", async () => {
     const here = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeA" }),
+      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeA", sessionSecondsLeft: 900 }),
     ).sub;
     const there = decodeJwt(
-      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeB" }),
+      await tokens.mintNodeKey({ sub: "s_a", tier: "member", audience: "s_nodeB", sessionSecondsLeft: 900 }),
     ).sub;
     expect(here).not.toBe(there);
   });

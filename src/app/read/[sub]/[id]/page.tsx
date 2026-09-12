@@ -62,6 +62,8 @@ export default async function ReadItemPage({
         // Scoped to this contributor. They see a pseudonym that is stable for
         // them and meaningless to every other node.
         audience: located.presence.sub,
+        // Never outlives the session it came from.
+        sessionSecondsLeft: viewer.expiresIn,
       })
     : null;
 

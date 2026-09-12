@@ -82,6 +82,7 @@ describe("every key's claim set is pinned exactly", () => {
         sub: "s_reader",
         tier: "lab",
         audience: "s_contributor",
+        sessionSecondsLeft: 900,
       }),
     );
     expect(Object.keys(claims).sort()).toEqual(

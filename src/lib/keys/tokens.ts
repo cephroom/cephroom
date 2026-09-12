@@ -170,7 +170,23 @@ export async function mintNodeKey(input: {
   sub: string;
   tier: Tier;
   audience: string;
+  /**
+   * Seconds left on the session key this is derived from.
+   *
+   * Required, not optional: a caller that forgot it would silently restore
+   * the behaviour this closes. A node key used to live a flat two minutes
+   * regardless, so one minted in the last second of a session carried the old
+   * tier for a further two — making the site's promise that "a cancellation
+   * reaches you within fifteen minutes" wrong by two minutes, and letting a
+   * derived credential outlive the one that authorised it.
+   */
+  sessionSecondsLeft: number;
 }): Promise<string> {
+  const life = Math.max(
+    0,
+    Math.min(NODE_KEY_TTL_SECONDS, Math.floor(input.sessionSecondsLeft)),
+  );
+
   return new SignJWT({
     tier: input.tier,
     scp: scopesForTier(input.tier),
@@ -181,7 +197,9 @@ export async function mintNodeKey(input: {
     .setAudience(ACCESS_AUDIENCE)
     .setSubject(nodeScopedSubject(input.sub, input.audience))
     .setIssuedAt()
-    .setExpirationTime(`${NODE_KEY_TTL_SECONDS}s`)
+    // A zero here mints an already-expired key, which is the right answer:
+    // the reader gets the public preview, exactly as they would with no key.
+    .setExpirationTime(`${life}s`)
     .sign(await signingKey());
 }
 

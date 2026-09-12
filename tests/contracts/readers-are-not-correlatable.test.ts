@@ -62,10 +62,10 @@ beforeAll(async () => {
 describe("the subject a contributor sees is scoped to that contributor", () => {
   it("gives two contributors different subjects for the same reader", async () => {
     const atA = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_A, sessionSecondsLeft: 900 }),
     );
     const atB = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_B }),
+      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_B, sessionSecondsLeft: 900 }),
     );
 
     expect(atA.sub).not.toBe(atB.sub);
@@ -79,20 +79,20 @@ describe("the subject a contributor sees is scoped to that contributor", () => {
     // A contributor has to be able to recognise a returning reader: it is how
     // a proposal is attributed and how the per-person flood limit works.
     const first = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "member", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: READER, tier: "member", audience: NODE_A, sessionSecondsLeft: 900 }),
     );
     const second = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "member", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: READER, tier: "member", audience: NODE_A, sessionSecondsLeft: 900 }),
     );
     expect(first.sub).toBe(second.sub);
   });
 
   it("keeps two readers distinct at the same contributor", async () => {
     const one = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "member", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: READER, tier: "member", audience: NODE_A, sessionSecondsLeft: 900 }),
     );
     const two = decodeJwt(
-      await tokens.mintNodeKey({ sub: OTHER_READER, tier: "member", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: OTHER_READER, tier: "member", audience: NODE_A, sessionSecondsLeft: 900 }),
     );
     expect(one.sub).not.toBe(two.sub);
   });
@@ -101,13 +101,13 @@ describe("the subject a contributor sees is scoped to that contributor", () => {
     // The pairing is the whole identifier. Neither half alone determines it,
     // so neither half can be recovered from it.
     const base = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_A, sessionSecondsLeft: 900 }),
     )!.sub;
 
     const others = await Promise.all([
-      tokens.mintNodeKey({ sub: OTHER_READER, tier: "lab", audience: NODE_A }),
-      tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_B }),
-      tokens.mintNodeKey({ sub: OTHER_READER, tier: "lab", audience: NODE_B }),
+      tokens.mintNodeKey({ sub: OTHER_READER, tier: "lab", audience: NODE_A, sessionSecondsLeft: 900 }),
+      tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_B, sessionSecondsLeft: 900 }),
+      tokens.mintNodeKey({ sub: OTHER_READER, tier: "lab", audience: NODE_B, sessionSecondsLeft: 900 }),
     ]);
     for (const key of others) expect(decodeJwt(key).sub).not.toBe(base);
   });
@@ -116,7 +116,7 @@ describe("the subject a contributor sees is scoped to that contributor", () => {
     // Different prefix, so a node-scoped id appearing where a platform
     // subject belongs is visible rather than merely wrong.
     const scoped = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "member", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: READER, tier: "member", audience: NODE_A, sessionSecondsLeft: 900 }),
     );
     expect(String(scoped.sub).startsWith("n_")).toBe(true);
     expect(tokens.deriveSubject("google", "123").startsWith("s_")).toBe(true);
@@ -134,7 +134,7 @@ describe("the subject a contributor sees is scoped to that contributor", () => {
 describe("a key issued for one contributor cannot be presented to another", () => {
   it("names the contributor it was minted for", async () => {
     const key = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_A, sessionSecondsLeft: 900 }),
     );
     expect(key.nod).toBe(NODE_A);
   });
@@ -147,6 +147,7 @@ describe("a key issued for one contributor cannot be presented to another", () =
       sub: READER,
       tier: "lab",
       audience: NODE_A,
+      sessionSecondsLeft: 900,
     });
 
     expect(await tokens.verifyAccessKey(forA, { audience: NODE_A })).not.toBeNull();
@@ -175,6 +176,7 @@ describe("a key issued for one contributor cannot be presented to another", () =
       sub: READER,
       tier: "lab",
       audience: NODE_A,
+      sessionSecondsLeft: 900,
     });
     expect(await tokens.verifyAccessKey(forA)).toBeNull();
   });
@@ -183,7 +185,7 @@ describe("a key issued for one contributor cannot be presented to another", () =
 describe("the claim set stays exactly as small as it was", () => {
   it("adds the contributor binding and nothing else", async () => {
     const claims = decodeJwt(
-      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_A }),
+      await tokens.mintNodeKey({ sub: READER, tier: "lab", audience: NODE_A, sessionSecondsLeft: 900 }),
     );
     expect(Object.keys(claims).sort()).toEqual(
       ["aud", "exp", "iat", "iss", "nod", "scp", "sub", "tier"].sort(),

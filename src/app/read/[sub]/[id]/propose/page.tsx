@@ -49,6 +49,7 @@ export default async function ProposePage({
     sub: viewer.sub,
     tier: viewer.tier,
     audience: sub,
+    sessionSecondsLeft: viewer.expiresIn,
   });
 
   return (
