@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import type { DiscoveryTier } from "@/lib/access";
+import { DEFAULT_ACTOR, type ActorKind } from "@/lib/actor";
 import {
   ACCESS_TTL_SECONDS,
   REFRESH_TTL_SECONDS,
@@ -17,6 +18,8 @@ const LEGACY_COOKIES = ["receptorome_key", "receptorome_renew"];
 export interface Viewer {
   sub: string | null;
   discovery: DiscoveryTier;
+  /** Self-declared human/AI, never verified, never used to authorize. */
+  actor: ActorKind;
   key: AccessKey | null;
   expiresIn: number;
 }
@@ -24,6 +27,7 @@ export interface Viewer {
 export const ANONYMOUS: Viewer = {
   sub: null,
   discovery: "browse",
+  actor: DEFAULT_ACTOR,
   key: null,
   expiresIn: 0,
 };
@@ -38,6 +42,7 @@ export async function getViewer(): Promise<Viewer> {
   return {
     sub: key.sub,
     discovery: key.discovery ?? "browse",
+    actor: key.actor,
     key,
     expiresIn: Math.max(0, key.exp - Math.floor(Date.now() / 1000)),
   };

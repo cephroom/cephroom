@@ -9,6 +9,7 @@ import {
 } from "jose";
 
 import type { DiscoveryTier } from "@/lib/access";
+import { asActor, type ActorKind } from "@/lib/actor";
 import { FREE_SERVING_CAPACITY, SERVING_CAPACITY } from "@/lib/stripe/plans";
 
 
@@ -54,12 +55,16 @@ export interface AccessKey {
   sub: string | null;
   scp: Scope[];
   discovery?: DiscoveryTier;
+  /** Self-declared, never verified, never used to authorize - see @/lib/actor. */
+  actor: ActorKind;
   iat: number;
   exp: number;
 }
 
 export interface RefreshKey {
   sub: string;
+  /** Carried so the declaration survives a renewal without being re-asked. */
+  actor: ActorKind;
   iat: number;
   exp: number;
 }
@@ -155,10 +160,15 @@ export function publicKeyPem(): string {
 export async function mintAccessKey(input: {
   sub: string;
   discovery: DiscoveryTier;
+  actor?: ActorKind;
 }): Promise<string> {
   return new SignJWT({
     scp: scopesForSignedIn(),
     discovery: input.discovery,
+    // A self-declared category (@/lib/actor), not an identifier: it says nothing
+    // about WHO holds the key, only what they said they are, so it does not make
+    // the key person-linkable (contract 2).
+    act: asActor(input.actor),
   })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
@@ -236,8 +246,11 @@ export async function mintServeKey(input: {
     .sign(await signingKey());
 }
 
-export async function mintRefreshKey(input: { sub: string }): Promise<string> {
-  return new SignJWT({})
+export async function mintRefreshKey(input: {
+  sub: string;
+  actor?: ActorKind;
+}): Promise<string> {
+  return new SignJWT({ act: asActor(input.actor) })
     .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
     .setIssuer(ISSUER)
     .setAudience(REFRESH_AUDIENCE)
@@ -284,6 +297,7 @@ export async function verifyAccessKey(
     sub: payload.sub ?? null,
     scp: (payload.scp as Scope[]) ?? [],
     discovery: payload.discovery as DiscoveryTier | undefined,
+    actor: asActor(payload.act),
     iat: payload.iat!,
     exp: payload.exp!,
   };
@@ -319,7 +333,12 @@ export async function verifyRefreshKey(
 ): Promise<RefreshKey | null> {
   const payload = await verify(token, REFRESH_AUDIENCE);
   if (!payload?.sub) return null;
-  return { sub: payload.sub, iat: payload.iat!, exp: payload.exp! };
+  return {
+    sub: payload.sub,
+    actor: asActor(payload.act),
+    iat: payload.iat!,
+    exp: payload.exp!,
+  };
 }
 
 async function verify(

@@ -23,18 +23,24 @@ beforeAll(async () => {
 const STRUCTURAL = ["aud", "exp", "iat", "iss"];
 
 describe("every key's claim set is pinned exactly", () => {
-  it("gives the access key a subject, a discovery plan and its scopes", async () => {
+  it("gives the access key a subject, a discovery plan, its scopes and a self-declared actor", async () => {
     const claims = decodeJwt(
       await tokens.mintAccessKey({ sub: "s_reader", discovery: "query" }),
     );
+    // `act` is the human/AI self-declaration - a category, not an identifier
+    // (see @/lib/actor). It is added here deliberately, as a visible diff to
+    // this pin, and it must never become anything a reader could be picked out
+    // by. The assertion below fixes it to the two allowed words.
     expect(Object.keys(claims).sort()).toEqual(
-      [...STRUCTURAL, "discovery", "scp", "sub"].sort(),
+      [...STRUCTURAL, "act", "discovery", "scp", "sub"].sort(),
     );
+    expect(["human", "ai"]).toContain(claims.act);
   });
 
-  it("gives the refresh key a subject and nothing else", async () => {
+  it("gives the refresh key a subject and the self-declared actor, nothing else", async () => {
     const claims = decodeJwt(await tokens.mintRefreshKey({ sub: "s_reader" }));
-    expect(Object.keys(claims).sort()).toEqual([...STRUCTURAL, "sub"].sort());
+    expect(Object.keys(claims).sort()).toEqual([...STRUCTURAL, "act", "sub"].sort());
+    expect(["human", "ai"]).toContain(claims.act);
   });
 
   it("gives the node key nothing a contributor could identify a reader by", async () => {
@@ -49,6 +55,9 @@ describe("every key's claim set is pinned exactly", () => {
       [...STRUCTURAL, "nod", "scp", "sub"].sort(),
     );
     expect(claims).not.toHaveProperty("discovery");
+    // The human/AI declaration stays on the platform side; a contributor's node
+    // learns nothing new about a reader, not even a self-reported category.
+    expect(claims).not.toHaveProperty("act");
     expect(JSON.stringify(claims)).not.toContain("s_reader");
   });
 
@@ -65,6 +74,9 @@ describe("every key's claim set is pinned exactly", () => {
       [...STRUCTURAL, "anon", "discovery", "scp"].sort(),
     );
     expect(claims.sub).toBeUndefined();
+    // An anonymous search token carries no actor either: human/AI would narrow
+    // the crowd a spent token hides in, and the token is meant to carry nothing.
+    expect(claims).not.toHaveProperty("act");
   });
 });
 
@@ -125,8 +137,12 @@ describe("no key can be made to carry a name or a customer id", () => {
 describe("the viewer the platform reconstructs is equally thin", () => {
   it("exposes no name and no customer id", async () => {
     const session = await import("@/lib/auth/session");
+    // `actor` is the human/AI self-declaration - a category, not a name or an
+    // id (see @/lib/actor). Added deliberately; still nothing person-linkable.
     expect(Object.keys(session.ANONYMOUS).sort()).toEqual(
-      ["discovery", "expiresIn", "key", "sub"].sort(),
+      ["actor", "discovery", "expiresIn", "key", "sub"].sort(),
     );
+    expect(session.ANONYMOUS).not.toHaveProperty("name");
+    expect(session.ANONYMOUS).not.toHaveProperty("cus");
   });
 });
