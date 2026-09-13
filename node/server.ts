@@ -313,6 +313,13 @@ const server = createServer(async (request, response) => {
   const send = (status: number, body: unknown) => {
     response.writeHead(status, {
       "content-type": "application/json; charset=utf-8",
+      // A node's answers are all about now - the column and dataset a reader
+      // re-runs claims against, the manifest, the open proposals. None may be
+      // cached: a stale copy makes a sentence that has quietly become wrong stop
+      // saying so, and contract 4 names caching as a form of the archive this
+      // does not keep. The /asset/ route already serves figures no-store "the
+      // same posture as a column"; this is what makes that true of columns.
+      "cache-control": "no-store",
       ...CORS,
     });
     response.end(JSON.stringify(body));
