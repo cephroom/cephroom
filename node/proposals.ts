@@ -157,6 +157,12 @@ export class ProposalStore {
   }
 
   list(columnId?: string): Proposal[] {
+    // Sweep on read, not only in the constructor: a node process can stay up for
+    // months, and a pseudonym that crosses the 90-day line mid-run must be
+    // redacted then rather than at the next restart, or it is data at rest past
+    // its stated expiry (contract 2). Same lesson as the presence registry:
+    // filtering a subject out of the view is not reclaiming it from disk.
+    this.redactExpiredSubjects();
     return this.files()
       .map((file) => this.readFile(file))
       .filter((proposal): proposal is Proposal => proposal !== null)
@@ -166,6 +172,9 @@ export class ProposalStore {
   }
 
   get(id: string): Proposal | null {
+    // See list(): the expiry sweep must run on read so a long-uptime node does
+    // not serve a pseudonym past its 90-day window.
+    this.redactExpiredSubjects();
     if (!existsSync(this.path(id))) return null;
     const proposal = JSON.parse(readFileSync(this.path(id), "utf8")) as Proposal;
     return this.withoutForeignSubject(proposal);
