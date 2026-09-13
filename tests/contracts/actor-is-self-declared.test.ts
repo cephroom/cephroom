@@ -155,11 +155,13 @@ describe("an agent is never sent to the human email flow", () => {
     ).toBe(-1);
   });
 
-  it("tells an agent there is no login and nothing to verify", () => {
+  it("offers an agent a keyed login with no email, and nothing to verify", () => {
     const flat = raw.replace(/\s+/g, " ");
-    expect(flat).toMatch(/does not sign in|no login/i);
+    // The agent path is a real login now - proof of a key, not an email.
+    expect(raw).toMatch(/AgentLogin/);
+    expect(flat).toMatch(/no email/i);
     expect(flat).toMatch(/nothing to verify/i);
-    // and points reading at the open API rather than a sign-in
+    // and points reading at the open API too
     expect(flat).toMatch(/\/api\/v1\/live/);
   });
 
