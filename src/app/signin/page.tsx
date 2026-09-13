@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ACTOR_DISCLAIMER, ACTOR_FACE, ACTOR_KINDS, asActor } from "@/lib/actor";
 import { getViewer } from "@/lib/auth/session";
 import { isConfigured, providers, safeNext } from "@/lib/auth/providers";
 
@@ -20,13 +21,17 @@ const ERRORS: Record<string, string> = {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; actor?: string }>;
 }) {
   const params = await searchParams;
   const viewer = await getViewer();
   const next = safeNext(params.next);
+  const actor = asActor(params.actor);
 
   if (viewer.sub) redirect(next);
+
+  const chooseHref = (kind: string) =>
+    `/signin?actor=${kind}&next=${encodeURIComponent(next)}`;
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-6xl items-center justify-center px-5 py-14">
@@ -49,12 +54,45 @@ export default async function SignInPage({
           </p>
         )}
 
-        <div className="mt-7 space-y-2.5">
+        <fieldset className="mt-7">
+          <legend className="text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+            Who is this key for?
+          </legend>
+          <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+            {ACTOR_KINDS.map((kind) => {
+              const face = ACTOR_FACE[kind];
+              const selected = kind === actor;
+              return (
+                <Link
+                  key={kind}
+                  href={chooseHref(kind)}
+                  aria-pressed={selected}
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2.5 text-[0.88rem] font-medium transition-colors ${
+                    selected
+                      ? "border-accent bg-accent/10 text-ink"
+                      : "border-field-border text-ink-muted hover:border-ink-faint"
+                  }`}
+                >
+                  <span aria-hidden className="text-[1.1rem]">
+                    {face.symbol}
+                  </span>
+                  {face.label}
+                  {selected && <span className="sr-only"> (selected)</span>}
+                </Link>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[0.76rem] leading-relaxed text-ink-faint">
+            {ACTOR_DISCLAIMER}
+          </p>
+        </fieldset>
+
+        <div className="mt-5 space-y-2.5">
           {providers().map((provider) =>
             isConfigured(provider) ? (
               <a
                 key={provider.id}
-                href={`/api/auth/start?provider=${provider.id}&next=${encodeURIComponent(next)}`}
+                href={`/api/auth/start?provider=${provider.id}&actor=${actor}&next=${encodeURIComponent(next)}`}
                 className="flex w-full items-center justify-center gap-2.5 rounded-md border border-field-border bg-paper-raised px-4 py-2.5 text-[0.88rem] font-medium text-ink transition-colors hover:border-ink-faint"
               >
                 {provider.label}

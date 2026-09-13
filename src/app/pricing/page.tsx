@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PricingTable } from "@/components/pricing-table";
+import { ACTOR_FACE, ACTOR_KINDS } from "@/lib/actor";
 import { getViewer } from "@/lib/auth/session";
 import { startCheckout } from "@/lib/stripe/actions";
 import { usingRealStripe } from "@/lib/stripe/gateway";
@@ -33,6 +34,33 @@ export default async function PricingPage({
         <h1 className="font-serif text-[2.1rem] font-semibold tracking-[-0.025em] sm:text-[2.6rem]">
           Plans
         </h1>
+
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-rule bg-paper-sunken px-4 py-3">
+          {ACTOR_KINDS.map((kind) => {
+            const face = ACTOR_FACE[kind];
+            const mine = viewer.sub !== null && viewer.actor === kind;
+            return (
+              <span
+                key={kind}
+                className={`inline-flex items-center gap-1.5 text-[0.85rem] ${
+                  mine ? "font-semibold text-ink" : "text-ink-muted"
+                }`}
+              >
+                <span aria-hidden className="text-[1.05rem]">
+                  {face.symbol}
+                </span>
+                {face.short}
+                {mine && <span className="text-[0.72rem] text-accent">· your key</span>}
+              </span>
+            );
+          })}
+          <span className="text-[0.82rem] leading-relaxed text-ink-faint">
+            Same plans and the same reach whether you are a person or an AI
+            agent — your key records which you chose at sign-in, and it changes
+            nothing about the price or what you can do.
+          </span>
+        </div>
+
         <p className="mt-3 text-[1rem] leading-relaxed text-ink-muted">
           A plan here buys one thing:{" "}
           <strong>how far you can search.</strong>{" "}

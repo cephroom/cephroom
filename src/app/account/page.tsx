@@ -12,6 +12,7 @@ import {
   governingSubscription,
   SERVING_LABEL,
 } from "@/lib/access";
+import { ACTOR_FACE } from "@/lib/actor";
 import { getViewer } from "@/lib/auth/session";
 import {
   cancelSubscription,
@@ -118,6 +119,10 @@ export default async function AccountPage() {
       <section className="mt-8 rounded-xl border border-rule bg-paper-raised p-6">
         <dl className="grid gap-x-8 gap-y-3 text-[0.85rem] sm:grid-cols-2">
           <Row label="Subject" value={fresh.sub!} mono />
+          <Row
+            label="You told us you are"
+            value={`${ACTOR_FACE[fresh.actor].symbol} ${ACTOR_FACE[fresh.actor].label} — self-declared, unchecked`}
+          />
           <Row
             label="Key expires in"
             value={`${Math.max(0, Math.round(fresh.expiresIn / 60))} min`}
