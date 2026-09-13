@@ -126,3 +126,52 @@ describe("the actor is never presented as verified", () => {
     expect(pricing).toMatch(/same plans and the same reach/i);
   });
 });
+
+describe("an agent is never sent to the human email flow", () => {
+  const raw = readFileSync(
+    join(ROOT, "src", "app", "signin", "page.tsx"),
+    "utf8",
+  );
+
+  it("shows the OAuth providers only on the person path", () => {
+    // The provider start links must be gated behind actor === "human"; the AI
+    // branch must not begin an OAuth flow. Email is a human account mechanism,
+    // and routing an agent through it fakes a verification that does not apply.
+    const humanGate = raw.indexOf('actor === "human"');
+    expect(humanGate, "the providers must be gated by actor === \"human\"").toBeGreaterThan(-1);
+
+    const startAt = raw.indexOf("/api/auth/start");
+    expect(startAt, "no provider start link found").toBeGreaterThan(-1);
+    expect(
+      startAt > humanGate,
+      "the OAuth start link must sit inside the person branch, not before the human/AI split.",
+    ).toBe(true);
+
+    // After the branch splits to the agent side, there is no second start link.
+    const secondStart = raw.indexOf("/api/auth/start", startAt + 1);
+    expect(
+      secondStart,
+      "the agent branch must not also start an OAuth flow.",
+    ).toBe(-1);
+  });
+
+  it("tells an agent there is no login and nothing to verify", () => {
+    const flat = raw.replace(/\s+/g, " ");
+    expect(flat).toMatch(/does not sign in|no login/i);
+    expect(flat).toMatch(/nothing to verify/i);
+    // and points reading at the open API rather than a sign-in
+    expect(flat).toMatch(/\/api\/v1\/live/);
+  });
+
+  it("uses a drawn icon, not an emoji, for the actor", () => {
+    // The emoji sat badly in serif text; the mark is <ActorIcon>.
+    expect(raw).toMatch(/ActorIcon/);
+    for (const file of ["signin", "pricing", "account"]) {
+      const src = readFileSync(
+        join(ROOT, "src", "app", file, "page.tsx"),
+        "utf8",
+      );
+      expect(src, `${file} must not use the emoji symbol`).not.toMatch(/👤|🤖|\.symbol\b/);
+    }
+  });
+});
