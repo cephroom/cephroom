@@ -158,16 +158,22 @@ export function parseBody(rawBody: string): ParsedBody {
       seenKeys.add(key);
 
       const selectRaw = (fields.select ?? "value").toLowerCase();
-      const select = SELECTS.includes(selectRaw as ClaimSelect)
-        ? (selectRaw as ClaimSelect)
-        : "value";
       if (!SELECTS.includes(selectRaw as ClaimSelect)) {
         errors.push({
           key,
           message: `Claim "${key}" has unknown select "${selectRaw}". Expected one of ${SELECTS.join(", ")}.`,
           source,
         });
+        // Omit the claim rather than silently downgrading it to a value check -
+        // the same posture as a missing field. Keeping a "value" fallback let a
+        // reader see an ordinary verdict for a claim that never parsed as the
+        // author wrote it (the node transmits the error, but the reader renders
+        // claims, not errors), which is the silent reinterpretation contract 1
+        // exists to prevent. Dropped, the inline reference resolves to an
+        // [unresolved claim] chip instead - the honest signal.
+        return "";
       }
+      const select = selectRaw as ClaimSelect;
 
       const parsed = parseMeasurement(fields.value);
       let value = parsed.value;
