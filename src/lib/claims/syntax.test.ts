@@ -155,6 +155,33 @@ describe("parseBody", () => {
   });
 });
 
+describe("an unknown select does not become a silent value check", () => {
+  it("records an error and emits no reinterpreted claim", () => {
+    const body = [
+      "See {{claim:x}}.",
+      "```claim x",
+      "dataset: d",
+      "metric: m",
+      "subject: s",
+      "object: o",
+      "value: 1.55 nM",
+      "select: fold_sprad",
+      "```",
+    ].join("\n");
+
+    const parsed = parseBody(body);
+    // The typo'd select is a parse error, like a missing field is.
+    expect(parsed.errors.some((e) => /unknown select/i.test(e.message))).toBe(true);
+    // And it must NOT leave a claim that a reader would resolve as an ordinary
+    // value check - that is a misleading verdict for a claim that did not parse
+    // as the author wrote it. A missing field omits the claim; so must this.
+    expect(
+      parsed.claims.find((c) => c.key === "x"),
+      "an unknown select must omit the claim, not silently downgrade it to a value check",
+    ).toBeUndefined();
+  });
+});
+
 describe("referencedKeys", () => {
   it("deduplicates and preserves document order", () => {
     expect(referencedKeys("{{claim:b}} {{claim:a}} {{claim:b}}")).toEqual([
