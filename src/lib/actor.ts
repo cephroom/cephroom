@@ -42,13 +42,16 @@ export interface ActorFace {
   label: string;
   /** The short name, e.g. beside an icon. */
   short: string;
-  /** An emoji symbol - the icon asked for, kept in one place. */
-  symbol: string;
 }
 
+/**
+ * Names only. The glyph is drawn by <ActorIcon> (src/components/actor-icon.tsx)
+ * in the site's own line style - no emoji, which sat badly in serif text and did
+ * not theme. One source of truth for the words, one for the mark.
+ */
 export const ACTOR_FACE: Record<ActorKind, ActorFace> = {
-  human: { kind: "human", label: "A person", short: "Person", symbol: "👤" },
-  ai: { kind: "ai", label: "An AI agent", short: "AI agent", symbol: "🤖" },
+  human: { kind: "human", label: "A person", short: "Person" },
+  ai: { kind: "ai", label: "An AI agent", short: "AI agent" },
 };
 
 /**

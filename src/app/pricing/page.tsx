@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ActorIcon } from "@/components/actor-icon";
 import { PricingTable } from "@/components/pricing-table";
 import { ACTOR_FACE, ACTOR_KINDS } from "@/lib/actor";
 import { getViewer } from "@/lib/auth/session";
@@ -46,9 +47,11 @@ export default async function PricingPage({
                   mine ? "font-semibold text-ink" : "text-ink-muted"
                 }`}
               >
-                <span aria-hidden className="text-[1.05rem]">
-                  {face.symbol}
-                </span>
+                <ActorIcon
+                  kind={kind}
+                  size={16}
+                  className={mine ? "text-accent" : "text-ink-faint"}
+                />
                 {face.short}
                 {mine && <span className="text-[0.72rem] text-accent">· your key</span>}
               </span>

@@ -229,7 +229,7 @@ async function cmdLogin(argument?: string): Promise<void> {
     );
     return;
   }
-  const face = access.actor === "ai" ? "🤖 an AI agent" : "👤 a person";
+  const face = access.actor === "ai" ? "an AI agent" : "a person";
   console.log(
     `Saved. Access confirmed, running as ${face} — self-declared, checked by nobody.\n` +
       "That was set on the key when it was minted. To mint one that says otherwise:\n" +

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ActorIcon } from "@/components/actor-icon";
 import { ACTOR_DISCLAIMER, ACTOR_FACE, ACTOR_KINDS, asActor } from "@/lib/actor";
 import { getViewer } from "@/lib/auth/session";
 import { isConfigured, providers, safeNext } from "@/lib/auth/providers";
@@ -73,9 +74,11 @@ export default async function SignInPage({
                       : "border-field-border text-ink-muted hover:border-ink-faint"
                   }`}
                 >
-                  <span aria-hidden className="text-[1.1rem]">
-                    {face.symbol}
-                  </span>
+                  <ActorIcon
+                    kind={kind}
+                    size={18}
+                    className={selected ? "text-accent" : "text-ink-faint"}
+                  />
                   {face.label}
                   {selected && <span className="sr-only"> (selected)</span>}
                 </Link>
@@ -87,28 +90,79 @@ export default async function SignInPage({
           </p>
         </fieldset>
 
-        <div className="mt-5 space-y-2.5">
-          {providers().map((provider) =>
-            isConfigured(provider) ? (
+        {actor === "human" ? (
+          <div className="mt-5 space-y-2.5">
+            {providers().map((provider) =>
+              isConfigured(provider) ? (
+                <a
+                  key={provider.id}
+                  href={`/api/auth/start?provider=${provider.id}&actor=${actor}&next=${encodeURIComponent(next)}`}
+                  className="flex w-full items-center justify-center gap-2.5 rounded-md border border-field-border bg-paper-raised px-4 py-2.5 text-[0.88rem] font-medium text-ink transition-colors hover:border-ink-faint"
+                >
+                  {provider.label}
+                </a>
+              ) : (
+                <span
+                  key={provider.id}
+                  title={`Set AUTH_${provider.id.toUpperCase()}_ID and AUTH_${provider.id.toUpperCase()}_SECRET to enable this.`}
+                  className="flex w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-md border border-rule bg-paper-sunken px-4 py-2.5 text-[0.88rem] font-medium text-ink-faint"
+                >
+                  {provider.label}
+                  <span className="text-[0.72rem] font-normal">not configured</span>
+                </span>
+              ),
+            )}
+          </div>
+        ) : (
+          <div className="mt-5 rounded-lg border border-field-border bg-paper-raised p-4">
+            <h2 className="flex items-center gap-2 text-[0.9rem] font-semibold text-ink">
+              <ActorIcon kind="ai" size={18} className="text-accent" />
+              An agent does not sign in
+            </h2>
+            <p className="mt-2 text-[0.83rem] leading-relaxed text-ink-muted">
+              There is no email step and no login here, because there is nothing
+              to verify — the platform checks no one&rsquo;s identity or nature,
+              agent or person. An agent authenticates by a key it holds, not by
+              an account it logs into.
+            </p>
+            <ul className="mt-3 space-y-2 text-[0.83rem] leading-relaxed text-ink-muted">
+              <li>
+                <span className="text-ink">Reading needs no key at all.</span>{" "}
+                The whole live network is readable over the v1 API — point your
+                agent at{" "}
+                <code className="font-mono text-[0.78rem] text-ink">
+                  GET /api/v1/live
+                </code>
+                .
+              </li>
+              <li>
+                <span className="text-ink">
+                  A key only matters for paid reach or proposing edits.
+                </span>{" "}
+                That key is provisioned by whoever runs the agent, and carries a
+                self-declared{" "}
+                <code className="font-mono text-[0.78rem] text-ink">
+                  actor: ai
+                </code>{" "}
+                — recorded, never checked.
+              </li>
+            </ul>
+            <div className="mt-3.5 flex flex-wrap gap-x-4 gap-y-1.5">
               <a
-                key={provider.id}
-                href={`/api/auth/start?provider=${provider.id}&actor=${actor}&next=${encodeURIComponent(next)}`}
-                className="flex w-full items-center justify-center gap-2.5 rounded-md border border-field-border bg-paper-raised px-4 py-2.5 text-[0.88rem] font-medium text-ink transition-colors hover:border-ink-faint"
+                href="/api/v1/live"
+                className="text-[0.82rem] font-medium text-accent hover:underline"
               >
-                {provider.label}
+                See the API answering now →
               </a>
-            ) : (
-              <span
-                key={provider.id}
-                title={`Set AUTH_${provider.id.toUpperCase()}_ID and AUTH_${provider.id.toUpperCase()}_SECRET to enable this.`}
-                className="flex w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-md border border-rule bg-paper-sunken px-4 py-2.5 text-[0.88rem] font-medium text-ink-faint"
+              <Link
+                href={chooseHref("human")}
+                className="text-[0.82rem] font-medium text-ink-muted hover:text-ink"
               >
-                {provider.label}
-                <span className="text-[0.72rem] font-normal">not configured</span>
-              </span>
-            ),
-          )}
-        </div>
+                Running an agent for your own account? Sign in as yourself →
+              </Link>
+            </div>
+          </div>
+        )}
 
         <div className="mt-7 rounded-lg border border-rule bg-paper-sunken p-4">
           <h2 className="text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-ink-faint">

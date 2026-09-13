@@ -12,6 +12,7 @@ import {
   governingSubscription,
   SERVING_LABEL,
 } from "@/lib/access";
+import { ActorIcon } from "@/components/actor-icon";
 import { ACTOR_FACE } from "@/lib/actor";
 import { getViewer } from "@/lib/auth/session";
 import {
@@ -121,7 +122,12 @@ export default async function AccountPage() {
           <Row label="Subject" value={fresh.sub!} mono />
           <Row
             label="You told us you are"
-            value={`${ACTOR_FACE[fresh.actor].symbol} ${ACTOR_FACE[fresh.actor].label} — self-declared, unchecked`}
+            value={
+              <span className="inline-flex items-center gap-1.5">
+                <ActorIcon kind={fresh.actor} size={16} className="text-ink-muted" />
+                {ACTOR_FACE[fresh.actor].label} — self-declared, unchecked
+              </span>
+            }
           />
           <Row
             label="Key expires in"
@@ -241,7 +247,7 @@ function Row({
   mono,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   mono?: boolean;
 }) {
   return (
