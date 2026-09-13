@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import type { DiscoveryTier } from "@/lib/access";
+import { asActor } from "@/lib/actor";
 
 import { noStore } from "@/lib/api/shape";
 
@@ -43,7 +44,7 @@ export async function GET(
 
   if (!raw) return fail(url.origin, "expired");
 
-  let flow: { p: string; s: string; v: string; n: string };
+  let flow: { p: string; s: string; v: string; n: string; a?: string };
   try {
     flow = JSON.parse(decodeURIComponent(raw));
   } catch {
@@ -81,10 +82,14 @@ export async function GET(
     NextResponse.redirect(new URL(safeNext(flow.n), url.origin), 302),
   );
 
+  // The self-declared actor was chosen before the redirect and carried in the
+  // flow cookie; it is signed into both keys so a renewal keeps it (see
+  // @/lib/actor). asActor bounds it to the two allowed words.
+  const actor = asActor(flow.a);
   response.cookies.set(
-    accessCookie(await mintAccessKey({ sub, discovery })),
+    accessCookie(await mintAccessKey({ sub, discovery, actor })),
   );
-  response.cookies.set(refreshCookie(await mintRefreshKey({ sub })));
+  response.cookies.set(refreshCookie(await mintRefreshKey({ sub, actor })));
   response.cookies.set({ name: FLOW_COOKIE, value: "", path: "/", maxAge: 0 });
 
   return response;

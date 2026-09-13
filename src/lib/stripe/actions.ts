@@ -98,6 +98,8 @@ export async function restampKey() {
   const token = await mintAccessKey({
     sub: viewer.sub,
     discovery: entitlement.discovery,
+    // A billing change never changes what someone said they are.
+    actor: viewer.actor,
   });
 
   (await cookies()).set(accessCookie(token));

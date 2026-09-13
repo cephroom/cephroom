@@ -30,7 +30,14 @@ export async function GET(request: Request) {
   try {
     const entitlement = await entitlementFor(sub);
     response.cookies.set(
-      accessCookie(await mintAccessKey({ sub, discovery: entitlement.discovery })),
+      accessCookie(
+        await mintAccessKey({
+          sub,
+          discovery: entitlement.discovery,
+          // Preserve the self-declared actor across a billing re-stamp.
+          actor: key.actor,
+        }),
+      ),
     );
   } catch {
   }

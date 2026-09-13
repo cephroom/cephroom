@@ -36,7 +36,12 @@ function save(next: Stored): void {
 }
 
 
-async function accessKey(): Promise<string | null> {
+interface Access {
+  key: string;
+  actor: string;
+}
+
+async function accessKey(): Promise<Access | null> {
   const { renewalKey } = load();
   if (!renewalKey) return null;
 
@@ -48,12 +53,20 @@ async function accessKey(): Promise<string | null> {
 
   const setCookie = response.headers.get("set-cookie") ?? "";
   const match = setCookie.match(/cephroom_key=([^;]+)/);
-  return match ? match[1] : null;
+  if (!match) return null;
+
+  // The human/AI self-declaration rides in the key; the refresh body reports it
+  // so a script can show which it is running as. Self-reported, never checked.
+  const body = (await response.json().catch(() => null)) as {
+    actor?: string;
+  } | null;
+  return { key: match[1], actor: body?.actor === "ai" ? "ai" : "human" };
 }
 
 async function stockUp(): Promise<number> {
-  const key = await accessKey();
-  if (!key) throw new Error("No renewal key. Run `login` first.");
+  const access = await accessKey();
+  if (!access) throw new Error("No renewal key. Run `login` first.");
+  const key = access.key;
 
   const directory = (await (await fetch(`${BASE}/api/tokens/keys`)).json()) as {
     keys: { tier: string; epoch: number; publicKey: string }[];
@@ -209,11 +222,18 @@ async function cmdLogin(argument?: string): Promise<void> {
   }
 
   save({ ...load(), renewalKey: argument });
-  const key = await accessKey();
+  const access = await accessKey();
+  if (!access) {
+    console.log(
+      "Saved, but that key did not renew. It may have expired — get a fresh one.",
+    );
+    return;
+  }
+  const face = access.actor === "ai" ? "🤖 an AI agent" : "👤 a person";
   console.log(
-    key
-      ? "Saved. Access confirmed."
-      : "Saved, but that key did not renew. It may have expired — get a fresh one.",
+    `Saved. Access confirmed, running as ${face} — self-declared, checked by nobody.\n` +
+      "That was set on the key when it was minted. To mint one that says otherwise:\n" +
+      "  await fetch('/api/auth/cli-key', {method:'POST', headers:{'content-type':'application/json'}, body:'{\"actor\":\"ai\"}'})",
   );
 }
 

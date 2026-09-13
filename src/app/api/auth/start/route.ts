@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { noStore } from "@/lib/api/shape";
 
+import { asActor } from "@/lib/actor";
 import {
   isConfigured,
   providerById,
@@ -56,6 +57,11 @@ export async function GET(request: Request) {
   const verifier = randomBytes(48).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
   const next = safeNext(url.searchParams.get("next"));
+  // The human/AI self-declaration rides through the round-trip in the same
+  // short-lived flow cookie as the state and verifier, so it reaches the
+  // callback without a pending-sign-ins table. asActor bounds it to the two
+  // allowed words; a stranger cannot smuggle an arbitrary claim into the key.
+  const actor = asActor(url.searchParams.get("actor"));
 
   const authorize = new URL(provider.authorizeUrl);
   authorize.searchParams.set("client_id", provider.clientId!);
@@ -70,7 +76,7 @@ export async function GET(request: Request) {
   const response = noStore(NextResponse.redirect(authorize, 302));
   response.cookies.set({
     name: FLOW_COOKIE,
-    value: JSON.stringify({ p: provider.id, s: state, v: verifier, n: next }),
+    value: JSON.stringify({ p: provider.id, s: state, v: verifier, n: next, a: actor }),
     httpOnly: true,
     sameSite: "lax",
     path: "/",

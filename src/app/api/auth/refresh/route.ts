@@ -59,8 +59,17 @@ export async function POST(request: Request) {
 
   const discovery = tierOnRenewal({ fromStripe, current });
 
-  const response = noStore(NextResponse.json({ discovery, signedIn: true }));
-  response.cookies.set(accessCookie(await mintAccessKey({ sub: key.sub, discovery })));
-  response.cookies.set(refreshCookie(await mintRefreshKey({ sub: key.sub })));
+  // The self-declared actor is preserved across the renewal rather than re-asked
+  // or reset - it was chosen once at sign-in and rides in the refresh key.
+  const actor = key.actor;
+  const response = noStore(
+    NextResponse.json({ discovery, actor, signedIn: true }),
+  );
+  response.cookies.set(
+    accessCookie(await mintAccessKey({ sub: key.sub, discovery, actor })),
+  );
+  response.cookies.set(
+    refreshCookie(await mintRefreshKey({ sub: key.sub, actor })),
+  );
   return response;
 }
