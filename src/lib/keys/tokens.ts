@@ -126,6 +126,31 @@ export function nodeScopedSubject(
   return `n_${digest.slice(0, 27)}`;
 }
 
+/**
+ * An agent's subject, derived from a key it controls rather than an account -
+ * contracts 2 and 3.
+ *
+ * A person proves control of an OAuth account; an AI agent has no email, so it
+ * proves control of a keypair it generated (see src/lib/auth/agent.ts) - the
+ * proof-of-possession model that agent identity has settled on (DIDs, delegation
+ * keys), because an agent cannot solve a human challenge. The public key it
+ * presents on every login is HMAC'd here to a subject, exactly as a provider
+ * account id is: the platform stores nothing, and re-derives the same `a_`
+ * subject from the same key each time, so the agent keeps one identity for its
+ * proposals and its plan without the platform holding a record of it.
+ *
+ * The `a_` prefix keeps it distinct from a person's `s_` and a node-scoped
+ * `n_`, so an agent can never present a subject that reads as either - it cannot
+ * impersonate a person, and the node still scopes it to `n_` before storing it.
+ */
+export function agentSubject(publicKeySpkiBase64: string): string {
+  const secret = requireEnv("AUTH_SUBJECT_SECRET");
+  const digest = createHmac("sha256", secret)
+    .update(`agent-key:${publicKeySpkiBase64}`)
+    .digest("base64url");
+  return `a_${digest.slice(0, 27)}`;
+}
+
 export function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
