@@ -68,7 +68,7 @@ export default async function SignInPage({
                   key={kind}
                   href={chooseHref(kind)}
                   aria-pressed={selected}
-                  className={`flex items-center gap-2 rounded-md border px-3 py-2.5 text-[0.88rem] font-medium transition-colors ${
+                  className={`flex flex-col items-center gap-2.5 rounded-lg border px-3 py-5 text-[0.9rem] font-medium transition-colors ${
                     selected
                       ? "border-accent bg-accent/10 text-ink"
                       : "border-field-border text-ink-muted hover:border-ink-faint"
@@ -76,7 +76,7 @@ export default async function SignInPage({
                 >
                   <ActorIcon
                     kind={kind}
-                    size={18}
+                    size={40}
                     className={selected ? "text-accent" : "text-ink-faint"}
                   />
                   {face.label}
