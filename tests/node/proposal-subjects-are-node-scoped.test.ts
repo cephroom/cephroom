@@ -253,3 +253,56 @@ describe("nothing the node serves carries a platform subject", () => {
     }
   });
 });
+
+describe("a long-running node expires a pseudonym without needing a restart", () => {
+  // redactExpiredSubjects ran only in the constructor, so a node whose process
+  // stays up for months never redacted a pseudonym that crossed the 90-day mark
+  // mid-run: the store was built while the proposal was fresh, and nothing swept
+  // it afterwards. The pseudonym sat on disk and was served on reads past its
+  // stated expiry - person-linkable data at rest, contract 2.
+  function backdateResolved(root: string, id: string, days: number): void {
+    const path = join(root, "proposals", `${id}.json`);
+    const proposal = JSON.parse(readFileSync(path, "utf8"));
+    const when = new Date(Date.now() - days * 86_400_000).toISOString();
+    proposal.status = "merged";
+    proposal.createdAt = when;
+    proposal.resolvedAt = when;
+    writeFileSync(path, JSON.stringify(proposal, null, 2));
+  }
+
+  it("redacts on read a proposal that expired after the store was built", () => {
+    // The store is built while the proposal is well inside the window.
+    const store = new ProposalStore(scratch);
+    const created = store.create({ ...base, fromSub: "n_TpyW52GXGUT3yY3mj" });
+    store.resolve(created.id, "merged");
+
+    // Time passes on a node that never restarts: the same store instance is
+    // still live when the proposal crosses the 90-day line.
+    backdateResolved(scratch, created.id, SUBJECT_RETENTION_DAYS + 1);
+
+    expect(
+      store.get(created.id)?.fromSub,
+      "An expired pseudonym was still served by a store that had not been rebuilt.",
+    ).toBe(REDACTED_SUB);
+    expect(
+      store.list().every((p) => p.fromSub !== "n_TpyW52GXGUT3yY3mj"),
+    ).toBe(true);
+  });
+
+  it("rewrites the file, so the expired pseudonym is gone from disk not just hidden", () => {
+    const store = new ProposalStore(scratch);
+    const created = store.create({ ...base, fromSub: "n_TpyW52GXGUT3yY3mj" });
+    store.resolve(created.id, "merged");
+    backdateResolved(scratch, created.id, SUBJECT_RETENTION_DAYS + 1);
+
+    store.get(created.id); // a read happens
+
+    const onDisk = storedFiles(scratch).find(
+      (p) => (p as { id: string }).id === created.id,
+    ) as { fromSub: string } | undefined;
+    expect(
+      onDisk?.fromSub,
+      "The pseudonym was filtered from the view but left on disk - the registry lesson: hiding is not reclaiming.",
+    ).toBe(REDACTED_SUB);
+  });
+});
